@@ -2,6 +2,22 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-07-24 — 创建 resilient_nav_monitor 包骨架
+
+### 当前事实
+
+- 在 `ros2_ws/src/` 中创建了 `resilient_nav_monitor`，构建类型为 `ament_python`，许可证为 Apache-2.0。
+- 包清单声明 `rclpy` 和 `std_msgs` 依赖，Python 打包配置、ament 资源索引和标准测试目录已建立。
+- `colcon build --symlink-install` 成功完成 1 个包。
+- 包标准测试结果为 2 项通过、1 项按生成器默认配置跳过、0 项失败。
+- 加载工作空间环境后，`ros2 pkg prefix resilient_nav_monitor` 成功返回工作空间安装前缀。
+
+### 当前边界
+
+- 当前只创建规范包骨架，没有实现 `system_heartbeat`、其他节点或任何机器人功能。
+- 本次没有安装软件，没有安装 Gazebo、Nav2 或 SLAM。
+- 后续节点接口、行为和测试应在单独任务中明确设计和实现。
+
 ## 2026-07-24 — 阶段 1 ROS 2 工作空间基线
 
 ### 当前事实

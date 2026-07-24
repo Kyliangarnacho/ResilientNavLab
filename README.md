@@ -8,12 +8,13 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 - 已完成项目目标、范围和环境基线文档。
 - 已安装 ROS 2 Jazzy，并完成基础命令和官方 talker/listener 通信验证。
-- 已创建 `ros2_ws` 工作空间，并完成不含功能包的空工作空间构建。
+- 已创建 `ros2_ws` 工作空间，并完成空工作空间构建。
+- 已创建首个 `ament_python` 包骨架 `resilient_nav_monitor`，构建、测试和包发现验证通过。
 - 尚未安装 Gazebo。
-- 尚未创建 ROS 2 包。
+- 尚未实现 `system_heartbeat` 或其他项目 ROS 2 节点。
 - 尚未开始机器人功能开发。
 
-当前环境可以运行 ROS 2 官方演示节点，工作空间基线也可以完成空构建；由于尚无项目 ROS 2 包，仓库仍不能构建或运行项目机器人节点、仿真或导航任务。
+当前环境可以运行 ROS 2 官方演示节点，并能构建和发现 `resilient_nav_monitor` 包骨架；由于包内尚无节点实现，仓库仍不能运行项目机器人节点、仿真或导航任务。
 
 ## 核心方向
 
@@ -42,7 +43,8 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 | ROS 2 | Jazzy；`ROS_DISTRO=jazzy`，`ROS_VERSION=2` |
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
-| ROS 2 工作空间 | `ros2_ws` 已创建；空 `colcon build` 通过，当前包含 0 个包 |
+| ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
+| 项目 ROS 2 包 | `resilient_nav_monitor` 骨架已创建并可发现；尚无节点 |
 | Gazebo | 未安装 |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
@@ -55,4 +57,4 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 ## 近期里程碑
 
-当前已完成 ROS 2 Jazzy 安装、官方演示节点基础通信验证和 `ros2_ws` 空工作空间构建。Gazebo、Nav2 和 SLAM 仍未安装；项目 ROS 2 包仍未创建，后续功能开发需在单独任务中明确实施。
+当前已完成 ROS 2 Jazzy 安装、官方演示节点基础通信验证、`ros2_ws` 工作空间基线和 `resilient_nav_monitor` 包骨架。Gazebo、Nav2 和 SLAM 仍未安装；`system_heartbeat` 及其他项目节点仍未实现。
