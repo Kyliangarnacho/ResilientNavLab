@@ -4,7 +4,7 @@
 
 - 核验日期：2026-07-24
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：初始化阶段（第 0 阶段）
+- 当前阶段：阶段 1（基础设施基线）
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -24,6 +24,7 @@
 | ROS 2 环境 | `ROS_DISTRO=jazzy`，`ROS_VERSION=2` | 已安装并在交互式 Bash 中配置 |
 | ROS 2 开发工具 | `colcon` 路径 `/usr/bin/colcon`；`rosdep` 路径 `/usr/bin/rosdep` | 可用 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
+| ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建通过，当前包含 0 个包 |
 | Gazebo CLI | 未找到 `gz` 或 `gazebo` 命令 | 未安装/不可用 |
 
 运行 `codex --version` 时，Codex 成功返回版本号，同时提示当前受限检查环境无法创建 PATH aliases。该提示不影响本次版本识别；如后续需要诊断 Codex PATH 行为，应在对应任务中单独复核。
@@ -35,9 +36,11 @@
 - 已安装 ROS 2 Jazzy。
 - `ros2`、`colcon` 和 `rosdep` 均可用。
 - 官方 C++ talker 能通过 `/chatter` 发布 `std_msgs/msg/String`，Python listener 能正常接收。
+- 已创建 `ros2_ws`，其 `src/` 当前仅含用于保留目录的 `.gitkeep`。
+- 在加载 ROS 2 Jazzy 环境后执行空 `colcon build` 成功，结果为 `0 packages finished`。
+- `ros2_ws/build/`、`ros2_ws/install/` 和 `ros2_ws/log/` 是本地构建产物，均由 `.gitignore` 排除。
 - 尚未安装 Gazebo。
 - 尚未安装 Nav2 和 SLAM。
-- 尚未创建 ROS 2 工作空间。
 - 尚未创建任何 ROS 2 包。
 - 尚未开始机器人功能开发。
 - 当前可以运行系统安装的 ROS 2 官方演示节点，但没有可构建、测试或启动的项目节点。
@@ -79,6 +82,6 @@ command -v gazebo
 1. 确认 ROS 2 Jazzy 兼容的 Gazebo 版本和安装方式。
 2. 约定 ROS 2 工作空间、依赖管理和构建测试流程。
 3. 经明确授权后安装 Gazebo、Nav2 或 SLAM 等后续依赖。
-4. 经明确授权后创建工作空间和首个项目 ROS 2 包。
+4. 经明确授权后创建首个项目 ROS 2 包。
 
-ROS 2 Jazzy 已安装，并已在 `~/.bashrc` 中幂等配置其环境加载；Gazebo、Nav2 和 SLAM 未安装。
+ROS 2 Jazzy 已安装，并已在 `~/.bashrc` 中幂等配置其环境加载；`ros2_ws` 工作空间基线已创建并通过空构建；Gazebo、Nav2 和 SLAM 未安装。
