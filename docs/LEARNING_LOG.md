@@ -2,6 +2,30 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-07-24 — ROS 2 Jazzy 安装与基础通信验证
+
+### 当前事实
+
+- ROS 2 Jazzy 已安装，环境变量为 `ROS_DISTRO=jazzy`、`ROS_VERSION=2`。
+- `ros2`、`colcon` 和 `rosdep` 命令均可用。
+- 官方 `demo_nodes_cpp talker` 和 `demo_nodes_py listener` 通信验证通过。
+- 运行期间 `/talker` 和 `/listener` 节点均存在，`/chatter` 话题类型为 `std_msgs/msg/String`。
+- Gazebo、Nav2 和 SLAM 仍未安装。
+- ROS 2 工作空间和项目 ROS 2 包仍未创建。
+
+### 问题与修复
+
+- 验证脚本启用了 `set -euo pipefail`。首次直接加载官方 `/opt/ros/jazzy/setup.bash` 时，官方脚本引用未定义的 `AMENT_TRACE_SETUP_FILES`，触发 nounset 错误。
+- 修复仅作用于环境加载过程：加载前执行 `set +u`，加载后立即恢复 `set -u`；脚本仍保留 `set -e`、`set -u` 和 `pipefail`。
+- 修复后验证脚本、详细 `ros2 doctor --report` 和官方 talker/listener 通信实验均完成。通信实验使用超时和清理机制，未留下后台演示节点。
+
+### 当前边界
+
+- 本次没有重新安装 ROS 2，也没有执行 apt、dpkg 或 sudo 安装。
+- 本次没有安装 Gazebo、Nav2、SLAM 或其他 ROS 发行版。
+- 本次没有创建工作空间、ROS 2 包或项目节点。
+- 后续机器人仿真、导航和容错功能仍为未实施计划。
+
 ## 2026-07-24 — 第 0 阶段文档收尾
 
 ### 当前事实

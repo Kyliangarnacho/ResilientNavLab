@@ -20,22 +20,29 @@
 | Node.js | `v24.18.0`，路径 `/usr/bin/node` | 可用 |
 | npm | `11.16.0`，路径 `/usr/bin/npm` | 可用 |
 | Codex CLI | `codex-cli 0.145.0`，路径 `/home/kylian/.npm-global/bin/codex` | 可用 |
-| ROS 2 CLI | 未找到 `ros2` 命令 | 未安装/不可用 |
-| ROS 2 环境 | `ROS_DISTRO` 未设置，`/opt/ros` 不存在 | 未安装/未配置 |
+| ROS 2 CLI | ROS 2 Jazzy，路径 `/opt/ros/jazzy/bin/ros2` | 可用 |
+| ROS 2 环境 | `ROS_DISTRO=jazzy`，`ROS_VERSION=2` | 已安装并在交互式 Bash 中配置 |
+| ROS 2 开发工具 | `colcon` 路径 `/usr/bin/colcon`；`rosdep` 路径 `/usr/bin/rosdep` | 可用 |
+| ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | Gazebo CLI | 未找到 `gz` 或 `gazebo` 命令 | 未安装/不可用 |
 
 运行 `codex --version` 时，Codex 成功返回版本号，同时提示当前受限检查环境无法创建 PATH aliases。该提示不影响本次版本识别；如后续需要诊断 Codex PATH 行为，应在对应任务中单独复核。
 
 ## ROS 2 项目状态
 
-当前仓库中只有初始化文档和辅助目录：
+当前 ROS 2 基础环境状态如下：
 
-- 尚未安装 ROS 2。
+- 已安装 ROS 2 Jazzy。
+- `ros2`、`colcon` 和 `rosdep` 均可用。
+- 官方 C++ talker 能通过 `/chatter` 发布 `std_msgs/msg/String`，Python listener 能正常接收。
 - 尚未安装 Gazebo。
+- 尚未安装 Nav2 和 SLAM。
 - 尚未创建 ROS 2 工作空间。
 - 尚未创建任何 ROS 2 包。
 - 尚未开始机器人功能开发。
-- 当前没有可执行的 ROS 2 构建、测试或启动命令。
+- 当前可以运行系统安装的 ROS 2 官方演示节点，但没有可构建、测试或启动的项目节点。
+
+验证脚本最初在启用 `set -u` 时直接加载官方 `/opt/ros/jazzy/setup.bash`，因官方脚本引用未定义的 `AMENT_TRACE_SETUP_FILES` 而失败。现已将加载过程限定为临时执行 `set +u`，加载完成后立即恢复 `set -u`，并保留 `set -e` 和 `pipefail`。
 
 ## 复核命令
 
@@ -52,8 +59,13 @@ node --version
 npm --version
 codex --version
 command -v ros2
+command -v colcon
+command -v rosdep
 printenv ROS_DISTRO
-test -d /opt/ros
+printenv ROS_VERSION
+test -f /opt/ros/jazzy/setup.bash
+ros2 pkg executables demo_nodes_cpp
+ros2 pkg executables demo_nodes_py
 command -v gz
 command -v gazebo
 ```
@@ -62,11 +74,11 @@ command -v gazebo
 
 ## 后续环境决策
 
-进入下一阶段前应单独完成并记录：
+后续环境工作应单独完成并记录：
 
-1. 根据 Ubuntu 24.04 的官方支持情况选择 ROS 2 发行版。
-2. 确认所选 ROS 2 发行版兼容的 Gazebo 版本和安装方式。
-3. 约定 ROS 2 工作空间、依赖管理和构建测试流程。
-4. 安装完成后更新本页，不保留过时的“未安装”状态。
+1. 确认 ROS 2 Jazzy 兼容的 Gazebo 版本和安装方式。
+2. 约定 ROS 2 工作空间、依赖管理和构建测试流程。
+3. 经明确授权后安装 Gazebo、Nav2 或 SLAM 等后续依赖。
+4. 经明确授权后创建工作空间和首个项目 ROS 2 包。
 
-本次环境核验没有执行安装，也没有修改系统配置。
+ROS 2 Jazzy 已安装，并已在 `~/.bashrc` 中幂等配置其环境加载；Gazebo、Nav2 和 SLAM 未安装。

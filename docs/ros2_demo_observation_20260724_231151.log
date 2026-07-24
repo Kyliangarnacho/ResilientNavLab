@@ -1,0 +1,16 @@
+== ros2 node list ==
+/listener
+/talker
+
+== ros2 topic list ==
+/chatter
+/parameter_events
+/rosout
+
+== ros2 topic info /chatter ==
+Type: std_msgs/msg/String
+Publisher count: 1
+Subscription count: 1
+
+== ros2 topic type /chatter ==
+std_msgs/msg/String

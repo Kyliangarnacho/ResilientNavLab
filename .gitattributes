@@ -1,0 +1,2 @@
+# Preserve generated ROS 2 evidence logs byte-for-byte
+docs/ros2_*.log -text -whitespace
