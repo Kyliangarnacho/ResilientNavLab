@@ -25,7 +25,8 @@
 | ROS 2 开发工具 | `colcon` 路径 `/usr/bin/colcon`；`rosdep` 路径 `/usr/bin/rosdep` | 可用 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor`（`ament_python`） | 构建、标准测试和 `ros2 pkg prefix` 发现验证通过 |
+| 项目 ROS 2 包 | `resilient_nav_monitor`（`ament_python`） | 构建、自动测试和 `ros2 pkg prefix` 发现验证通过 |
+| 项目 ROS 2 节点 | `system_heartbeat` | 1 Hz 发布和 ROS 图端到端验证通过 |
 | Gazebo CLI | 未找到 `gz` 或 `gazebo` 命令 | 未安装/不可用 |
 
 运行 `codex --version` 时，Codex 成功返回版本号，同时提示当前受限检查环境无法创建 PATH aliases。该提示不影响本次版本识别；如后续需要诊断 Codex PATH 行为，应在对应任务中单独复核。
@@ -40,14 +41,15 @@
 - 已创建 `ros2_ws`；其 `src/` 当前包含 `resilient_nav_monitor` 包骨架。
 - 在加载 ROS 2 Jazzy 环境后执行空 `colcon build` 成功，结果为 `0 packages finished`。
 - `resilient_nav_monitor` 使用 `ament_python`、Apache-2.0 许可证，并声明 `rclpy` 和 `std_msgs` 依赖。
-- `colcon build --symlink-install` 成功完成 1 个包；标准测试结果为 2 项通过、1 项按生成器默认配置跳过、0 项失败。
+- `colcon build --symlink-install` 成功完成 1 个包；当前自动测试结果为 4 项通过、1 项按生成器默认配置跳过、0 项失败。
 - 加载 `ros2_ws/install/setup.bash` 后，`ros2 pkg prefix resilient_nav_monitor` 返回工作空间内的安装前缀。
+- `system_heartbeat` 节点以 1 Hz 在 `/system_heartbeat` 发布 `std_msgs/msg/String`，消息格式为 `alive count=N`，其中计数持续递增。
+- 自动运行验证确认 `/system_heartbeat` 节点存在、话题类型正确、消息可接收，测得频率为 `1.000 Hz`；验证结束后没有节点进程残留。
 - `ros2_ws/build/`、`ros2_ws/install/` 和 `ros2_ws/log/` 是本地构建产物，均由 `.gitignore` 排除。
 - 尚未安装 Gazebo。
 - 尚未安装 Nav2 和 SLAM。
-- `resilient_nav_monitor` 当前仅为规范包骨架，尚未实现 `system_heartbeat` 或其他节点。
-- 尚未开始机器人功能开发。
-- 当前可以构建和测试项目包骨架，但没有可启动的项目节点。
+- 尚未实现 `system_heartbeat` 以外的项目节点。
+- 尚未开始故障注入、健康评估、融合或导航功能开发。
 
 验证脚本最初在启用 `set -u` 时直接加载官方 `/opt/ros/jazzy/setup.bash`，因官方脚本引用未定义的 `AMENT_TRACE_SETUP_FILES` 而失败。现已将加载过程限定为临时执行 `set +u`，加载完成后立即恢复 `set -u`，并保留 `set -e` 和 `pipefail`。
 
@@ -86,6 +88,6 @@ command -v gazebo
 1. 确认 ROS 2 Jazzy 兼容的 Gazebo 版本和安装方式。
 2. 约定 ROS 2 工作空间、依赖管理和构建测试流程。
 3. 经明确授权后安装 Gazebo、Nav2 或 SLAM 等后续依赖。
-4. 经明确授权后设计并实现 `resilient_nav_monitor` 的首个节点。
+4. 经明确授权后设计 `resilient_nav_monitor` 的后续健康监测接口和节点。
 
-ROS 2 Jazzy 已安装，并已在 `~/.bashrc` 中幂等配置其环境加载；`ros2_ws` 工作空间和 `resilient_nav_monitor` 包骨架均已通过验证；Gazebo、Nav2 和 SLAM 未安装。
+ROS 2 Jazzy 已安装，并已在 `~/.bashrc` 中幂等配置其环境加载；`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 均已通过验证；Gazebo、Nav2 和 SLAM 未安装。

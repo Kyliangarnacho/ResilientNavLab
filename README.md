@@ -9,12 +9,12 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - 已完成项目目标、范围和环境基线文档。
 - 已安装 ROS 2 Jazzy，并完成基础命令和官方 talker/listener 通信验证。
 - 已创建 `ros2_ws` 工作空间，并完成空工作空间构建。
-- 已创建首个 `ament_python` 包骨架 `resilient_nav_monitor`，构建、测试和包发现验证通过。
+- 已在 `resilient_nav_monitor` 中实现 `system_heartbeat` 节点，构建、测试和运行验证通过。
 - 尚未安装 Gazebo。
-- 尚未实现 `system_heartbeat` 或其他项目 ROS 2 节点。
-- 尚未开始机器人功能开发。
+- 尚未实现其他项目 ROS 2 节点。
+- 尚未开始故障注入、健康评估、融合或导航功能开发。
 
-当前环境可以运行 ROS 2 官方演示节点，并能构建和发现 `resilient_nav_monitor` 包骨架；由于包内尚无节点实现，仓库仍不能运行项目机器人节点、仿真或导航任务。
+当前环境可以运行 ROS 2 官方演示节点和项目 `system_heartbeat` 节点；仿真、健康评估和导航任务仍不可用。
 
 ## 核心方向
 
@@ -44,7 +44,8 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor` 骨架已创建并可发现；尚无节点 |
+| 项目 ROS 2 包 | `resilient_nav_monitor` 可构建、测试并由 ROS 2 发现 |
+| 项目 ROS 2 节点 | `system_heartbeat` 以 1 Hz 在 `/system_heartbeat` 发布递增存活消息 |
 | Gazebo | 未安装 |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
@@ -57,4 +58,4 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 ## 近期里程碑
 
-当前已完成 ROS 2 Jazzy 安装、官方演示节点基础通信验证、`ros2_ws` 工作空间基线和 `resilient_nav_monitor` 包骨架。Gazebo、Nav2 和 SLAM 仍未安装；`system_heartbeat` 及其他项目节点仍未实现。
+当前已完成 ROS 2 Jazzy 安装、官方演示节点基础通信验证、`ros2_ws` 工作空间基线和 `system_heartbeat` 节点。Gazebo、Nav2 和 SLAM 仍未安装；故障注入、健康评估、融合和导航功能仍未实现。

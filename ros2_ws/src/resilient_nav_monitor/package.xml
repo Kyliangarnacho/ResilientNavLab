@@ -3,7 +3,7 @@
 <package format="3">
   <name>resilient_nav_monitor</name>
   <version>0.0.0</version>
-  <description>ROS 2 package skeleton for resilient navigation monitoring.</description>
+  <description>ROS 2 system heartbeat monitoring for resilient navigation.</description>
   <maintainer email="296032282@qq.com">Kylian</maintainer>
   <license>Apache-2.0</license>
 

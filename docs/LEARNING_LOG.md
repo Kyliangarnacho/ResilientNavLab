@@ -2,6 +2,22 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-07-24 — 实现 system_heartbeat 节点
+
+### 当前事实
+
+- `resilient_nav_monitor` 新增 `system_heartbeat` console 入口和同名节点。
+- 节点每 1 秒在 `/system_heartbeat` 发布一次 `std_msgs/msg/String`，消息为 `alive count=N`，计数从 1 开始递增。
+- 聚焦测试覆盖话题、周期和递增消息格式；完整测试结果为 4 项通过、1 项按生成器默认配置跳过、0 项失败。
+- `colcon build --symlink-install` 成功完成 1 个包。
+- 自动运行验证确认节点、话题类型和消息均符合约定，`ros2 topic hz` 测得频率为 `1.000 Hz`。
+- 节点由 timeout 和清理逻辑自动停止，验证后没有后台进程残留。
+
+### 当前边界
+
+- `system_heartbeat` 只提供基础存活信号，不代表健康评估、故障检测或容错决策已经实现。
+- 本次没有创建其他包或节点，没有安装软件，也没有安装 Gazebo、Nav2 或 SLAM。
+
 ## 2026-07-24 — 创建 resilient_nav_monitor 包骨架
 
 ### 当前事实

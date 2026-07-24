@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='Kylian',
     maintainer_email='296032282@qq.com',
-    description='ROS 2 package skeleton for resilient navigation monitoring.',
+    description='ROS 2 system heartbeat monitoring for resilient navigation.',
     license='Apache-2.0',
     extras_require={
         'test': [
@@ -24,6 +24,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            'system_heartbeat = resilient_nav_monitor.system_heartbeat:main',
         ],
     },
 )

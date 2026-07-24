@@ -6,7 +6,7 @@
 
 ResilientNavLab 的目标是构建基于 ROS 2 的移动机器人多传感器故障注入、健康评估、自适应融合和容错导航平台。
 
-项目当前处于阶段 1 基础设施基线。ROS 2 Jazzy 已安装，`ros2_ws` 工作空间和 `resilient_nav_monitor` 包骨架已通过构建验证；Gazebo 和项目 ROS 2 节点尚未创建，机器人功能开发尚未开始。
+项目当前处于阶段 1 基础设施基线。ROS 2 Jazzy、`ros2_ws` 工作空间、`resilient_nav_monitor` 包和首个 `system_heartbeat` 节点已通过验证；Gazebo 及其他项目 ROS 2 节点尚未创建，机器人核心功能开发尚未开始。
 
 ## 开始工作前
 
