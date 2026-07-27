@@ -6,7 +6,14 @@
 
 ResilientNavLab 的目标是构建基于 ROS 2 的移动机器人多传感器故障注入、健康评估、自适应融合和容错导航平台。
 
-项目当前处于阶段 1 基础设施基线。ROS 2 Jazzy、`ros2_ws` 工作空间、`resilient_nav_monitor` 包和首个 `system_heartbeat` 节点已通过验证；Gazebo 及其他项目 ROS 2 节点尚未创建，机器人核心功能开发尚未开始。
+项目的阶段 0（初始化）、阶段 1（ROS 2 基础设施）和阶段 2（Gazebo 基础仿真与时钟链路）已经完成。当前环境已建立 ROS 2 Jazzy、Gazebo Harmonic、`ros_gz` 和 `ros2_ws` 工作空间，工作空间内已有两个 ROS 2 软件包：
+
+- `resilient_nav_monitor`：提供已验证的 `system_heartbeat` 节点。
+- `resilient_nav_simulation`：提供自定义 SDF 世界、`/clock` 桥接配置、Python Launch 文件和相应静态测试。
+
+阶段 2 已验证自定义世界加载、Gazebo `/clock` 到 ROS 2 `/clock` 的单向桥接、Launch 集成，以及 `system_heartbeat` 使用 `use_sim_time=true` 时随 Gazebo 暂停和恢复。当前仍没有机器人模型、URDF/Xacro、TF、传感器、Nav2、SLAM、定位或故障注入能力。
+
+下一阶段是虚拟差速机器人、URDF/Xacro、TF 与基础运动；这些内容尚未开始，必须在单独任务中明确授权和验收。
 
 ## 开始工作前
 
@@ -25,9 +32,9 @@ ResilientNavLab 的目标是构建基于 ROS 2 的移动机器人多传感器故
 - 保持提交内容聚焦，不覆盖或清理与当前任务无关的用户文件。
 - 优先采用可复现的命令、配置和实验参数，并记录关键版本与假设。
 
-## 未来代码约定
+## 代码约定
 
-这些约定在后续创建 ROS 2 工作空间和代码后生效：
+以下约定适用于现有和后续 ROS 2 代码：
 
 - ROS 2 包、节点、话题、参数和坐标系名称应语义清晰，并遵循 ROS 2 社区惯例。
 - 将故障注入、健康评估、融合算法和导航策略保持为边界清晰、可独立测试的模块。

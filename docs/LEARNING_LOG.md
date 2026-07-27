@@ -2,6 +2,32 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-07-27 — 阶段 2 Gazebo 基础仿真与时钟链路收尾
+
+### 当前事实
+
+- 已通过现有 ROS 2 Jazzy 软件源安装 `ros-jazzy-ros-gz`，Gazebo Sim 版本为 8.11.0；安装和验证日志分别保存在 `docs/gazebo_install_20260727.log` 与 `docs/gazebo_verify_20260727.log`。
+- 官方 `shapes.sdf` 已通过脚本完成限时、无 GUI 的服务端启动检查，用户另行确认其图形世界正常打开。
+- 已创建 `resilient_nav_simulation` 包，包含 `phase2_world.sdf`、`bridge.yaml`、`phase2_world.launch.py` 和静态资源测试。
+- 用户确认自定义世界正常打开，并可见 `ground_plane`、`box_obstacle` 和 `cylinder_checkpoint`。
+- 未启动桥接时，Gazebo Transport 可观察 `/clock`，ROS 2 不可观察 `/clock`；启动项目 Launch 后，ROS 2 可以观察 `/clock`。
+- Launch 将 `system_heartbeat` 的 `use_sim_time` 设置为 `true`。暂停 Gazebo 时 ROS 2 `/clock` 和心跳停止，恢复 Gazebo 后二者继续，验证了仿真时钟驱动关系。
+- 用户将 `box_obstacle` 的 pose 从 `2 0 0.5 0 0 0` 修改为 `3 1 0.5 0 0 0`，重新启动后确认 Gazebo 中的新坐标生效。
+
+### 学习要点
+
+- Gazebo Transport 和 ROS 2 Topic 是两套独立通信机制。即使两侧都使用 `/clock` 这一名称，也必须由 `ros_gz_bridge` 显式转换消息后才能互通。
+- ROS 2 负责节点、参数和 ROS 图，Gazebo 负责世界与仿真时间，`ros_gz` 负责启动集成和选定数据的桥接；明确边界有助于定位“Gazebo 有数据但 ROS 2 看不到”的问题。
+- SDF 定义 Gazebo 世界，`bridge.yaml` 定义跨中间件消息映射，Python Launch 文件负责把 Gazebo、桥和 ROS 2 节点组织成一次可复现启动。
+- `src/` 是源码，`build/` 是中间产物，`install/` 是运行时可发现前缀，`log/` 保存构建和测试日志。`colcon build --symlink-install` 建立便于迭代的安装布局，而 `source install/setup.bash` 只是把该布局加载到当前 shell。
+- 通过 ROS vendor 包安装的 `gz` 位于 `/opt/ros/jazzy/opt/gz_tools_vendor/bin`。安装前已经加载过 ROS 环境的 shell 不会自动获得后来新增的路径，需要重新加载 `/opt/ros/jazzy/setup.bash` 或打开新的已配置 shell；因此当时的 `gz` 命令不可见属于环境未刷新，而非安装失败。
+
+### 当前边界
+
+- 阶段 2 只完成静态世界、`/clock` 桥接、Launch 编排和已有心跳节点的仿真时间联动。
+- 没有开始机器人、URDF、传感器、运动控制、Nav2、SLAM、故障注入、健康评估、自适应融合或容错导航。
+- 本次收尾只更新文档并执行非图形验证，不安装软件、不启动 Gazebo 图形界面，也不修改 `resilient_nav_monitor` 或 `resilient_nav_simulation` 源码。
+
 ## 2026-07-24 — 实现 system_heartbeat 节点
 
 ### 当前事实

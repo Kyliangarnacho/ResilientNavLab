@@ -4,17 +4,17 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 ## 当前状态
 
-项目当前处于**阶段 1：基础设施基线**。
+项目已完成**阶段 2：Gazebo 基础仿真与 ROS 2 时钟链路**的收尾验收。
 
-- 已完成项目目标、范围和环境基线文档。
-- 已安装 ROS 2 Jazzy，并完成基础命令和官方 talker/listener 通信验证。
-- 已创建 `ros2_ws` 工作空间，并完成空工作空间构建。
-- 已在 `resilient_nav_monitor` 中实现 `system_heartbeat` 节点，构建、测试和运行验证通过。
-- 尚未安装 Gazebo。
-- 尚未实现其他项目 ROS 2 节点。
-- 尚未开始故障注入、健康评估、融合或导航功能开发。
+- ROS 2 Jazzy、`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 的阶段 1 基线保持可用。
+- 已通过 `ros-jazzy-ros-gz` 安装 Gazebo Harmonic；Gazebo Sim 版本为 8.11.0。
+- 已创建 `resilient_nav_simulation` 包，包含自定义 SDF 世界、`/clock` 桥接配置、Python Launch 文件和静态资源测试。
+- 自定义世界已在 Gazebo 中人工验证，可见 `ground_plane`、`box_obstacle` 和 `cylinder_checkpoint`。
+- Launch 启动后，Gazebo 的仿真时钟经 `ros_gz_bridge` 出现在 ROS 2 `/clock`，`system_heartbeat` 使用 `use_sim_time=true`。
+- 暂停和恢复 Gazebo 时，ROS 2 `/clock` 与心跳会同步停止和继续，说明节点确实由仿真时间驱动。
+- 修改 `box_obstacle` 的 SDF 位姿并重新启动后，Gazebo 中的坐标变化已生效。
 
-当前环境可以运行 ROS 2 官方演示节点和项目 `system_heartbeat` 节点；仿真、健康评估和导航任务仍不可用。
+阶段 2 的完成边界仅是静态世界、Gazebo—ROS 2 时钟桥和已有心跳节点的仿真时间验证。机器人、URDF、传感器、运动与控制、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均尚未开始。
 
 ## 核心方向
 
@@ -44,9 +44,11 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor` 可构建、测试并由 ROS 2 发现 |
+| 项目 ROS 2 包 | `resilient_nav_monitor`、`resilient_nav_simulation` 可构建、测试并由 ROS 2 发现 |
 | 项目 ROS 2 节点 | `system_heartbeat` 以 1 Hz 在 `/system_heartbeat` 发布递增存活消息 |
-| Gazebo | 未安装 |
+| Gazebo | Gazebo Harmonic / Gazebo Sim 8.11.0，可用 |
+| ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` 已安装；`/clock` 单向桥接和仿真时间联动已验证 |
+| 阶段 2 仿真资源 | 自定义静态世界、桥接配置和 Launch 集成已验证 |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
 
@@ -55,7 +57,8 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - [项目范围](docs/PROJECT_SCOPE.md)
 - [开发环境基线](docs/ENVIRONMENT.md)
 - [学习与决策记录](docs/LEARNING_LOG.md)
+- [阶段 2 收尾总结](docs/PHASE2_SUMMARY.md)
 
 ## 近期里程碑
 
-当前已完成 ROS 2 Jazzy 安装、官方演示节点基础通信验证、`ros2_ws` 工作空间基线和 `system_heartbeat` 节点。Gazebo、Nav2 和 SLAM 仍未安装；故障注入、健康评估、融合和导航功能仍未实现。
+阶段 2 已完成 Gazebo Harmonic 安装、基础世界加载、`/clock` 桥接和 `use_sim_time` 联动验证。下一阶段尚未开始；机器人、URDF、传感器、Nav2、SLAM、故障注入、健康评估、融合和导航功能仍未实现。
