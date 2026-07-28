@@ -2,6 +2,269 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-07-29 — 阶段 3 收尾
+
+### 当前事实
+
+- 阶段 3 已按“虚拟差速机器人与基础运动”边界完成，正式总结见 `docs/PHASE3_SUMMARY.md`。
+- 收尾执行 `colcon build --symlink-install`，`resilient_nav_description`、`resilient_nav_monitor` 和 `resilient_nav_simulation` 共 3 个包全部成功。
+- 收尾执行 `colcon test` 和 `colcon test-result --verbose`，汇总为 43 项、0 错误、0 失败、1 项按既有配置跳过。
+- 根据精简收尾要求，保留已经记录的机器人生成、直行、原地旋转、圆弧、停车、标准 ROS 2 话题、TF 和 Gazebo/RViz 同步结果，没有重复运行完整图形仿真或运动流程。
+- 最终文档记录了完整 Demo、仅 Spawn、三种运动工具以及快速构建/测试命令。
+- 收尾停止了本次 Gazebo/RViz Launch，进程检查没有发现相关残留；删除了本次隔离 ROS 日志、对应 Launch 参数文件和源码树 Python 缓存。
+- 本次收尾没有修改功能代码。
+
+### 学习要点
+
+- 阶段收尾应区分“已完成的动态验收”和“收尾时重复执行的检查”；保留可追溯结果并只重跑快速自动化验证，可以避免把重复操作误写成新的实验。
+- 完成阶段状态更新时，需要同步 README、范围、环境、学习日志、协作说明和正式总结，避免“进行中”“已完成”并存。
+- 临时文件清理应限定到本次会话可确认的日志、参数和缓存，不能因为目录中存在旧文件就推断其都可删除。
+
+### 当前边界
+
+- 阶段 3 完成结论限于低速、短时、平地差速运动基线。
+- 完整运动性能、传感器、`ros2_control`、Nav2、SLAM、定位和后续容错导航能力仍需单独授权。
+- 既有 `system_heartbeat` 在整套 Launch Ctrl-C 时的重复 shutdown 警告未在本次收尾修改；它不影响已记录验收，且没有留下进程。
+
+## 2026-07-29 — 阶段 3 运动测试工具与三模式验收
+
+### 当前事实
+
+- `resilient_nav_simulation` 新增 `motion_test` 可执行工具，支持直行、原地旋转和圆弧，线速度、角速度与持续时间可配置。
+- 工具以 `20 Hz` 发布 `/cmd_vel`，启动前等待命令订阅者；正常结束、异常和 Ctrl-C 均通过同一清理路径重复发送 5 条零 Twist。
+- 单元测试覆盖三种模式映射、参数校验、正常结束和模拟 Ctrl-C 自动停车；真实 Ctrl-C 后连续两次 `/odom` twist 也均为零。
+- 初次旋转和圆弧测试发现 Gazebo 模型与 `/odom`/TF 存在约厘米级系统性偏差。对照几何后确认，DiffDrive 里程计以轮轴中点积分，而旧 `base_footprint` 位于其后方 `0.10 m`。
+- `base_footprint` 已移到左右驱动轮轴中点，`base_link` 相对它为 `[-0.10, 0, 0.15] m`；物理几何、接触点和重心之间的相对关系不变。
+- DiffDrive 新增显式 `frame_id=odom` 和 `child_frame_id=base_footprint`。实际 `/odom` frame 字段、ROS 侧 TF 与描述树现在使用同一语义。
+- 修正后三组 `1.5 s` 最终 `/odom` `(x, y, yaw)` 分别为：直行 `(0.276800, 0.000000, 0.000)`，原地旋转 `(0.000000, 0.000000, 0.832)`，圆弧 `(0.261344, 0.073738, 0.550)`。
+- 对应 Gazebo 位姿分别为 `(0.276159, 0.000000, 0.000)`、`(-0.005241, 0.002314, 0.780)` 和 `(0.254261, 0.069973, 0.525)`；最大位置差约 `8 mm`，最大航向差约 `0.052 rad`。
+- 三组停止后的 `/odom` twist 均为零，连续 TF 样本保持不变；RViz 完成 OpenGL 4.5 初始化并通过内部 listener 订阅 `/tf`、`/tf_static`，RobotModel 订阅 `/robot_description`。
+- 最终相关三包构建成功，测试汇总为 43 项、0 错误、0 失败、1 项按既有配置跳过；结束后没有相关后台进程残留。
+
+### 学习要点
+
+- 差速轮式里程计的参考点应与 `base_footprint` 一致。只让 frame 名称一致而物理原点不同，会在直行时隐藏问题，却在旋转和圆弧时形成确定性的轨迹偏差。
+- `base_link` 可以继续表示车体几何中心，`base_footprint` 则表示地面上的轮轴参考点；二者通过固定 TF 表达偏移，比在 TF 广播节点中补偿运动位姿更清晰。
+- 自动停车不能只依赖发布一次零速度。让清理路径在正常、异常和 Ctrl-C 下统一执行并短间隔重复发布，可以覆盖 DDS/bridge 的最终消息交付。
+- RViz 同步应同时检查进程初始化、RobotModel 描述订阅、TF listener 订阅和数值 TF，而不只依据窗口是否打开。
+
+### 当前边界
+
+- 当前结果只验证给定低速、短时、平地命令，不代表速度精度、长距离里程计、轨迹跟踪、高速急停或控制鲁棒性已验收。
+- Gazebo 物理位姿与轮式里程计仍有毫米级位置和小角度航向差；当前如实记录，没有引入传感器或额外定位来源去校正。
+- 没有增加传感器、`ros2_control`、Nav2、SLAM 或新软件依赖。既有 `system_heartbeat` Ctrl-C 重复 shutdown 警告仍未在本任务中处理。
+
+## 2026-07-29 — 阶段 3 Gazebo 与 RViz 联合演示
+
+### 当前事实
+
+- 新增 `phase3_demo.launch.py`，Include 现有 `phase3_spawn.launch.py` 并通过 `use_rviz` 条件启动一个 RViz；Gazebo、bridge、`robot_state_publisher` 和 `odom_tf_broadcaster` 没有重复定义。
+- Demo 透传实体名和初始位姿参数；`use_rviz` 默认开启，关闭时仍运行相同 Spawn 链。
+- 专用 `phase3_demo.rviz` 以 `odom` 为 Fixed Frame，启用 Grid、RobotModel 和 TF；Odometry 显示绑定 `/odom`，默认关闭供用户按需启用。
+- `resilient_nav_simulation` 新增 `rviz2` 运行依赖和 RViz 资源安装规则。
+- 相关 3 个包构建成功；测试汇总为 30 项、0 错误、0 失败、1 项跳过。
+- 实际 Demo Launch 报告机器人生成成功，RViz 完成 OpenGL 4.5 初始化且未报告配置或 TF 错误；ROS 图只有一个 `robot_state_publisher`，没有独立关节状态发布器。
+- 向 `/cmd_vel` 以 `0.2 m/s`、10 Hz 发送 15 条消息后立即发送零 Twist。Gazebo 模型 X 从 `0.000000 m` 移至 `0.466559 m`。
+- 停止后 `/odom` X 为 `0.467200 m` 且 twist 全零，`odom -> base_footprint` TF X 为 `0.467 m`；RViz RobotModel 与 TF listener 正在消费现有描述和 TF 链，三侧位姿在毫米级一致。
+- 验证结束后发送了明确停止命令，并停止整个 Launch；进程检查没有发现 Gazebo、RViz、bridge 或状态发布节点残留。
+
+### 学习要点
+
+- 联合演示应 Include 已验收的启动链，而不是复用会自行创建状态发布节点的独立 Display Launch；这样可以避免同名节点、重复 `/joint_states` 和重复 TF。
+- 使用 `odom` 作为 RViz Fixed Frame 后，RobotModel 通过 `odom -> base_footprint -> ...` TF 链显示实际平移，而不是始终固定在机器人根坐标系原点。
+- RViz 是否同步可以通过数据所有权和数值闭环验证：RobotModel 消费现有描述与 TF，同时 Gazebo 模型位姿、`/odom` 和 RViz 所用 TF 应在允许误差内一致。
+
+### 当前边界
+
+- `/odom` 显示只是已有轮式里程计的可选可视化，不是新增传感器。
+- 没有加入传感器、`ros2_control`、额外 bridge、关节状态发布器或第二个 `robot_state_publisher`。
+- Ctrl-C 时 RViz 和本次新增链路正常退出；既有 `system_heartbeat` 仍出现 `rcl_shutdown already called`，不影响联合演示验收。
+
+## 2026-07-28 — 阶段 3 ROS odom TF 广播
+
+### 当前事实
+
+- `resilient_nav_monitor` 新增 `odom_tf_broadcaster`，订阅 `/odom` 并把消息位姿发布为 `odom -> base_footprint` 动态 TF；每条 TF 沿用对应里程计消息的 `header.stamp`。
+- 包清单新增 `geometry_msgs`、`nav_msgs` 和 `tf2_ros` 依赖，`setup.py` 注册同名可执行入口。
+- `phase3_spawn.launch.py` 在不改变启动命令的情况下启动新节点，并设置 `use_sim_time=true`。
+- Gazebo 原生 TF/位姿输出没有加入 bridge；静态测试继续禁止 `gz.msgs.Pose_V`，避免与 ROS 侧广播节点形成重复 TF 来源。
+- `colcon build --symlink-install --packages-up-to resilient_nav_simulation` 成功完成 3 个包；相关测试汇总为 28 项、0 错误、0 失败、1 项跳过。
+- 实际 Launch 报告机器人实体创建成功；ROS 参数读取确认 `odom_tf_broadcaster` 的 `use_sim_time=True`。
+- `/odom` 实测约为 45–47 Hz；`tf2_echo odom base_footprint` 连续输出时间为 `30.12`、`31.00`、`31.86`、`32.76`、`33.66 s` 的有效变换。
+- `/tf` 只有 `robot_state_publisher` 和 `odom_tf_broadcaster` 两个发布者；`robot_bridge` 只处理 `/cmd_vel`、`/odom` 与 `/joint_states`，没有 TF 接口。
+
+### 学习要点
+
+- 由 `/odom` 消息生成 TF 时，应复制消息时间戳而不是读取回调时刻，才能让位姿和 TF 保持同一时间基准。
+- Gazebo DiffDrive 的原生位姿输出与 ROS 侧 odom TF 是两种可选来源；当前只保留后者，可以明确所有权并避免同一变换重复发布。
+- `use_sim_time` 是 ROS 节点参数；本节点虽然直接沿用消息时间戳，仍在阶段 3 Launch 中显式启用该参数，使节点时钟行为与整条仿真链一致。
+
+### 当前边界
+
+- 只发布 `odom -> base_footprint`，没有桥接 Gazebo 自带 TF，也没有增加传感器或 `ros2_control`。
+- 当前验证覆盖静止机器人下的持续 TF 发布，没有扩展阶段 3 的运动性能范围。
+- Ctrl-C 停止时新节点正常退出；既有 `system_heartbeat` 仍观察到 `rcl_shutdown already called`，不影响本次 TF 验收。
+
+## 2026-07-28 — 阶段 3 纵向支撑与重心修正
+
+### 当前事实
+
+- 修正前 URDF 转换后的整机纵向重心约为 `x=-0.0058 m`，后球轮与驱动轮轴形成的支撑范围为 `[-0.18, 0] m`，重心距前支撑边仅约 `0.006 m`。
+- 车体原点离地 `0.15 m`、碰撞盒高度 `0.15 m`，水平时底部离地 `0.075 m`；驱动轮和球形支撑轮的接地高度一致，因此没有修改车体高度、碰撞尺寸、轮径或轮距。
+- 驱动轮轴从 `x=0` 前移到 `x=0.10 m`，球形支撑轮从 `x=-0.18 m` 后移到 `x=-0.20 m`，车体惯性原点从 `[0, 0, 0]` 调整为 `[-0.05, 0, -0.04] m`。
+- 修正后展开 SDF 的车体/支撑轮合并惯性原点约为 `[-0.0558, 0, 0.1077] m`，整机纵向重心约为 `x=-0.031 m`，前后支撑余量均超过 `0.10 m`。
+- Xacro、`check_urdf`、URDF 到 SDF 转换和 16 项聚焦静态测试通过；DiffDrive 轮径、轮距、Gazebo 话题与 ROS bridge 映射保持原值。
+- `colcon build --symlink-install --packages-up-to resilient_nav_simulation` 成功完成 3 个包；描述包 8 项和仿真包 8 项测试通过，工作空间汇总为 23 项、0 错误、0 失败、1 项跳过。
+- 实际 Launch 中机器人生成成功；落地静止时连续两次位姿的 roll/pitch/yaw 均约为零。
+- 相同短时直行/停止序列后，模型 X 约为 `0.403759 m`，停止后连续两次 pitch 约为 `-0.000001 rad`，满足 `|pitch| < 0.05 rad`。
+- `/odom` 停止速度为零，`/joint_states` 左右轮反馈正常；验证停止后没有后台进程残留。
+
+### 学习要点
+
+- 两轮差速机器人加单后支撑轮时，纵向重心不能只看车体几何中心；它必须在后支撑点与驱动轮轴构成的支撑区内部保留足够动态余量。
+- 修正前落地静止虽然水平，但重心几乎位于前支撑边，驱动/制动后车体前缘会成为新的稳定接触点，形成约 `0.31 rad` 的残余 pitch。
+- 同时前移驱动轮、后移支撑轮并降低/后移车体惯性原点，可以扩大有效支撑区并降低俯仰力矩，而无需改变轮径、轮距或通信接口。
+- 对固定连接 link 应检查 URDF 转 SDF 后的合并惯性；仅查看各 URDF link 的局部 inertial origin 容易忽略转换后的整机重心。
+
+### 当前边界
+
+- 当前只验收水平落地和一次短时直行/停止后的 `|pitch| < 0.05 rad`，不代表更高速度、急停、倒车、转向或坡面姿态已经验证。
+- 没有加入 odom TF、传感器、`ros2_control` 或新的 Gazebo/ROS 话题。
+- Ctrl-C 停止时仍观察到既有 `system_heartbeat` 的 `rcl_shutdown already called`，不影响本次动力学验收。
+
+## 2026-07-28 — 阶段 3 ROS 基础运动 bridge 与短时直行
+
+### 当前事实
+
+- `phase3_spawn.launch.py` 新增 `robot_bridge`，保持原启动命令不变，并继续通过阶段 2 Launch 保留 `/clock` bridge。
+- ROS 2 `/cmd_vel` 单向桥接到 Gazebo `/model/resilient_nav_robot/cmd_vel`；Gazebo odometry 和 joint state 分别单向桥接并重映射到 ROS 2 `/odom` 与 `/joint_states`。
+- bridge 话题随 `entity_name` 动态构造，非默认 Gazebo 实体名不会改变三个标准 ROS 2 话题名称。
+- 包清单补充 `geometry_msgs`、`nav_msgs` 和 `sensor_msgs` 运行依赖。
+- `colcon build --symlink-install --packages-up-to resilient_nav_simulation` 成功完成 3 个包；描述包 7 项和仿真包 8 项测试全部通过，工作空间汇总为 22 项、0 错误、0 失败、1 项跳过。
+- 实际 Launch 报告三条 bridge 的方向和消息类型符合设计，机器人实体创建成功。
+- 短时发送 `linear.x=0.2 m/s` 后发送全零 Twist，模型 X 从约 `0.000000 m` 移至 `0.549754 m`，Y 和 yaw 仍约为零。
+- 停止后两次 Gazebo 位姿一致，`/odom` 报告 X 约 `0.5494 m` 且 twist 全零。
+- `/joint_states` 同时包含左右轮关节，停止后的关节速度接近零；验证结束后没有后台进程残留。
+
+### 学习要点
+
+- `parameter_bridge` 的 `]` 可限定 ROS→Gazebo，`[` 可限定 Gazebo→ROS；对控制命令和反馈分别限定方向，避免不必要的双向回环。
+- Launch 的 remapping 只改变 ROS 2 侧名称，因此可以保留 Gazebo 的模型/世界作用域话题，同时向 ROS 节点提供标准 `/cmd_vel`、`/odom` 和 `/joint_states`。
+- `robot_state_publisher` 消费桥接后的 `/joint_states`，因此运行时 `/tf` 会更新轮关节变换，但这不等于发布了 odom TF。
+- ROS CLI 自动发现 `/joint_states` 类型时曾受发现缓存影响；显式指定 `sensor_msgs/msg/JointState` 后成功读取实际消息。
+
+### 当前边界
+
+- 没有桥接 DiffDrive 的 Gazebo `/model/resilient_nav_robot/tf`，抽查 ROS `/tf` 仅见车体到左右轮的关节变换，没有 odom 到基座变换。
+- 直行停止后的模型 pitch 约为 `0.309682 rad`；基础移动已确认，但支撑轮、姿态稳定性和动力学参数尚未调优。
+- 当前只做一次短时直行和停止，不代表速度精度、转向、轨迹跟踪或控制鲁棒性已经验收。
+- 没有加入传感器、`ros2_control`、Nav2、SLAM 或后续阶段能力。
+- Ctrl-C 停止时仍观察到既有 `system_heartbeat` 的 `rcl_shutdown already called`，不影响本次 bridge 与运动验收。
+
+## 2026-07-28 — 阶段 3 Gazebo 原生差速与关节状态插件
+
+### 当前事实
+
+- `resilient_nav_robot.urdf.xacro` 新增 Gazebo Harmonic `DiffDrive` 和 `JointStatePublisher` 系统插件，使用当前 `gz-*` 文件名和 `gz::sim::systems::*` 类名。
+- DiffDrive 使用真实关节 `left_wheel_joint`、`right_wheel_joint`，轮距 `0.39 m`，轮半径 `0.10 m`。
+- 默认 Gazebo Transport 话题明确为 `/model/resilient_nav_robot/cmd_vel`、`/model/resilient_nav_robot/odometry` 和 `/world/resilient_lab/model/resilient_nav_robot/joint_state`；自定义 `entity_name` 会同步替换话题中的模型名。
+- Xacro 展开、`check_urdf` 和 URDF 到 SDF 转换通过；转换后的 SDF 保留两个插件及预期参数。
+- `colcon build --symlink-install --packages-up-to resilient_nav_simulation` 成功完成 3 个包，描述包和仿真包共 14 项静态测试全部通过。
+- 实际 Launch 报告实体创建成功，模型列表包含 `resilient_nav_robot`，落地 Z 位姿约为 `-0.000001 m`。
+- `gz topic` 验证速度话题有 `gz.msgs.Twist` 订阅者，里程计有 `gz.msgs.Odometry` 发布者，关节状态有 `gz.msgs.Model` 发布者；实际关节状态消息包含左右轮关节。
+- 现有 bridge 配置保持只桥接 `/clock`，本任务没有新增 ROS—Gazebo bridge、ROS 2 odom TF、传感器或 `ros2_control`。
+- 验证停止后没有 Gazebo 或 ROS 2 后台进程残留。
+
+### 学习要点
+
+- 轮距应使用左右轮心之间的距离；当前 `wheel_y=0.195 m`，因此 DiffDrive 的 `wheel_separation=0.39 m`，不是车体宽度 `0.35 m`。
+- JointStatePublisher 的显式 `<topic>` 能保留世界/模型作用域的 Gazebo 原生名称，重复 `<joint_name>` 可把发布内容限定为两个可动轮关节。
+- 将 Launch 的 `entity_name` 传入 Xacro，可避免实体重命名后插件话题仍硬编码为默认模型名。
+- Gazebo Transport 原生话题出现不代表 ROS 2 已获得对应数据；当前只有 `/clock` 经过 bridge。
+
+### 当前边界
+
+- 本次没有向 `cmd_vel` 发送命令，因此尚未验收行驶距离、转向方向、速度限制或轨迹精度。
+- DiffDrive 自带的 Gazebo Transport 位姿输出没有桥接到 ROS 2，也没有接入 ROS TF 树。
+- Display Launch 的 ROS 2 `/joint_states` 与 Gazebo 原生关节状态仍是独立链路。
+- Ctrl-C 停止时仍观察到既有 `system_heartbeat` 的 `rcl_shutdown already called`，不影响本次插件和话题验收。
+
+## 2026-07-28 — 阶段 3 Gazebo 无驱动物理落地
+
+### 当前事实
+
+- `resilient_nav_robot.urdf.xacro` 为车体、左右轮和球形支撑轮增加 Gazebo 命名材质及 `mu1`、`mu2` 接触摩擦。
+- 左右轮摩擦设为 `1.0`，车体为 `0.5`，球形支撑轮为 `0.05`；阶段 2 地面碰撞增加显式 ODE 摩擦 `mu=1.0`、`mu2=1.0`。
+- `resilient_nav_simulation` 新增 `phase3_spawn.launch.py`，通过 Include 复用 `phase2_world.launch.py`，并用 `robot_state_publisher` 和 `ros_gz_sim create` 从 `/robot_description` 创建实体。
+- 默认实体名为 `resilient_nav_robot`，默认从 `z=0.25 m` 生成；初始 X、Y、Z 和 yaw 均可通过 Launch 参数配置，重复名称不允许自动重命名。
+- Xacro、`check_urdf`、世界 SDF 和 URDF 到 SDF 的转换验证通过；转换后的四个实体碰撞均保留预期摩擦值和 Gazebo 材质。
+- `colcon build --symlink-install --packages-up-to resilient_nav_simulation` 成功完成 3 个包。
+- 描述包新增 4 项静态测试，仿真包扩展为 7 项静态测试，两包共 11 项全部通过。
+- 实际 Launch 中 `ros_gz_sim create` 报告实体创建成功；Gazebo 模型列表包含阶段 2 三个静态模型和新机器人。
+- 默认高度下落并稳定后，模型 XYZ 约为 `[-0.000000, 0.000000, -0.000001] m`，RPY 约为零；验证结束后没有后台进程残留。
+
+### 学习要点
+
+- 本机 Gazebo URDF 转换器可把 `<gazebo reference>` 中的 `mu1`、`mu2` 转换成 SDF ODE 接触摩擦。
+- `<gazebo reference>` 中使用 `Gazebo/Blue` 等命名材质可生成带材质脚本的 SDF；嵌套 RGBA 材质会触发缺少字符串值的转换警告，因此 RViz 颜色继续由 URDF material 定义，Gazebo 覆盖使用命名材质。
+- 将生成 Launch 放在 simulation 包并 Include 阶段 2 Launch，可以复用已验收世界、时钟桥和心跳链路，同时让机器人几何与物理参数继续归 description 包维护。
+- `base_footprint` 在 URDF 到 SDF 转换时会吸收固定连接的车体和支撑轮；左右 continuous 轮关节保留为可动关节，不需要驱动插件也能完成重力和接触测试。
+
+### 当前边界
+
+- 当前只验证无驱动实体生成、自由落体和接触稳定，没有加入 Gazebo JointStatePublisher、DiffDrive、传感器、`ros2_control` 或任何控制命令。
+- `robot_state_publisher` 当前只提供描述和固定 TF，Gazebo 中的轮关节状态尚未桥接回 ROS 2。
+- 人工 Ctrl-C 停止包含阶段 2 心跳的 Launch 时，`system_heartbeat` 仍会报告一次 `rcl_shutdown already called`；这不影响本次生成与落地结论，且停止后无进程残留，后续可在监控节点维护任务中处理。
+
+## 2026-07-28 — 阶段 3 RViz 显示与运行时 TF
+
+### 当前事实
+
+- `resilient_nav_description` 新增 `launch/display.launch.py` 和 `rviz/display.rviz`，CMake 安装规则同步覆盖 `launch/`、`rviz/` 和 `urdf/`。
+- 包清单新增 `joint_state_publisher`、`joint_state_publisher_gui`、`launch`、`launch_ros`、`robot_state_publisher`、`rviz2` 和 `xacro` 运行依赖。
+- Display Launch 从 Xacro 生成 `robot_description`，始终启动 `robot_state_publisher` 和 RViz。
+- `use_gui:=false` 启动普通 `joint_state_publisher`；`use_gui:=true` 启动 `joint_state_publisher_gui`。
+- `colcon build --symlink-install --packages-select resilient_nav_description` 成功完成 1 个包，安装空间包含 Launch、RViz 和 Xacro 资源。
+- 两种 `use_gui` 分支均完成限时启动验证，RViz 成功初始化 OpenGL 4.5。
+- 验证期间可见 `/joint_state_publisher`、`/robot_state_publisher` 和 `/rviz`，且 `/joint_states`、`/robot_description`、`/tf`、`/tf_static` 消息类型正确。
+- `tf2_echo` 确认 `base_footprint` 到 `base_link` 的固定变换为 Z 轴 `0.150 m`。
+
+### 学习要点
+
+- 用 Launch 的 `IfCondition` 和 `UnlessCondition` 可以让普通与 GUI 关节状态发布器互斥，避免两个节点同时发布同一关节状态。
+- `robot_description` 由 Launch 调用安装后的 Xacro 动态生成，可避免维护重复的展开 URDF。
+- RViz 的 RobotModel 从 `/robot_description` 读取模型，TF 显示则用于检查 link 树是否随关节状态正确更新。
+
+### 当前边界
+
+- 当前关节状态来自独立 ROS 2 发布器，不是 Gazebo 仿真关节反馈。
+- 没有加入 Gazebo 插件、传感器、`ros2_control`、差速命令或控制功能。
+- 在该子任务验收时，模型尚未生成到 Gazebo；后续无驱动生成与落地结果见本日志更新的阶段 3 条目。
+
+## 2026-07-28 — 阶段 3 基础差速机器人描述
+
+### 当前事实
+
+- 已创建 `ament_cmake` 包 `resilient_nav_description`，并安装包内 `urdf/` 描述资源。
+- `resilient_nav_robot.urdf.xacro` 定义 `base_footprint`、`base_link`、左右驱动轮和一个球形支撑轮。
+- `base_link`、驱动轮和支撑轮均包含基础几何 visual、collision、质量和惯性张量；左右驱动轮使用 continuous 关节，支撑轮当前使用 fixed 关节。
+- 源码 Xacro 成功展开为 URDF，`check_urdf` 成功解析出以 `base_footprint` 为根的 5 个 link 和 4 个 joint。
+- `colcon build --symlink-install --packages-select resilient_nav_description` 成功完成 1 个包。
+- 加载工作空间后，`ros2 pkg prefix resilient_nav_description` 返回工作空间安装前缀；安装后的 Xacro 再次通过展开和 `check_urdf`。
+
+### 学习要点
+
+- `base_footprint` 适合作为机器人在地面的投影根坐标系，而带几何、碰撞和惯性的 `base_link` 可通过固定高度偏移与其连接。
+- 圆柱驱动轮的几何轴需要旋转到车体 Y 轴，关节轴也应设置为 `0 1 0`，这样左右轮围绕轮轴旋转。
+- Xacro 展开成功只验证宏和 XML 生成；继续使用 `check_urdf` 可以同时验证 link/joint 树和 URDF 语义。
+- 对源码和安装后的描述资源分别复验，可以同时覆盖模型内容与 CMake 安装规则。
+
+### 当前边界
+
+- 当前只建立静态机器人描述，没有加入 Gazebo 插件、传感器、`ros2_control` 或控制功能。
+- 尚未启动 `robot_state_publisher`、发布运行时 TF 或 JointState，也没有把机器人生成到 Gazebo。
+- 差速运动链路和阶段 3 后续验收需要在单独任务中继续实施。
+
 ## 2026-07-27 — 阶段 2 Gazebo 基础仿真与时钟链路收尾
 
 ### 当前事实

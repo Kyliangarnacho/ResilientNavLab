@@ -24,6 +24,10 @@ setup(
     },
     entry_points={
         'console_scripts': [
+            (
+                'odom_tf_broadcaster = '
+                'resilient_nav_monitor.odom_tf_broadcaster:main'
+            ),
             'system_heartbeat = resilient_nav_monitor.system_heartbeat:main',
         ],
     },
