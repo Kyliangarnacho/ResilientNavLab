@@ -1,4 +1,4 @@
-"""Launch the stage 3 simulation with an optional RViz display."""
+"""Launch the stage 3 robot chain with stage 4 IMU and lidar bridges."""
 
 from pathlib import Path
 
@@ -6,7 +6,6 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
@@ -14,7 +13,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    """Reuse the spawn chain and optionally add one RViz process."""
+    """Reuse the stage 3 demo and add only the sensor bridge."""
     simulation_share = Path(
         get_package_share_directory('resilient_nav_simulation')
     )
@@ -30,11 +29,12 @@ def generate_launch_description():
         'start_odom_tf_broadcaster'
     )
 
-    phase3_spawn = IncludeLaunchDescription(
+    phase3_demo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            str(simulation_share / 'launch' / 'phase3_spawn.launch.py')
+            str(simulation_share / 'launch' / 'phase3_demo.launch.py')
         ),
         launch_arguments={
+            'use_rviz': use_rviz,
             'entity_name': entity_name,
             'spawn_x': spawn_x,
             'spawn_y': spawn_y,
@@ -45,29 +45,30 @@ def generate_launch_description():
         }.items(),
     )
 
-    rviz = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=[
-            '-d',
-            str(simulation_share / 'rviz' / 'phase3_demo.rviz'),
-        ],
-        parameters=[{'use_sim_time': True}],
-        condition=IfCondition(use_rviz),
+    sensor_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='sensor_bridge',
         output='screen',
+        parameters=[{
+            'config_file': str(
+                simulation_share
+                / 'config'
+                / 'phase4_sensor_bridge.yaml'
+            ),
+        }],
     )
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'use_rviz',
             default_value='true',
-            description='Start RViz with the stage 3 demo configuration.',
+            description='Start the existing stage 3 RViz display.',
         ),
         DeclareLaunchArgument(
             'entity_name',
             default_value='resilient_nav_robot',
-            description='Gazebo entity name passed to the spawn launch.',
+            description='Gazebo entity name passed to the stage 3 demo.',
         ),
         DeclareLaunchArgument(
             'spawn_x',
@@ -99,6 +100,6 @@ def generate_launch_description():
             default_value='true',
             description='Start the stage 3 odom to base TF broadcaster.',
         ),
-        phase3_spawn,
-        rviz,
+        phase3_demo,
+        sensor_bridge,
     ])

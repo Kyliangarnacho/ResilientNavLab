@@ -2,9 +2,9 @@
 
 ## 核验信息
 
-- 最近核验日期：2026-07-29
+- 最近核验日期：2026-08-01
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 2 和阶段 3 已完成；当前基线包含机器人描述、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具与三种短时运动/停车同步验收
+- 当前阶段：阶段 2 和阶段 3 已完成；阶段 4 当前技术里程碑已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -29,7 +29,9 @@
 | 项目 ROS 2 包 | `resilient_nav_monitor`（`ament_python`） | 构建、自动测试和 `ros2 pkg prefix` 发现验证通过 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
-| 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive 和 JointStatePublisher 验证通过 |
+| 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
+| 定位包 | `resilient_nav_localization`（`ament_cmake`） | EKF 配置、完整阶段 4 Launch、安装和自动测试验证通过 |
+| `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
 | ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` `1.0.22` | `/clock` 与阶段 3 基础运动话题的定向 bridge 已验证 |
 | 仿真时钟链路 | Gazebo `/clock` → ROS 2 `/clock` | 单向桥接、暂停/恢复和 `use_sim_time` 联动验证通过 |
@@ -66,7 +68,7 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - 物理 link 均通过 `<gazebo reference="...">` 设置 Gazebo 命名材质和摩擦：车体摩擦为 `0.5`，左右轮为 `1.0`，球形支撑轮为 `0.05`。
 - 当前驱动轮轴位于车体坐标 `x=0.10 m`，球形支撑轮位于 `x=-0.20 m`；车体惯性原点相对 `base_link` 为 `[-0.05, 0, -0.04] m`。
 - `base_link` 原点保持离地 `0.15 m`，车体碰撞盒尺寸保持 `0.50 × 0.35 × 0.15 m`，水平状态下车体底部离地 `0.075 m`；轮和球形支撑轮的最低点均为地面高度。
-- 描述包含且只包含 Gazebo Harmonic `DiffDrive` 和 `JointStatePublisher` 两个系统插件；不包含传感器、transmission 或 `ros2_control`。
+- 阶段 3 描述最初只包含 Gazebo Harmonic `DiffDrive` 和 `JointStatePublisher` 两个系统插件；当前阶段 4 已在相同 Xacro 中增加 IMU、二维 Lidar 和 RGB-D sensor，但仍不包含 transmission 或 `ros2_control`。
 
 ## 阶段 3 Gazebo 初始生成与落地基线
 
@@ -178,6 +180,27 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - 收尾停止 Launch 后，未发现 Gazebo、RViz、bridge、TF、心跳或运动工具进程残留；本次 ROS 日志、Launch 参数文件和源码树 Python 缓存已清理。
 - 正式验收结论、命令和交接边界见 `docs/PHASE3_SUMMARY.md`。
 
+## 阶段 4 安装准备与固定坐标历史基线
+
+- 初次本机只读调研时 `robot_localization` 尚未安装，APT 软件源候选为 `ros-jazzy-robot-localization` `3.8.3-1noble.20260615.152020`；这是当时快照，详见 `docs/PHASE4_LOCAL_REFERENCE.md`。当前环境已经可发现 3.8.3，见下一节。
+- `scripts/install_phase4_dependencies.sh` 只处理官方 Jazzy 包 `ros-jazzy-robot-localization`：加载 `/opt/ros/jazzy/setup.bash`，通过 `ros2 pkg prefix robot_localization` 检查，缺失时显示唯一目标包并要求交互式人工确认，最终安装命令不带 `-y`。本次只执行 `bash -n` 静态检查，没有运行脚本、`sudo` 或 `apt`。
+- 机器人 Xacro 新增 `imu_link`、`lidar_link`、`camera_mount_link`、`camera_link`、`camera_optical_frame` 和 `arm_mount_link`，全部通过 fixed joint 接入既有 `base_link` 树；安装外参由 Xacro property 集中维护。
+- `camera_link` 保持 +x 前向，`camera_optical_frame` 使用 `rpy=[-pi/2, 0, -pi/2]`，对应 ROS 光学坐标 +x 右、+y 下、+z 前。
+- 新增安装 link 只有 visual 或为空，不含 collision、inertial、Gazebo sensor 或新 plugin。第三阶段车体质量、质心、惯性、轮径、轮距、支撑结构、两个既有插件和话题配置保持不变。
+- 源码及安装后的 Xacro 均可展开并通过 `check_urdf`。`colcon build --symlink-install --packages-select resilient_nav_description` 成功；包级测试为 13 项、0 错误、0 失败、0 跳过，当前工作空间累计结果为 47 项、0 错误、0 失败、1 项既有跳过。
+- 该准备任务没有启动 Gazebo 或 RViz；其后传感器和 EKF 动态结果见对应阶段 4 基线文档。坐标与外参影响说明见 `docs/PHASE4_SENSOR_ARCHITECTURE.md`。
+
+## 阶段 4 多传感器与 EKF 当前基线
+
+- Xacro 已增加 100 Hz IMU、15 Hz 单层二维 GPU Lidar 和 640×480、30 Hz、水平 FOV 1.047 rad 的 RGB-D camera；消息分别使用 `imu_link`、`lidar_link` 和 `camera_optical_frame`。
+- ROS 2 稳定接口包含 `/imu/data`、`/scan`、`/camera/color/image_raw`、`/camera/color/camera_info`、`/camera/depth/image_raw` 和 `/camera/depth/camera_info`。没有 PointCloud2 bridge。
+- `phase4_sensors.rviz` 以 `odom` 为 Fixed Frame，预配置 RobotModel、TF、Best Effort LaserScan、彩色图和 filtered odometry；浮点深度图与原始 wheel odometry 默认关闭。
+- 当前可通过 `/opt/ros/jazzy` 发现 `robot_localization` 3.8.3 及 `ekf_node`。`resilient_nav_localization` 包提供 `config/ekf.yaml` 和完整入口 `phase4_ekf_demo.launch.py`。
+- 阶段 4 完整链只把 Gazebo 原始里程计映射为 `/wheel/odometry`，EKF 输入 wheel `vx` 和 IMU yaw rate，输出 `/odometry/filtered`，并独占 `odom -> base_footprint` TF。阶段 3 默认 `/odom` 和旧 broadcaster 不变。
+- EKF 频率配置为 20 Hz。80 样本测得仿真 stamp 频率 `20.000 Hz`、墙钟到达率约 `12.470 Hz`，同轮 Gazebo `real_time_factor≈0.6745`。
+- 动态直行后 wheel/filtered x 分别约 `0.254200/0.253207 m`；旋转后 yaw 分别约 `0.851/0.799 rad`。无 NaN 或明显跳变；暂停后 wheel、IMU 和 EKF 停止，`/clock` stamp 冻结，恢复后继续。
+- 完整技术证据分别见 `docs/PHASE4_IMU_LIDAR_BASELINE.md`、`docs/PHASE4_RGBD_BASELINE.md` 和 `docs/PHASE4_EKF_BASELINE.md`。
+
 ## 工作空间目录与构建流程
 
 `ros2_ws` 下四个目录的关系如下：
@@ -195,11 +218,12 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `--symlink-install` 尽可能在 `install/` 中建立指向源码或构建产物的符号链接，便于 Python 和资源文件修改后的快速迭代；构建系统或安装规则变化后仍应重新构建。
 - `source /opt/ros/jazzy/setup.bash` 加载 ROS 2 及其 vendor 环境；`source ros2_ws/install/setup.bash` 再把当前工作空间叠加到环境中。`source` 只改变当前 shell，不执行构建，也不会自动影响其他已打开的 shell。
 
-当前工作空间包含三个包：
+当前工作空间包含四个包：
 
 - `resilient_nav_monitor`：阶段 1 的心跳节点和阶段 3 的 odom TF 广播节点。
 - `resilient_nav_simulation`：阶段 2 的 Gazebo 世界、桥接，以及阶段 3 的生成、Demo Launch、RViz 资源和运动测试工具。
 - `resilient_nav_description`：阶段 3 的基础差速机器人描述及 Gazebo 原生差速/关节状态插件资源。
+- `resilient_nav_localization`：阶段 4 的 EKF 参数、完整 Launch 入口和资源测试。
 
 ## 安装、桥接与人工验收
 
@@ -323,4 +347,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线；完整运动性能验收、传感器、`ros2_control`、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已建立 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 技术基线；完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均未实现。

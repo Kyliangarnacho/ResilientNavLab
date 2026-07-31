@@ -48,7 +48,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 ## 4. 当前阶段边界
 
-阶段 0、阶段 1、阶段 2 和阶段 3 已经完成。当前基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
+阶段 0、阶段 1、阶段 2 和阶段 3 已经完成。阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz，以及轮式里程计与 IMU 的固定字段二维 EKF 基线。现有运动基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
 
 当前已完成：
 
@@ -56,19 +56,21 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **阶段 1：ROS 2 基础设施。** 安装 ROS 2 Jazzy，验证官方 talker/listener 通信，创建 `ros2_ws` 工作空间和 `resilient_nav_monitor` 包，实现并验证 `system_heartbeat` 节点。
 - **阶段 2：Gazebo 基础仿真与时钟链路。** 安装并验证 Gazebo Harmonic 与 `ros_gz`，创建 `resilient_nav_simulation` 包，完成自定义 SDF 世界、Gazebo 到 ROS 2 的 `/clock` 单向桥接、Python Launch 集成和 `use_sim_time` 暂停/恢复联动验证。
 - **阶段 3：虚拟差速机器人与基础运动（已完成）。** 创建 `resilient_nav_description` 包和简单两轮差速机器人 Xacro，完成静态模型、独立 Display Launch、Gazebo 材质与接触参数、复用阶段 2 世界的实体生成和物理落地、Gazebo Harmonic DiffDrive / JointStatePublisher，并桥接 ROS 2 `/cmd_vel`、`/odom` 和 `/joint_states`；新增从 `/odom` 发布 `odom -> base_footprint` 的 ROS 侧 TF 和只追加 RViz 的 Demo Launch；完成动力学姿态修正、轮轴参考点对齐、运动测试工具，以及短时直行、原地旋转、圆弧、正常结束和 Ctrl-C 停车验证。
+- **阶段 4：传感器与定位基线（当前技术里程碑已完成）。** 已完成固定安装坐标、Gazebo IMU/二维 Lidar/RGB-D sensor、定向 `ros_gz_bridge`、专用 RViz，以及 `robot_localization` 的 `/wheel/odometry` + `/imu/data` 二维 EKF；输出 `/odometry/filtered`，并在完整阶段 4 Launch 中独占 `odom -> base_footprint` TF。
 
-当前工作空间已有三个 ROS 2 软件包：
+当前工作空间已有四个 ROS 2 软件包：
 
 - `resilient_nav_monitor`：包含 `system_heartbeat` 和 `odom_tf_broadcaster` 节点。
 - `resilient_nav_simulation`：包含阶段 2 的 Gazebo 世界、仅声明 `/clock` 的静态 bridge 配置，以及阶段 3 在 Launch 中动态建立的机器人基础运动 bridge、模型生成、Gazebo/RViz Demo、`motion_test` 工具和静态/单元测试。
-- `resilient_nav_description`：包含阶段 3 的基础两轮差速机器人 Xacro、Gazebo 原生 DiffDrive / JointStatePublisher 插件、Display Launch 和 RViz 配置。
+- `resilient_nav_description`：包含阶段 3 的基础两轮差速机器人 Xacro、Gazebo 原生 DiffDrive / JointStatePublisher 插件、Display Launch 和 RViz 配置，以及阶段 4 的六个固定安装坐标。
+- `resilient_nav_localization`：包含 `robot_localization` EKF 配置、完整阶段 4 启动入口和资源测试。
 
 当前明确未完成：
 
 - ROS 2 `/cmd_vel`、`/odom` 和 `/joint_states` 已连接 Gazebo，短时直行、原地旋转、圆弧及停车已验证；尚未系统验收速度精度、长距离累计误差、轨迹跟踪或控制限制。
 - Gazebo 原生 TF/位姿输出没有桥接；ROS TF 由 `odom_tf_broadcaster` 只根据桥接后的 `/odom` 单独发布，避免重复来源。
-- 传感器模型与传感器数据链路尚未建立。
-- Nav2、SLAM 和定位尚未开始。
+- IMU、二维 Lidar 和 RGB-D 基础接口已建立；PointCloud2 bridge、传感器故障模型和长期性能验收尚未完成。
+- wheel odometry + IMU 的 odom-frame EKF 基线已建立；Nav2、SLAM、map-frame 全局定位和真实硬件定位尚未开始。
 - 故障注入、健康评估、自适应融合和容错导航尚未开发。
 - 真实机器人和硬件实验尚未开始。
 
@@ -76,7 +78,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 - 阶段 3 已按当前基础运动边界收尾；完整运动性能、传感器和导航能力必须在后续任务中单独授权。
 - 当前不安装或集成 Nav2、SLAM 及其他尚未授权的软件依赖。
-- 当前不创建传感器模型，不开展定位、故障注入、健康评估、自适应融合或容错导航开发。
+- 当前技术里程碑止于已验收的传感器接口和固定字段 EKF；不开展故障注入、健康评估、自适应融合或容错导航开发。
 - 在仿真链路稳定并形成安全方案前，不开展真实机器人部署。
 - 不把尚未验证的算法性能作为项目结论。
 
@@ -86,7 +88,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 2. **阶段 1：ROS 2 基础设施（已完成）。** 建立 ROS 2 Jazzy、工作空间、`resilient_nav_monitor` 和 `system_heartbeat` 基线。
 3. **阶段 2：Gazebo 基础仿真与时钟链路（已完成）。** 建立 Gazebo Harmonic、`ros_gz`、`resilient_nav_simulation`、自定义世界、`/clock` 桥接和仿真时间联动。
 4. **阶段 3：虚拟差速机器人与基础运动（已完成）。** 完成 URDF/Xacro、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具及三种短时运动/停车同步基线；更完整的运动性能不属于本阶段完成结论。
-5. **阶段 4：传感器与定位基线（计划）。** 逐步建立传感器模型、数据接口和定位实验基线；是否采用 Nav2 或 SLAM 需单独决策。
+5. **阶段 4：传感器与定位基线（当前技术里程碑已完成）。** 已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线；PointCloud2、阶段末人工交接和更高层定位导航仍需单独任务。
 6. **阶段 5：故障注入（计划）。** 实现故障模型、场景配置、标签与回放。
 7. **阶段 6：健康评估（计划）。** 建立检测算法、接口和离线/在线评价。
 8. **阶段 7：自适应融合与容错导航（计划）。** 实现健康感知融合、降级决策、恢复机制与端到端对照实验。

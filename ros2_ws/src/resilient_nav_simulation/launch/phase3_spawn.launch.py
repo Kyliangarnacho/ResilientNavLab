@@ -6,6 +6,7 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, FindExecutable, LaunchConfiguration
 
@@ -27,6 +28,10 @@ def generate_launch_description():
     spawn_y = LaunchConfiguration('spawn_y')
     spawn_z = LaunchConfiguration('spawn_z')
     spawn_yaw = LaunchConfiguration('spawn_yaw')
+    odom_ros_topic = LaunchConfiguration('odom_ros_topic')
+    start_odom_tf_broadcaster = LaunchConfiguration(
+        'start_odom_tf_broadcaster'
+    )
 
     cmd_vel_gz_topic = ['/model/', entity_name, '/cmd_vel']
     odometry_gz_topic = ['/model/', entity_name, '/odometry']
@@ -91,7 +96,7 @@ def generate_launch_description():
         ],
         remappings=[
             (cmd_vel_gz_topic, '/cmd_vel'),
-            (odometry_gz_topic, '/odom'),
+            (odometry_gz_topic, odom_ros_topic),
             (joint_state_gz_topic, '/joint_states'),
         ],
     )
@@ -102,6 +107,7 @@ def generate_launch_description():
         name='odom_tf_broadcaster',
         output='screen',
         parameters=[{'use_sim_time': True}],
+        condition=IfCondition(start_odom_tf_broadcaster),
     )
 
     spawn_robot = Node(
@@ -150,6 +156,16 @@ def generate_launch_description():
             'spawn_yaw',
             default_value='0.0',
             description='Initial robot yaw in radians.',
+        ),
+        DeclareLaunchArgument(
+            'odom_ros_topic',
+            default_value='/odom',
+            description='ROS topic receiving raw Gazebo wheel odometry.',
+        ),
+        DeclareLaunchArgument(
+            'start_odom_tf_broadcaster',
+            default_value='true',
+            description='Start the stage 3 odom to base TF broadcaster.',
         ),
         phase2_world,
         robot_state_publisher,

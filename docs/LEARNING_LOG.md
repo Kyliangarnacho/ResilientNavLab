@@ -2,6 +2,68 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-01 — 阶段 4 多传感器与 EKF 技术里程碑
+
+### 当前事实
+
+- 阶段 4 已完成 Gazebo IMU、单层二维 GPU Lidar 和 RGB-D camera，并通过定向 `ros_gz_bridge` 提供 `/imu/data`、`/scan` 及四个相机 Image/CameraInfo 接口；没有 PointCloud2 bridge。
+- 新增 `phase4_imu_lidar_demo.launch.py`、`phase4_rgbd_demo.launch.py` 和 `phase4_sensors.rviz`。专用 RViz 以 `odom` 为 Fixed Frame，保留 RobotModel、TF、Best Effort LaserScan、彩色 Image，并新增 filtered odometry。
+- 当前环境可发现 `robot_localization` 3.8.3 的 `ekf_node`。新增 `resilient_nav_localization` 包，真实完整入口为 `phase4_ekf_demo.launch.py`。
+- 现有 Launch 链新增可透传的 `odom_ros_topic` 与 `start_odom_tf_broadcaster` 参数。阶段 4 完整链将原始 DiffDrive 里程计映射为 `/wheel/odometry` 并关闭旧 broadcaster；阶段 3 的默认 `/odom` 与旧 TF 节点保持可用。
+- EKF 采用 `use_sim_time=true`、`two_d_mode=true`、20 Hz、`world_frame=odom`、`base_link_frame=base_footprint`，只融合 wheel `vx` 和 IMU yaw rate，输出 `/odometry/filtered` 并独占 `odom -> base_footprint` TF。
+- 完整工作空间四包构建通过；测试汇总为 64 项、0 错误、0 失败、1 项跳过。Xacro、URDF、YAML、XML、Launch/Python 和资源安装均有自动检查。
+- 动态直行后 wheel/filtered x 约为 `0.254200/0.253207 m`；旋转后 yaw 约为 `0.851/0.799 rad`。80 个 filtered 样本无 NaN 或明显跳变。
+- EKF 20 Hz 配置的仿真时间戳实测为 `20.000 Hz`，墙钟约 `12.470 Hz`，同轮 Gazebo `real_time_factor≈0.6745`。暂停时 wheel、IMU、filtered 均停止，`/clock` 数值冻结；恢复后继续。
+
+### 学习要点
+
+- 原始轮式里程计使用 `/wheel/odometry`、融合结果使用 `/odometry/filtered`，可以明确区分测量与估计，为后续故障注入和对照实验保留稳定边界。
+- DiffDrive pose 和 twist 来自同一轮编码来源；最小基线只融合 `vx`，避免无依据地重复融合同一信息。IMU orientation covariance 为零且加速度含重力，所以当前只使用具有非零 covariance 的 yaw rate。
+- TF 发布权应随状态估计层切换：阶段 4 关闭旧 broadcaster，让 EKF 独占 odom TF；通过参数化复用而不是删除旧节点，才能保持阶段 3 启动行为不变。
+- 仿真中的配置频率、消息仿真时间戳频率和墙钟到达率必须分别记录。低于 1 的 real-time factor 会降低墙钟吞吐，但不等于 sensor 或 EKF 的仿真时间配置失效。
+
+### 问题与处理
+
+- 30 Hz EKF 在同时运行 Gazebo GUI、RViz、RGB-D 和检查订阅时持续报告墙钟更新率偏低。对比诊断、仿真 stamp 与 world stats 后，把基线调整为 20 Hz；最终仿真 stamp 为精确 20 Hz，状态连续。
+- 高并发验收时出现过一次 EKF update cycle 超时。输入和输出未中断，降低检查并发后双时钟采样、直行/旋转和连续性均通过，因此记录为主机负载下的瞬时警告，没有篡改 covariance 掩盖。
+- RViz 启动首帧曾早于 TF cache，后续订阅与 TF 正常。Ctrl-C 时既有 heartbeat 仍有重复 shutdown 日志；按任务边界没有修改 `resilient_nav_monitor`，最终进程残留检查为空。
+- 本次首次 GitHub 发布要求 GitHub CLI；初检时 `gh` 不存在。安装和浏览器认证状态须在发布前再次确认，不能伪造远端成功。
+
+### 当前边界
+
+- PointCloud2、真实编码器/IMU 标定、长期累计误差、map-frame 全局定位、SLAM 和 Nav2 尚未完成。
+- 当前 EKF 是固定字段基线，不是故障感知或自适应融合。
+- 未生成阶段末交接文档、Word 学习总结或下一阶段测试题；RViz 最终画面内容仍需桌面人工确认。
+
+## 2026-08-01 — 阶段 4 依赖安装准备与传感器坐标架构
+
+### 当前事实
+
+- 新增 `scripts/install_phase4_dependencies.sh`，只处理官方 Jazzy 包 `ros-jazzy-robot-localization`；脚本先加载 ROS 2 环境并用 `ros2 pkg prefix` 早退，缺失时要求交互式人工确认，唯一安装命令不带 `-y`。本次只执行 `bash -n`，没有运行脚本、`sudo` 或 `apt`。
+- `resilient_nav_robot.urdf.xacro` 新增 IMU、二维 Lidar、相机安装链和未来机械臂安装基准，共六个 link 和六个 fixed joint；所有 xyz/rpy 由 Xacro property 集中管理。
+- `camera_link` 的 +x 朝机器人前方，`camera_optical_frame` 使用 `[-pi/2, 0, -pi/2]` 固定旋转，形成 +x 右、+y 下、+z 前的 ROS optical frame。
+- IMU、Lidar、相机支架和相机本体具有简单 visual；新增 link 没有 collision、inertial、Gazebo sensor 或新 plugin，`arm_mount_link` 只是空安装基准。
+- 静态测试扩展为 12 个 pytest case，覆盖六个 link/joint、父子关系、外参、标准 optical rotation、visual-only 边界、禁止 sensor/新 plugin 及第三阶段底盘参数回归。
+- 源码与安装后 Xacro 均可展开，`check_urdf` 成功。描述包构建成功，包级结果为 13 项、0 错误、0 失败、0 跳过；工作空间累计为 47 项、0 错误、0 失败、1 项既有跳过。
+
+### 学习要点
+
+- 把 `camera_mount_link` 与 `camera_link` 分层，可以让未来支架/云台变化整体作用于相机子树，同时保留相机本体与 optical frame 的标准轴约定。
+- 安装坐标可以先于传感器插件建立，但必须把“存在 TF 基准”和“已经产生传感器数据”严格区分。
+- 新增纯 visual 的 fixed link 不需要 collision 或 inertial；同时用回归测试锁定车体质量、惯性、轮径、轮距和插件，可避免阶段 4 准备工作改变阶段 3 动力学。
+- 依赖安装脚本应先检查 ROS 包是否已发现，并在唯一目标包和唯一安装命令前设置显式人工确认，避免把依赖准备扩大成系统升级。
+
+### 问题与处理
+
+- 源码 Xacro 与安装后 Xacro 的展开文件直接执行 `cmp` 时在第 3 行不同。文本 diff 定位到 Xacro 自动生成注释记录了不同输入路径；删除自动生成注释后两份展开内容完全一致，且两份都通过 `check_urdf`。因此这是来源路径注释差异，不是安装产物陈旧或机器人语义不同。
+- 在仓库根目录汇总测试时，首次向 `colcon test-result` 传入相对 `build/...`，工具因当前目录不是 `ros2_ws` 而报告路径不存在。改用 `/home/kylian/projects/resilient_nav_lab/ros2_ws/build/...` 绝对路径后，包级 13 项和工作空间累计 47 项结果均成功读取；该错误只影响结果查询命令，不影响先前已完成的构建或测试。
+
+### 当前边界
+
+- 没有安装 `robot_localization`，没有 Gazebo sensor、bridge、EKF 或机械臂模型。
+- 没有启动 Gazebo 或 RViz；新增 visual 和运行时固定 TF 尚未动态观察。
+- 尚未验证传感器消息、frame_id、频率、QoS、时间戳、噪声、同步或定位结果。
+
 ## 2026-07-29 — 阶段 3 收尾
 
 ### 当前事实

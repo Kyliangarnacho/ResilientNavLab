@@ -27,6 +27,40 @@
   <xacro:property name="wheel_friction" value="1.0"/>
   <xacro:property name="caster_friction" value="0.05"/>
 
+  <!-- Stage 4 mounting transforms. All values are relative to the named parent link. -->
+  <xacro:property name="imu_xyz" value="${base_com_x} 0 0.08"/>
+  <xacro:property name="imu_rpy" value="0 0 0"/>
+  <xacro:property name="lidar_xyz" value="0 0 0.20"/>
+  <xacro:property name="lidar_rpy" value="0 0 0"/>
+  <xacro:property name="imu_update_rate" value="100"/>
+  <xacro:property name="imu_angular_velocity_noise_stddev" value="0.0002"/>
+  <xacro:property name="imu_linear_acceleration_noise_stddev" value="0.01"/>
+  <xacro:property name="lidar_update_rate" value="15"/>
+  <xacro:property name="lidar_horizontal_samples" value="640"/>
+  <xacro:property name="lidar_min_angle" value="${-3.0 * pi / 4.0}"/>
+  <xacro:property name="lidar_max_angle" value="${3.0 * pi / 4.0}"/>
+  <xacro:property name="lidar_min_range" value="0.08"/>
+  <xacro:property name="lidar_max_range" value="12.0"/>
+  <xacro:property name="lidar_range_noise_stddev" value="0.005"/>
+  <xacro:property name="camera_mount_xyz" value="0.18 0 0.11"/>
+  <xacro:property name="camera_mount_rpy" value="0 0 0"/>
+  <xacro:property name="camera_xyz" value="0.07 0 0.04"/>
+  <xacro:property name="camera_rpy" value="0 0 0"/>
+  <xacro:property name="camera_optical_xyz" value="0 0 0"/>
+  <xacro:property
+    name="camera_optical_rpy"
+    value="${-pi / 2.0} 0 ${-pi / 2.0}"/>
+  <xacro:property name="camera_update_rate" value="30"/>
+  <xacro:property name="camera_horizontal_fov" value="1.047"/>
+  <xacro:property name="camera_image_width" value="640"/>
+  <xacro:property name="camera_image_height" value="480"/>
+  <xacro:property name="camera_clip_near" value="0.1"/>
+  <xacro:property name="camera_clip_far" value="10.0"/>
+  <xacro:property
+    name="arm_mount_xyz"
+    value="-0.10 0 ${base_height / 2.0}"/>
+  <xacro:property name="arm_mount_rpy" value="0 0 0"/>
+
   <material name="body_blue">
     <color rgba="0.15 0.35 0.80 1.0"/>
   </material>
@@ -37,6 +71,18 @@
 
   <material name="caster_gray">
     <color rgba="0.45 0.45 0.45 1.0"/>
+  </material>
+
+  <material name="sensor_orange">
+    <color rgba="1.0 0.45 0.05 1.0"/>
+  </material>
+
+  <material name="sensor_green">
+    <color rgba="0.10 0.70 0.25 1.0"/>
+  </material>
+
+  <material name="sensor_gray">
+    <color rgba="0.25 0.25 0.30 1.0"/>
   </material>
 
   <xacro:macro name="drive_wheel" params="side y_position">
@@ -111,6 +157,86 @@
     <child link="base_link"/>
   </joint>
 
+  <link name="imu_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.03 0.015"/>
+      </geometry>
+      <material name="sensor_orange"/>
+    </visual>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <origin xyz="${imu_xyz}" rpy="${imu_rpy}"/>
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+  </joint>
+
+  <link name="lidar_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.04" length="0.04"/>
+      </geometry>
+      <material name="sensor_green"/>
+    </visual>
+  </link>
+
+  <joint name="lidar_joint" type="fixed">
+    <origin xyz="${lidar_xyz}" rpy="${lidar_rpy}"/>
+    <parent link="base_link"/>
+    <child link="lidar_link"/>
+  </joint>
+
+  <link name="camera_mount_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.03 0.04 0.06"/>
+      </geometry>
+      <material name="sensor_gray"/>
+    </visual>
+  </link>
+
+  <joint name="camera_mount_joint" type="fixed">
+    <origin xyz="${camera_mount_xyz}" rpy="${camera_mount_rpy}"/>
+    <parent link="base_link"/>
+    <child link="camera_mount_link"/>
+  </joint>
+
+  <link name="camera_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.06 0.08 0.04"/>
+      </geometry>
+      <material name="sensor_gray"/>
+    </visual>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+    <origin xyz="${camera_xyz}" rpy="${camera_rpy}"/>
+    <parent link="camera_mount_link"/>
+    <child link="camera_link"/>
+  </joint>
+
+  <link name="camera_optical_frame"/>
+
+  <joint name="camera_optical_joint" type="fixed">
+    <origin xyz="${camera_optical_xyz}" rpy="${camera_optical_rpy}"/>
+    <parent link="camera_link"/>
+    <child link="camera_optical_frame"/>
+  </joint>
+
+  <link name="arm_mount_link"/>
+
+  <joint name="arm_mount_joint" type="fixed">
+    <origin xyz="${arm_mount_xyz}" rpy="${arm_mount_rpy}"/>
+    <parent link="base_link"/>
+    <child link="arm_mount_link"/>
+  </joint>
+
   <xacro:drive_wheel side="left" y_position="${wheel_y}"/>
   <xacro:drive_wheel side="right" y_position="${-wheel_y}"/>
 
@@ -169,6 +295,115 @@
     <mu1>${caster_friction}</mu1>
     <mu2>${caster_friction}</mu2>
     <material>Gazebo/Grey</material>
+  </gazebo>
+
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>true</always_on>
+      <update_rate>${imu_update_rate}</update_rate>
+      <topic>/imu/data</topic>
+      <gz_frame_id>imu_link</gz_frame_id>
+      <imu>
+        <angular_velocity>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_angular_velocity_noise_stddev}</stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_angular_velocity_noise_stddev}</stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_angular_velocity_noise_stddev}</stddev>
+            </noise>
+          </z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_linear_acceleration_noise_stddev}</stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_linear_acceleration_noise_stddev}</stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>${imu_linear_acceleration_noise_stddev}</stddev>
+            </noise>
+          </z>
+        </linear_acceleration>
+        <enable_orientation>true</enable_orientation>
+      </imu>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="lidar_link">
+    <sensor name="lidar_sensor" type="gpu_lidar">
+      <always_on>true</always_on>
+      <update_rate>${lidar_update_rate}</update_rate>
+      <topic>/scan</topic>
+      <gz_frame_id>lidar_link</gz_frame_id>
+      <lidar>
+        <scan>
+          <horizontal>
+            <samples>${lidar_horizontal_samples}</samples>
+            <resolution>1</resolution>
+            <min_angle>${lidar_min_angle}</min_angle>
+            <max_angle>${lidar_max_angle}</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>${lidar_min_range}</min>
+          <max>${lidar_max_range}</max>
+          <resolution>0.01</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>${lidar_range_noise_stddev}</stddev>
+        </noise>
+      </lidar>
+      <visualize>false</visualize>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="camera_link">
+    <sensor name="rgbd_camera_sensor" type="rgbd_camera">
+      <always_on>true</always_on>
+      <update_rate>${camera_update_rate}</update_rate>
+      <topic>/camera</topic>
+      <gz_frame_id>camera_optical_frame</gz_frame_id>
+      <camera>
+        <horizontal_fov>${camera_horizontal_fov}</horizontal_fov>
+        <image>
+          <width>${camera_image_width}</width>
+          <height>${camera_image_height}</height>
+        </image>
+        <clip>
+          <near>${camera_clip_near}</near>
+          <far>${camera_clip_far}</far>
+        </clip>
+      </camera>
+      <visualize>false</visualize>
+    </sensor>
   </gazebo>
 
   <gazebo>

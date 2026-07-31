@@ -1,4 +1,4 @@
-"""Launch the stage 3 simulation with an optional RViz display."""
+"""Launch the complete stage 4 multisensor and EKF demonstration."""
 
 from pathlib import Path
 
@@ -6,7 +6,6 @@ from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
@@ -14,60 +13,60 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    """Reuse the spawn chain and optionally add one RViz process."""
+    """Reuse the RGB-D chain and give odom TF ownership to the EKF."""
+    localization_share = Path(
+        get_package_share_directory('resilient_nav_localization')
+    )
     simulation_share = Path(
         get_package_share_directory('resilient_nav_simulation')
     )
 
-    use_rviz = LaunchConfiguration('use_rviz')
+    use_sensor_rviz = LaunchConfiguration('use_sensor_rviz')
     entity_name = LaunchConfiguration('entity_name')
     spawn_x = LaunchConfiguration('spawn_x')
     spawn_y = LaunchConfiguration('spawn_y')
     spawn_z = LaunchConfiguration('spawn_z')
     spawn_yaw = LaunchConfiguration('spawn_yaw')
-    odom_ros_topic = LaunchConfiguration('odom_ros_topic')
-    start_odom_tf_broadcaster = LaunchConfiguration(
-        'start_odom_tf_broadcaster'
-    )
 
-    phase3_spawn = IncludeLaunchDescription(
+    rgbd_demo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            str(simulation_share / 'launch' / 'phase3_spawn.launch.py')
+            str(
+                simulation_share
+                / 'launch'
+                / 'phase4_rgbd_demo.launch.py'
+            )
         ),
         launch_arguments={
+            'use_sensor_rviz': use_sensor_rviz,
             'entity_name': entity_name,
             'spawn_x': spawn_x,
             'spawn_y': spawn_y,
             'spawn_z': spawn_z,
             'spawn_yaw': spawn_yaw,
-            'odom_ros_topic': odom_ros_topic,
-            'start_odom_tf_broadcaster': start_odom_tf_broadcaster,
+            'odom_ros_topic': '/wheel/odometry',
+            'start_odom_tf_broadcaster': 'false',
         }.items(),
     )
 
-    rviz = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=[
-            '-d',
-            str(simulation_share / 'rviz' / 'phase3_demo.rviz'),
-        ],
-        parameters=[{'use_sim_time': True}],
-        condition=IfCondition(use_rviz),
+    ekf = Node(
+        package='robot_localization',
+        executable='ekf_node',
+        name='ekf_filter_node',
         output='screen',
+        parameters=[str(localization_share / 'config' / 'ekf.yaml')],
+        remappings=[('odometry/filtered', '/odometry/filtered')],
     )
 
     return LaunchDescription([
         DeclareLaunchArgument(
-            'use_rviz',
+            'use_sensor_rviz',
             default_value='true',
-            description='Start RViz with the stage 3 demo configuration.',
+            description='Start RViz with the stage 4 sensor configuration.',
         ),
         DeclareLaunchArgument(
             'entity_name',
             default_value='resilient_nav_robot',
-            description='Gazebo entity name passed to the spawn launch.',
+            description='Gazebo entity name passed to the sensor demo.',
         ),
         DeclareLaunchArgument(
             'spawn_x',
@@ -89,16 +88,6 @@ def generate_launch_description():
             default_value='0.0',
             description='Initial robot yaw in radians.',
         ),
-        DeclareLaunchArgument(
-            'odom_ros_topic',
-            default_value='/odom',
-            description='ROS topic receiving raw Gazebo wheel odometry.',
-        ),
-        DeclareLaunchArgument(
-            'start_odom_tf_broadcaster',
-            default_value='true',
-            description='Start the stage 3 odom to base TF broadcaster.',
-        ),
-        phase3_spawn,
-        rviz,
+        rgbd_demo,
+        ekf,
     ])
