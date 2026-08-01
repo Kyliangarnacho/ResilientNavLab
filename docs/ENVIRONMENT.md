@@ -4,7 +4,7 @@
 
 - 最近核验日期：2026-08-01
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 2 和阶段 3 已完成；阶段 4 当前技术里程碑已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线
+- 当前阶段：阶段 0 至阶段 4 已完成；阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -200,6 +200,7 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - EKF 频率配置为 20 Hz。80 样本测得仿真 stamp 频率 `20.000 Hz`、墙钟到达率约 `12.470 Hz`，同轮 Gazebo `real_time_factor≈0.6745`。
 - 动态直行后 wheel/filtered x 分别约 `0.254200/0.253207 m`；旋转后 yaw 分别约 `0.851/0.799 rad`。无 NaN 或明显跳变；暂停后 wheel、IMU 和 EKF 停止，`/clock` stamp 冻结，恢复后继续。
 - 完整技术证据分别见 `docs/PHASE4_IMU_LIDAR_BASELINE.md`、`docs/PHASE4_RGBD_BASELINE.md` 和 `docs/PHASE4_EKF_BASELINE.md`。
+- 2026-08-01 收尾复验：完整 `colcon build --symlink-install` 成功完成 4 个包；`colcon test-result --verbose` 汇总为 64 项、0 错误、0 失败、1 项跳过；阶段 4 Launch、bridge/EKF YAML 和 RViz 均存在于 symlink 安装区。
 
 ## 工作空间目录与构建流程
 
@@ -347,4 +348,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已建立 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 技术基线；完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线；阶段 5 尚未开始，完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均未实现。
