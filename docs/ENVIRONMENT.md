@@ -2,9 +2,9 @@
 
 ## 核验信息
 
-- 最近核验日期：2026-08-01
+- 最近核验日期：2026-08-03
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 4 已完成；阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线
+- 当前阶段：阶段 0 至阶段 5 已完成；阶段 5 已建立可复现故障注入、faulted EKF 对照、probe 指标和 rosbag 闭环
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -26,11 +26,13 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor`（`ament_python`） | 构建、自动测试和 `ros2 pkg prefix` 发现验证通过 |
+| 项目 ROS 2 包 | `resilient_nav_monitor`、`resilient_nav_simulation`、`resilient_nav_description`、`resilient_nav_localization`、`resilient_nav_interfaces`、`resilient_nav_fault_injection` | 6 包构建、自动测试和运行发现验证通过 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
 | 定位包 | `resilient_nav_localization`（`ament_cmake`） | EKF 配置、完整阶段 4 Launch、安装和自动测试验证通过 |
+| 接口包 | `resilient_nav_interfaces`（`ament_cmake`） | `FaultStatus` 消息生成和依赖包构建验证通过 |
+| 故障注入包 | `resilient_nav_fault_injection`（`ament_python`） | IMU/wheel/Lidar 注入器、统一 Launch、faulted EKF、probe、RViz、bag 工具和测试验证通过 |
 | `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
 | ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` `1.0.22` | `/clock` 与阶段 3 基础运动话题的定向 bridge 已验证 |
@@ -219,12 +221,25 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `--symlink-install` 尽可能在 `install/` 中建立指向源码或构建产物的符号链接，便于 Python 和资源文件修改后的快速迭代；构建系统或安装规则变化后仍应重新构建。
 - `source /opt/ros/jazzy/setup.bash` 加载 ROS 2 及其 vendor 环境；`source ros2_ws/install/setup.bash` 再把当前工作空间叠加到环境中。`source` 只改变当前 shell，不执行构建，也不会自动影响其他已打开的 shell。
 
-当前工作空间包含四个包：
+当前工作空间包含六个包：
 
 - `resilient_nav_monitor`：阶段 1 的心跳节点和阶段 3 的 odom TF 广播节点。
 - `resilient_nav_simulation`：阶段 2 的 Gazebo 世界、桥接，以及阶段 3 的生成、Demo Launch、RViz 资源和运动测试工具。
 - `resilient_nav_description`：阶段 3 的基础差速机器人描述及 Gazebo 原生差速/关节状态插件资源。
 - `resilient_nav_localization`：阶段 4 的 EKF 参数、完整 Launch 入口和资源测试。
+- `resilient_nav_interfaces`：阶段 5 的 `FaultStatus` 消息接口。
+- `resilient_nav_fault_injection`：阶段 5 的故障模型、注入器、场景、统一 Launch、faulted EKF 配置、probe、RViz 和 bag 工具。
+
+## 阶段 5 故障注入闭环
+
+- `resilient_nav_interfaces/msg/FaultStatus.msg` 提供 `SCHEDULED`、`ACTIVE`、`ENDED`、`CANCELLED` 状态枚举和故障真值字段。
+- `resilient_nav_fault_injection` 提供 IMU bias、Gaussian noise、dropout、fixed delay，wheel odometry freeze，以及 LaserScan sector blindness。
+- `launch/phase5_fault_injection.launch.py` 是阶段 5 统一入口，支持 `scenario_file`、`use_rviz`、`record_bag` 和 `bag_output`；它 Include 阶段 4 健康链，按场景启动注入器，并启动 `faulted_ekf_filter_node`。
+- faulted EKF 订阅 `/faulted/wheel/odometry` 和 `/faulted/imu/data`，输出 `/odometry/faulted`，配置 `publish_tf=false`；健康 EKF 继续输出 `/odometry/filtered` 并负责主 `odom -> base_footprint` TF。
+- `fault_probe` 使用仿真时间，在有限运行时长后输出单行 JSON，可量化 IMU 差值、dropout、delay、wheel freeze、Lidar NaN 和 EKF 差异。
+- `phase5_record_bag` 以场景 ID 和时间戳创建唯一目录；`phase5_replay_bag` 可在不启动 Gazebo 的情况下回放。
+- 2026-08-03 收尾构建和测试：`colcon build --symlink-install` 成功完成 6 个包；`colcon test && colcon test-result --verbose` 汇总为 193 项、0 错误、0 失败、1 项跳过。
+- 动态验证在沙箱外运行，因为受限沙箱内 ROS 2 DDS/Gazebo 会因网络接口权限报 `getifaddrs: Operation not permitted`。验证记录见 `docs/PHASE5_SUMMARY.md`。
 
 ## 安装、桥接与人工验收
 
@@ -348,4 +363,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线；阶段 5 尚未开始，完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、故障注入、健康评估、自适应融合和容错导航均未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、健康评估、自适应融合和容错导航均未实现。

@@ -2,6 +2,44 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-03 — 阶段 5 可复现故障注入闭环收尾
+
+### 当前事实
+
+- 新增 `resilient_nav_interfaces` 和 `resilient_nav_fault_injection` 两个包，工作空间当前共 6 个包。
+- `FaultStatus` 消息已用于发布故障真值标签，状态覆盖 `SCHEDULED`、`ACTIVE`、`ENDED` 和 `CANCELLED`。
+- 阶段 5 首批故障模型包含 IMU bias、Gaussian noise、dropout、fixed delay，wheel odometry freeze，以及 LaserScan sector blindness。
+- 新增统一入口 `phase5_fault_injection.launch.py`，支持 `scenario_file`、`use_rviz`、`record_bag` 和 `bag_output`，并 Include 阶段 4 健康链。
+- 健康 EKF 继续输出 `/odometry/filtered` 并负责主 `odom -> base_footprint` TF；faulted EKF 订阅 `/faulted/wheel/odometry` 和 `/faulted/imu/data`，输出 `/odometry/faulted`，配置 `publish_tf=false`。
+- `fault_probe` 已能输出单行 JSON，覆盖 IMU 差值、dropout、delay、wheel freeze、Lidar NaN 和健康/faulted EKF 差异。
+- `phase5_record_bag` 使用场景 ID 与时间戳创建唯一目录；`phase5_replay_bag` 可不启动 Gazebo 回放。
+- 收尾执行 `colcon build --symlink-install` 成功完成 6 个包；`colcon test && colcon test-result --verbose` 汇总为 193 项、0 错误、0 失败、1 项跳过。
+- 动态验证结果：IMU bias active 平均差 `0.15 rad/s`；wheel freeze active raw 位移约 `0.50886 m`、faulted 位移 `0.0 m`；Lidar blindness NaN 比例约 `0.096997`。
+- rosbag 记录目录 `/tmp/phase5_bags/wheel_freeze_ekf_comparison_20260803_013910` 含 12 个要求话题、47962 条消息；无 Gazebo 回放时关键话题可见。
+- 最终进程检查未发现 Gazebo、RViz、bridge、EKF、注入器或 bag 进程残留。
+
+### 学习要点
+
+- 阶段 5 的核心边界是保留健康基线不被覆盖：raw topic 和 `/odometry/filtered` 持续存在，故障数据单独进入 `/faulted/*` 和 `/odometry/faulted`。
+- faulted EKF 可以作为对照估计存在，但不能驱动主 TF；否则 RViz、RobotModel 和后续导航会混用健康与故障估计。
+- 指标工具必须按 `FaultStatus` 活动窗口统计，否则故障前后透传样本会稀释 bias、noise 和 dropout 指标。
+- fixed delay 的验证应比较消息 stamp 与接收 ROS 时间；probe 本身也必须使用仿真时间，否则会把墙钟 epoch 混入延迟统计。
+- rosbag 记录目录必须包含场景 ID 和时间戳，且脚本要避免覆盖已有记录。
+
+### 问题与处理
+
+- 受限沙箱内启动 ROS 2/Gazebo 时出现 `getifaddrs: Operation not permitted` 和 DDS UDP transport 初始化错误。按权限规则在沙箱外重跑后，统一 Launch、bridge、注入器和 EKF 正常启动。
+- `fault_probe` 初版把非活动窗口样本计入 IMU bias 平均值，首轮平均差约 `0.052`，低于配置 `0.15`。修复为默认使用仿真时间并按非 CANCELLED 的 FaultStatus 时间窗过滤，复验得到 active 平均差 `0.15`。
+- 阶段 5 三个注入器初版 Ctrl-C 时重复 `rclpy.shutdown()`，退出码为 1。修复为捕获 `KeyboardInterrupt` 并仅在 `rclpy.ok()` 时 shutdown，后续停止 cleanly 退出。
+- `phase5_replay_bag` 初版用 `subprocess.call` 包装 rosbag play，Ctrl-C 会打印 Python traceback。改为 `os.execvp()` 直接交给 rosbag 原生命令。
+- 既有 `system_heartbeat` 在 Ctrl-C 时仍有重复 shutdown 异常；本次授权范围未修改 `resilient_nav_monitor`，已在阶段 5 总结中如实记录。
+
+### 当前边界
+
+- 阶段 5 已完成故障注入与实验复现闭环，不包含健康评估、自适应融合、容错导航、Nav2、SLAM、PointCloud2 或真实硬件实验。
+- RGB-D 图像故障未进入阶段 5 首批模型。
+- RViz 配置已提供并可选启动，本次动态验收主要使用 headless 运行，未保存截图证据。
+
 ## 2026-08-01 — 阶段 4 收尾状态同步
 
 ### 当前事实
@@ -19,8 +57,8 @@
 
 ### 当前边界
 
-- 阶段 4 到此完成；阶段 5 尚未开始。
-- PointCloud2、真实标定、长期性能、SLAM、Nav2、故障注入、健康评估、自适应融合和容错导航仍未实现。
+- 截至 2026-08-01，阶段 4 到此完成，下一步计划进入阶段 5。
+- 截至 2026-08-01，PointCloud2、真实标定、长期性能、SLAM、Nav2、故障注入、健康评估、自适应融合和容错导航仍未实现；当前状态已由 2026-08-03 阶段 5 记录更新。
 
 ## 2026-08-01 — 阶段 4 多传感器与 EKF 技术里程碑
 

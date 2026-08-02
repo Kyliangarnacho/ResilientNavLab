@@ -1,0 +1,19 @@
+std_msgs/Header header
+string scenario_id
+uint32 scenario_seed
+string event_id
+string source_topic
+string faulted_topic
+string sensor
+string model
+builtin_interfaces/Time start_time
+builtin_interfaces/Time end_time
+uint8 state
+float32 severity
+string[] affected_fields
+string parameters_yaml
+
+uint8 SCHEDULED=0
+uint8 ACTIVE=1
+uint8 ENDED=2
+uint8 CANCELLED=3

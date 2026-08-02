@@ -1,0 +1,13 @@
+wheel_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /wheel/odometry
+    output_topic: /faulted/wheel/odometry
+    status_topic: /fault_injection/status
+    enabled: true
+    model: freeze
+    start_time_sec: 5.0
+    end_time_sec: 15.0
+    scenario_id: wheel_freeze_ekf_comparison
+    scenario_seed: 20260803
+    event_id: wheel_freeze_ekf_001

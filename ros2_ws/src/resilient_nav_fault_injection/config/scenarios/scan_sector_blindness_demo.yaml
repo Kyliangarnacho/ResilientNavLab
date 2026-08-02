@@ -1,0 +1,15 @@
+scan_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /scan
+    output_topic: /faulted/scan
+    status_topic: /fault_injection/status
+    enabled: true
+    model: sector_blindness
+    sector_center_rad: 0.0
+    sector_width_rad: 1.0
+    start_time_sec: 5.0
+    end_time_sec: 15.0
+    scenario_id: scan_sector_blindness_demo
+    scenario_seed: 20260803
+    event_id: scan_sector_blindness_001

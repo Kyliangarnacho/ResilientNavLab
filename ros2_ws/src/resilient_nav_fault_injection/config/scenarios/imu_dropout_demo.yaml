@@ -1,0 +1,14 @@
+imu_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /imu/data
+    output_topic: /faulted/imu/data
+    status_topic: /fault_injection/status
+    enabled: true
+    model: dropout
+    dropout_probability: 0.30
+    start_time_sec: 5.0
+    end_time_sec: 15.0
+    scenario_id: imu_dropout_demo
+    scenario_seed: 20260803
+    event_id: imu_dropout_001
