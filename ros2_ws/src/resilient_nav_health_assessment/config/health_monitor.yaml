@@ -1,0 +1,18 @@
+sensor_health_monitor:
+  ros__parameters:
+    publish_rate_hz: 5.0
+    imu_source_topic: /faulted/imu/data
+    wheel_source_topic: /faulted/wheel/odometry
+    scan_source_topic: /faulted/scan
+    window_duration_sec: 2.0
+    min_samples: 3
+    stale_timeout_sec: 0.5
+    delay_warning_sec: 0.3
+    delay_fault_sec: 0.5
+    delay_confirmation_cycles: 3
+    command_linear_threshold_mps: 0.05
+    command_angular_threshold_rad_s: 0.10
+    freeze_duration_sec: 1.0
+    wheel_pose_span_threshold_m: 0.01
+    wheel_linear_span_threshold_mps: 0.01
+    wheel_angular_span_threshold_rad_s: 0.02
