@@ -2,7 +2,7 @@
 
 from collections import deque
 from dataclasses import dataclass
-from math import atan2, hypot, pi
+from math import atan2, hypot, isfinite, isinf, isnan, pi, sqrt
 
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
@@ -10,7 +10,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from resilient_nav_interfaces.msg import SensorHealth
-from sensor_msgs.msg import Imu
+from sensor_msgs.msg import Imu, LaserScan
 
 
 DEFAULT_PUBLISH_RATE_HZ = 5.0
@@ -30,6 +30,8 @@ class Observation:
     yaw_rad: float = 0.0
     linear_x: float = 0.0
     angular_z: float = 0.0
+    ranges: tuple = ()
+    angle_increment_rad: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -84,6 +86,21 @@ class HealthEvaluator:
         wheel_pose_span_threshold_m,
         wheel_linear_span_threshold_mps,
         wheel_angular_span_threshold_rad_s,
+        imu_wheel_max_pairing_time_diff_sec=0.05,
+        imu_bias_min_pairs=10,
+        imu_bias_warning_threshold_rad_s=0.08,
+        imu_bias_fault_threshold_rad_s=0.12,
+        imu_bias_max_stddev_rad_s=0.03,
+        imu_bias_max_mad_rad_s=0.02,
+        imu_bias_confirmation_cycles=3,
+        imu_bias_baseline_calibration_min_pairs=10,
+        scan_min_samples=3,
+        scan_nan_warning_ratio=0.03,
+        scan_nan_fault_ratio=0.08,
+        scan_sector_warning_width_rad=0.50,
+        scan_sector_fault_width_rad=0.90,
+        scan_confirmation_cycles=3,
+        scan_recovery_cycles=3,
     ):
         self._min_samples = min_samples
         self._stale_timeout_sec = stale_timeout_sec
@@ -92,8 +109,8 @@ class HealthEvaluator:
         if delay_confirmation_cycles < 1:
             raise ValueError('delay_confirmation_cycles must be at least 1')
         self._delay_confirmation_cycles = delay_confirmation_cycles
-        self._delay_warning_counts = {'imu': 0, 'wheel': 0}
-        self._delay_fault_counts = {'imu': 0, 'wheel': 0}
+        self._delay_warning_counts = {'imu': 0, 'wheel': 0, 'scan': 0}
+        self._delay_fault_counts = {'imu': 0, 'wheel': 0, 'scan': 0}
         self._command_linear_threshold_mps = command_linear_threshold_mps
         self._command_angular_threshold_rad_s = command_angular_threshold_rad_s
         self._freeze_duration_sec = freeze_duration_sec
@@ -102,15 +119,75 @@ class HealthEvaluator:
         self._wheel_angular_span_threshold_rad_s = (
             wheel_angular_span_threshold_rad_s
         )
+        if imu_wheel_max_pairing_time_diff_sec < 0.0:
+            raise ValueError('imu_wheel_max_pairing_time_diff_sec must be non-negative')
+        if imu_bias_min_pairs < 1:
+            raise ValueError('imu_bias_min_pairs must be at least 1')
+        if imu_bias_confirmation_cycles < 1:
+            raise ValueError('imu_bias_confirmation_cycles must be at least 1')
+        if imu_bias_baseline_calibration_min_pairs < imu_bias_min_pairs:
+            raise ValueError(
+                'imu_bias_baseline_calibration_min_pairs must be at least '
+                'imu_bias_min_pairs'
+            )
+        if scan_min_samples < 1:
+            raise ValueError('scan_min_samples must be at least 1')
+        if not 0.0 <= scan_nan_warning_ratio <= scan_nan_fault_ratio <= 1.0:
+            raise ValueError('scan NaN ratios must be ordered within [0.0, 1.0]')
+        if (
+            scan_sector_warning_width_rad < 0.0
+            or scan_sector_fault_width_rad < scan_sector_warning_width_rad
+        ):
+            raise ValueError('scan sector widths must be non-negative and ordered')
+        if scan_confirmation_cycles < 1 or scan_recovery_cycles < 1:
+            raise ValueError('scan confirmation and recovery cycles must be at least 1')
+        if imu_bias_warning_threshold_rad_s <= 0.0:
+            raise ValueError('imu_bias_warning_threshold_rad_s must be greater than 0.0')
+        if imu_bias_fault_threshold_rad_s < imu_bias_warning_threshold_rad_s:
+            raise ValueError(
+                'imu_bias_fault_threshold_rad_s must be at least the warning threshold'
+            )
+        self._imu_wheel_max_pairing_time_diff_sec = (
+            imu_wheel_max_pairing_time_diff_sec
+        )
+        self._imu_bias_min_pairs = imu_bias_min_pairs
+        self._imu_bias_warning_threshold_rad_s = imu_bias_warning_threshold_rad_s
+        self._imu_bias_fault_threshold_rad_s = imu_bias_fault_threshold_rad_s
+        self._imu_bias_max_stddev_rad_s = imu_bias_max_stddev_rad_s
+        self._imu_bias_max_mad_rad_s = imu_bias_max_mad_rad_s
+        self._imu_bias_confirmation_cycles = imu_bias_confirmation_cycles
+        self._imu_bias_baseline_calibration_min_pairs = (
+            imu_bias_baseline_calibration_min_pairs
+        )
+        self._bias_warning_count = 0
+        self._bias_fault_count = 0
+        self._imu_bias_baseline_residual = None
+        self._imu_bias_baseline_samples = []
+        self._imu_bias_baseline_pair_keys = set()
+        self._scan_min_samples = scan_min_samples
+        self._scan_nan_warning_ratio = scan_nan_warning_ratio
+        self._scan_nan_fault_ratio = scan_nan_fault_ratio
+        self._scan_sector_warning_width_rad = scan_sector_warning_width_rad
+        self._scan_sector_fault_width_rad = scan_sector_fault_width_rad
+        self._scan_confirmation_cycles = scan_confirmation_cycles
+        self._scan_recovery_cycles = scan_recovery_cycles
+        self._scan_warning_count = 0
+        self._scan_fault_count = 0
+        self._scan_recovery_count = 0
+        self._scan_sector_fault_active = False
         self.imu_window = SensorWindow(window_duration_sec)
         self.wheel_window = SensorWindow(window_duration_sec)
+        self.scan_window = SensorWindow(window_duration_sec)
+        self._latest_scan_observation = None
         self._command_linear_abs_mps = 0.0
         self._command_angular_abs_rad_s = 0.0
         self._motion_command_started_sec = None
 
-    def add_imu(self, received_sec, stamp_sec):
+    def add_imu(self, received_sec, stamp_sec, angular_z=0.0):
         """Record a received IMU sample."""
-        self.imu_window.add(Observation(received_sec, stamp_sec))
+        self.imu_window.add(
+            Observation(received_sec, stamp_sec, angular_z=angular_z)
+        )
 
     def add_wheel(
         self,
@@ -135,6 +212,17 @@ class HealthEvaluator:
             )
         )
 
+    def add_scan(self, received_sec, stamp_sec, ranges, angle_increment_rad):
+        """Record the latest LaserScan beams and timing metadata."""
+        observation = Observation(
+            received_sec,
+            stamp_sec,
+            ranges=tuple(ranges),
+            angle_increment_rad=angle_increment_rad,
+        )
+        self.scan_window.add(observation)
+        self._latest_scan_observation = observation
+
     def set_command(self, received_sec, linear_x, angular_z):
         """Update the most recent command and its continuous active interval."""
         self._command_linear_abs_mps = abs(linear_x)
@@ -145,11 +233,118 @@ class HealthEvaluator:
         else:
             self._motion_command_started_sec = None
 
-    def evaluate_imu(self, now_sec):
-        """Return the IMU timing decision at ``now_sec``."""
-        return self._timing_decision(
-            'imu', self.imu_window.samples(now_sec), now_sec
+    def evaluate_imu(self, now_sec, wheel_decision=None):
+        """
+        Assess IMU timing, then its yaw-rate residual against wheel odometry.
+
+        ``wheel_decision`` is supplied by the node's timer so the stateful wheel
+        timing and freeze confirmation checks are evaluated only once per timer
+        cycle.  It remains optional for direct unit-test use.
+        """
+        imu_samples = self.imu_window.samples(now_sec)
+        wheel_samples = self.wheel_window.samples(now_sec)
+        timing_decision = self._timing_decision('imu', imu_samples, now_sec)
+        metrics = self._imu_wheel_residual_metrics(imu_samples, wheel_samples)
+        names = list(timing_decision.metric_names) + metrics[0]
+        values = list(timing_decision.metric_values) + metrics[1]
+
+        # Transport problems always take precedence over cross-sensor residuals.
+        if timing_decision.state != SensorHealth.HEALTHY:
+            self._reset_bias_counts()
+            return self._with_metrics(timing_decision, names, values)
+
+        if wheel_decision is None:
+            # Direct callers that only request timing retain the original IMU
+            # timing assessment.  The node always supplies its single wheel
+            # decision, which enables the cross-sensor detector.
+            return self._with_metrics(timing_decision, names, values)
+        reference_reason = self._wheel_reference_reason(
+            wheel_decision, len(wheel_samples), metrics[2]
         )
+        if reference_reason is not None:
+            self._reset_bias_counts()
+            return HealthDecision(
+                SensorHealth.UNKNOWN,
+                -1.0,
+                min(timing_decision.confidence, metrics[2] / self._imu_bias_min_pairs),
+                'none',
+                [reference_reason],
+                names,
+                values,
+                timing_decision.window_start_sec,
+                timing_decision.window_end_sec,
+                timing_decision.sample_count,
+            )
+
+        residual_mean, residual_median, residual_stddev, residual_mad = metrics[3:7]
+        if self._imu_bias_baseline_residual is None:
+            self._collect_imu_bias_baseline(metrics[7])
+        baseline = self._imu_bias_baseline_residual
+        corrected_mean = residual_mean - (baseline or 0.0)
+        corrected_median = residual_median - (baseline or 0.0)
+        names.extend([
+            'imu_wheel_nominal_residual_baseline_rad_s',
+            'imu_wheel_corrected_residual_mean_rad_s',
+            'imu_wheel_corrected_residual_median_rad_s',
+            'imu_wheel_baseline_calibration_pair_count',
+            'imu_wheel_baseline_calibrated',
+        ])
+        values.extend([
+            baseline or 0.0,
+            corrected_mean,
+            corrected_median,
+            float(len(self._imu_bias_baseline_samples)),
+            float(baseline is not None),
+        ])
+        if baseline is None:
+            self._reset_bias_counts()
+            return HealthDecision(
+                SensorHealth.UNKNOWN,
+                -1.0,
+                min(
+                    timing_decision.confidence,
+                    len(self._imu_bias_baseline_samples)
+                    / self._imu_bias_baseline_calibration_min_pairs,
+                ),
+                'unknown',
+                ['imu_yaw_rate_bias_baseline_calibrating'],
+                names,
+                values,
+                timing_decision.window_start_sec,
+                timing_decision.window_end_sec,
+                timing_decision.sample_count,
+            )
+        bias_level = self._bias_level(
+            corrected_mean, corrected_median, residual_stddev, residual_mad
+        )
+        self._update_bias_counts(bias_level)
+        if self._bias_fault_count >= self._imu_bias_confirmation_cycles:
+            return HealthDecision(
+                SensorHealth.FAULT,
+                0.0,
+                timing_decision.confidence,
+                'bias',
+                ['imu_yaw_rate_residual_exceeded_bias_fault_threshold'],
+                names,
+                values,
+                timing_decision.window_start_sec,
+                timing_decision.window_end_sec,
+                timing_decision.sample_count,
+            )
+        if self._bias_warning_count >= self._imu_bias_confirmation_cycles:
+            return HealthDecision(
+                SensorHealth.DEGRADED,
+                0.5,
+                timing_decision.confidence,
+                'bias',
+                ['imu_yaw_rate_residual_exceeded_bias_warning_threshold'],
+                names,
+                values,
+                timing_decision.window_start_sec,
+                timing_decision.window_end_sec,
+                timing_decision.sample_count,
+            )
+        return self._with_metrics(timing_decision, names, values)
 
     def evaluate_wheel(self, now_sec):
         """Return wheel timing decision, augmented by an active freeze check."""
@@ -214,10 +409,102 @@ class HealthEvaluator:
 
         return self._with_metrics(decision, names, values)
 
-    def _timing_decision(self, sensor, samples, now_sec):
-        if len(samples) < self._min_samples:
+    def evaluate_scan(self, now_sec):
+        """Assess LaserScan timing and persistent circular NaN sectors."""
+        samples = self.scan_window.samples(now_sec)
+        decision = self._timing_decision(
+            'scan', samples, now_sec, self._scan_min_samples
+        )
+        names = list(decision.metric_names)
+        values = list(decision.metric_values)
+        scan_metrics = self._scan_metrics(samples[-1]) if samples else None
+        if scan_metrics is not None:
+            names.extend(scan_metrics[0])
+            values.extend(scan_metrics[1])
+
+        if decision.state != SensorHealth.HEALTHY:
+            self._reset_scan_confirmation()
+            return self._with_metrics(decision, names, values)
+
+        sector_level = self._scan_sector_level(scan_metrics)
+        if self._scan_sector_fault_active:
+            if sector_level == 'none':
+                self._scan_recovery_count += 1
+                if self._scan_recovery_count >= self._scan_recovery_cycles:
+                    self._scan_sector_fault_active = False
+                    self._reset_scan_confirmation()
+                    return self._with_metrics(decision, names, values)
+                return HealthDecision(
+                    SensorHealth.FAULT,
+                    0.0,
+                    decision.confidence,
+                    'sector_blindness',
+                    ['scan_sector_blindness_recovery_pending'],
+                    names,
+                    values,
+                    decision.window_start_sec,
+                    decision.window_end_sec,
+                    decision.sample_count,
+                )
+            self._scan_recovery_count = 0
+            return HealthDecision(
+                SensorHealth.FAULT,
+                0.0,
+                decision.confidence,
+                'sector_blindness',
+                ['long_contiguous_nan_sector_exceeded_fault_threshold'],
+                names,
+                values,
+                decision.window_start_sec,
+                decision.window_end_sec,
+                decision.sample_count,
+            )
+
+        if sector_level == 'fault':
+            self._scan_fault_count += 1
+            self._scan_warning_count += 1
+        elif sector_level == 'warning':
+            self._scan_fault_count = 0
+            self._scan_warning_count += 1
+        else:
+            self._reset_scan_confirmation()
+            return self._with_metrics(decision, names, values)
+
+        if self._scan_fault_count >= self._scan_confirmation_cycles:
+            self._scan_sector_fault_active = True
+            self._scan_recovery_count = 0
+            return HealthDecision(
+                SensorHealth.FAULT,
+                0.0,
+                decision.confidence,
+                'sector_blindness',
+                ['long_contiguous_nan_sector_exceeded_fault_threshold'],
+                names,
+                values,
+                decision.window_start_sec,
+                decision.window_end_sec,
+                decision.sample_count,
+            )
+        if self._scan_warning_count >= self._scan_confirmation_cycles:
+            return HealthDecision(
+                SensorHealth.DEGRADED,
+                0.5,
+                decision.confidence,
+                'sector_blindness',
+                ['long_contiguous_nan_sector_exceeded_warning_threshold'],
+                names,
+                values,
+                decision.window_start_sec,
+                decision.window_end_sec,
+                decision.sample_count,
+            )
+        return self._with_metrics(decision, names, values)
+
+    def _timing_decision(self, sensor, samples, now_sec, min_samples=None):
+        min_samples = min_samples or self._min_samples
+        if len(samples) < min_samples:
             self._reset_delay_counts(sensor)
-            return self._unknown_decision(samples)
+            return self._unknown_decision(samples, min_samples)
 
         last = samples[-1]
         message_age_sec = max(now_sec - last.received_sec, 0.0)
@@ -229,7 +516,7 @@ class HealthEvaluator:
             'interarrival_sec',
         ]
         values = [message_age_sec, stamp_age_sec, interarrival_sec]
-        confidence = min(len(samples) / self._min_samples, 1.0)
+        confidence = min(len(samples) / min_samples, 1.0)
         window_start_sec = samples[0].received_sec
         window_end_sec = last.received_sec
 
@@ -309,7 +596,220 @@ class HealthEvaluator:
         self._delay_warning_counts[sensor] = 0
         self._delay_fault_counts[sensor] = 0
 
-    def _unknown_decision(self, samples):
+    def _scan_metrics(self, observation):
+        """Summarize invalid beams and the largest circular NaN sector."""
+        ranges = observation.ranges
+        total_beams = len(ranges)
+        nan_flags = [isnan(value) for value in ranges]
+        nan_count = sum(nan_flags)
+        finite_count = sum(isfinite(value) for value in ranges)
+        inf_count = sum(isinf(value) for value in ranges)
+        longest_nan_beams = self._longest_circular_nan_run(nan_flags)
+        longest_nan_width_rad = (
+            longest_nan_beams * abs(observation.angle_increment_rad)
+        )
+        return (
+            [
+                'scan_total_beams',
+                'scan_nan_count',
+                'scan_nan_ratio',
+                'scan_finite_count',
+                'scan_inf_count',
+                'scan_longest_nan_sector_beams',
+                'scan_longest_nan_sector_width_rad',
+            ],
+            [
+                float(total_beams),
+                float(nan_count),
+                nan_count / total_beams if total_beams else 0.0,
+                float(finite_count),
+                float(inf_count),
+                float(longest_nan_beams),
+                longest_nan_width_rad,
+            ],
+        )
+
+    @staticmethod
+    def _longest_circular_nan_run(nan_flags):
+        """Return the longest NaN run while treating scan ends as adjacent."""
+        total_beams = len(nan_flags)
+        if not total_beams or not any(nan_flags):
+            return 0
+        if all(nan_flags):
+            return total_beams
+        first_finite = nan_flags.index(False)
+        longest_run = 0
+        current_run = 0
+        for offset in range(1, total_beams + 1):
+            if nan_flags[(first_finite + offset) % total_beams]:
+                current_run += 1
+                longest_run = max(longest_run, current_run)
+            else:
+                current_run = 0
+        return longest_run
+
+    def _scan_sector_level(self, scan_metrics):
+        """Classify a NaN sector using both coverage and angular extent."""
+        metrics = dict(zip(scan_metrics[0], scan_metrics[1]))
+        nan_ratio = metrics['scan_nan_ratio']
+        sector_width_rad = metrics['scan_longest_nan_sector_width_rad']
+        if (
+            nan_ratio >= self._scan_nan_fault_ratio
+            and sector_width_rad >= self._scan_sector_fault_width_rad
+        ):
+            return 'fault'
+        if (
+            nan_ratio >= self._scan_nan_warning_ratio
+            and sector_width_rad >= self._scan_sector_warning_width_rad
+        ):
+            return 'warning'
+        return 'none'
+
+    def _reset_scan_confirmation(self):
+        """Clear non-latched scan-sector confirmation and recovery counters."""
+        self._scan_warning_count = 0
+        self._scan_fault_count = 0
+        self._scan_recovery_count = 0
+
+    def _imu_wheel_residual_metrics(self, imu_samples, wheel_samples):
+        """Pair by header stamp and calculate robust IMU-wheel yaw-rate metrics."""
+        paired_residuals = []
+        time_differences = []
+        # Each observation is eligible for one residual only.  Reusing the
+        # nearest wheel observation for several IMU observations would inflate
+        # pair_count when the topic rates differ or an input is duplicated.
+        available_wheel_samples = sorted(
+            wheel_samples, key=lambda sample: sample.stamp_sec
+        )
+        for imu_sample in sorted(imu_samples, key=lambda sample: sample.stamp_sec):
+            if not available_wheel_samples:
+                break
+            wheel_index, wheel_sample = min(
+                enumerate(available_wheel_samples),
+                key=lambda item: abs(item[1].stamp_sec - imu_sample.stamp_sec),
+            )
+            time_difference_sec = abs(
+                wheel_sample.stamp_sec - imu_sample.stamp_sec
+            )
+            if time_difference_sec <= self._imu_wheel_max_pairing_time_diff_sec:
+                paired_residuals.append((
+                    imu_sample.stamp_sec,
+                    wheel_sample.stamp_sec,
+                    imu_sample.angular_z - wheel_sample.angular_z,
+                ))
+                time_differences.append(time_difference_sec)
+                del available_wheel_samples[wheel_index]
+
+        residuals = [pair[2] for pair in paired_residuals]
+        pair_count = len(residuals)
+        if pair_count:
+            residual_mean = sum(residuals) / pair_count
+            residual_median = self._median(residuals)
+            residual_stddev = sqrt(
+                sum((residual - residual_mean) ** 2 for residual in residuals)
+                / pair_count
+            )
+            residual_mad = self._median([
+                abs(residual - residual_median) for residual in residuals
+            ])
+            max_time_difference_sec = max(time_differences)
+        else:
+            residual_mean = residual_median = residual_stddev = residual_mad = 0.0
+            max_time_difference_sec = 0.0
+        return (
+            [
+                'imu_wheel_pair_count',
+                'imu_wheel_residual_mean_rad_s',
+                'imu_wheel_residual_median_rad_s',
+                'imu_wheel_residual_stddev_rad_s',
+                'imu_wheel_residual_mad_rad_s',
+                'imu_wheel_max_pairing_time_difference_sec',
+            ],
+            [
+                float(pair_count),
+                residual_mean,
+                residual_median,
+                residual_stddev,
+                residual_mad,
+                max_time_difference_sec,
+            ],
+            pair_count,
+            residual_mean,
+            residual_median,
+            residual_stddev,
+            residual_mad,
+            paired_residuals,
+        )
+
+    @staticmethod
+    def _median(values):
+        ordered_values = sorted(values)
+        middle = len(ordered_values) // 2
+        if len(ordered_values) % 2:
+            return ordered_values[middle]
+        return (ordered_values[middle - 1] + ordered_values[middle]) / 2.0
+
+    def _wheel_reference_reason(self, wheel_decision, wheel_sample_count, pair_count):
+        """Explain why a wheel reference cannot support a bias decision."""
+        if wheel_decision.state != SensorHealth.HEALTHY:
+            if wheel_sample_count < self._min_samples:
+                return 'wheel_reference_insufficient'
+            return 'wheel_reference_unavailable'
+        if pair_count == 0:
+            return 'imu_wheel_timestamp_pairs_unavailable'
+        if pair_count < self._imu_bias_min_pairs:
+            return 'imu_wheel_pairs_insufficient'
+        return None
+
+    def _bias_level(
+        self, residual_mean, residual_median, residual_stddev, residual_mad
+    ):
+        """Classify a stable signed residual against conservative fixed thresholds."""
+        if (
+            residual_stddev > self._imu_bias_max_stddev_rad_s
+            or residual_mad > self._imu_bias_max_mad_rad_s
+        ):
+            return 'none'
+        signed_residual = min(abs(residual_mean), abs(residual_median))
+        if signed_residual >= self._imu_bias_fault_threshold_rad_s:
+            return 'fault'
+        if signed_residual >= self._imu_bias_warning_threshold_rad_s:
+            return 'warning'
+        return 'none'
+
+    def _collect_imu_bias_baseline(self, paired_residuals):
+        """Freeze a startup nominal residual from unique healthy pair samples."""
+        for imu_stamp_sec, wheel_stamp_sec, residual in paired_residuals:
+            pair_key = (imu_stamp_sec, wheel_stamp_sec)
+            if pair_key not in self._imu_bias_baseline_pair_keys:
+                self._imu_bias_baseline_pair_keys.add(pair_key)
+                self._imu_bias_baseline_samples.append(residual)
+        if (
+            len(self._imu_bias_baseline_samples)
+            >= self._imu_bias_baseline_calibration_min_pairs
+        ):
+            self._imu_bias_baseline_residual = self._median(
+                self._imu_bias_baseline_samples
+            )
+
+    def _update_bias_counts(self, bias_level):
+        """Track uninterrupted warning and fault-level yaw-rate residuals."""
+        if bias_level == 'fault':
+            self._bias_fault_count += 1
+            self._bias_warning_count += 1
+        elif bias_level == 'warning':
+            self._bias_fault_count = 0
+            self._bias_warning_count += 1
+        else:
+            self._reset_bias_counts()
+
+    def _reset_bias_counts(self):
+        """Clear bias confirmation after a healthy or unusable assessment."""
+        self._bias_warning_count = 0
+        self._bias_fault_count = 0
+
+    def _unknown_decision(self, samples, min_samples=None):
+        min_samples = min_samples or self._min_samples
         count = len(samples)
         start_sec = samples[0].received_sec if samples else 0.0
         end_sec = samples[-1].received_sec if samples else 0.0
@@ -317,7 +817,7 @@ class HealthEvaluator:
         return HealthDecision(
             SensorHealth.UNKNOWN,
             -1.0,
-            min(count / self._min_samples, 1.0),
+            min(count / min_samples, 1.0),
             'unknown',
             [reason],
             [],
@@ -496,8 +996,23 @@ class SensorHealthMonitor(Node):
             self._float_parameter('wheel_pose_span_threshold_m'),
             self._float_parameter('wheel_linear_span_threshold_mps'),
             self._float_parameter('wheel_angular_span_threshold_rad_s'),
+            self._float_parameter('imu_wheel_max_pairing_time_diff_sec'),
+            self._integer_parameter('imu_bias_min_pairs'),
+            self._float_parameter('imu_bias_warning_threshold_rad_s'),
+            self._float_parameter('imu_bias_fault_threshold_rad_s'),
+            self._float_parameter('imu_bias_max_stddev_rad_s'),
+            self._float_parameter('imu_bias_max_mad_rad_s'),
+            self._integer_parameter('imu_bias_confirmation_cycles'),
+            self._integer_parameter('imu_bias_baseline_calibration_min_pairs'),
+            self._integer_parameter('scan_min_samples'),
+            self._float_parameter('scan_nan_warning_ratio'),
+            self._float_parameter('scan_nan_fault_ratio'),
+            self._float_parameter('scan_sector_warning_width_rad'),
+            self._float_parameter('scan_sector_fault_width_rad'),
+            self._integer_parameter('scan_confirmation_cycles'),
+            self._integer_parameter('scan_recovery_cycles'),
         )
-        self._publishers = {
+        self._health_publishers = {
             'imu': self.create_publisher(SensorHealth, '/health/imu', 10),
             'wheel': self.create_publisher(SensorHealth, '/health/wheel', 10),
             'scan': self.create_publisher(SensorHealth, '/health/scan', 10),
@@ -522,6 +1037,12 @@ class SensorHealthMonitor(Node):
             self._on_wheel,
             qos_profile_sensor_data,
         )
+        self.create_subscription(
+            LaserScan,
+            self._sources['scan'],
+            self._on_scan,
+            qos_profile_sensor_data,
+        )
 
     def _declare_parameters(self):
         defaults = {
@@ -541,13 +1062,32 @@ class SensorHealthMonitor(Node):
             'wheel_pose_span_threshold_m': 0.01,
             'wheel_linear_span_threshold_mps': 0.01,
             'wheel_angular_span_threshold_rad_s': 0.02,
+            'imu_wheel_max_pairing_time_diff_sec': 0.05,
+            'imu_bias_min_pairs': 10,
+            'imu_bias_warning_threshold_rad_s': 0.08,
+            'imu_bias_fault_threshold_rad_s': 0.12,
+            'imu_bias_max_stddev_rad_s': 0.03,
+            'imu_bias_max_mad_rad_s': 0.02,
+            'imu_bias_confirmation_cycles': 3,
+            'imu_bias_baseline_calibration_min_pairs': 10,
+            'scan_min_samples': 3,
+            'scan_nan_warning_ratio': 0.03,
+            'scan_nan_fault_ratio': 0.08,
+            'scan_sector_warning_width_rad': 0.50,
+            'scan_sector_fault_width_rad': 0.90,
+            'scan_confirmation_cycles': 3,
+            'scan_recovery_cycles': 3,
         }
         for name, default in defaults.items():
             self.declare_parameter(name, default)
 
     def _on_imu(self, msg):
         now_sec = self._now_sec()
-        self._evaluator.add_imu(now_sec, seconds_from_stamp(msg.header.stamp))
+        self._evaluator.add_imu(
+            now_sec,
+            seconds_from_stamp(msg.header.stamp),
+            msg.angular_velocity.z,
+        )
 
     def _on_wheel(self, msg):
         now_sec = self._now_sec()
@@ -561,6 +1101,15 @@ class SensorHealthMonitor(Node):
             msg.twist.twist.angular.z,
         )
 
+    def _on_scan(self, msg):
+        now_sec = self._now_sec()
+        self._evaluator.add_scan(
+            now_sec,
+            seconds_from_stamp(msg.header.stamp),
+            msg.ranges,
+            msg.angle_increment,
+        )
+
     def _on_command(self, msg):
         self._evaluator.set_command(
             self._now_sec(), msg.linear.x, msg.angular.z
@@ -569,16 +1118,18 @@ class SensorHealthMonitor(Node):
     def _publish_health(self):
         now_sec = self._now_sec()
         stamp = stamp_from_seconds(now_sec)
-        self._publishers['imu'].publish(make_sensor_health(
+        wheel_decision = self._evaluator.evaluate_wheel(now_sec)
+        self._health_publishers['imu'].publish(make_sensor_health(
             'imu', self._sources['imu'], stamp,
-            self._evaluator.evaluate_imu(now_sec),
+            self._evaluator.evaluate_imu(now_sec, wheel_decision),
         ))
-        self._publishers['wheel'].publish(make_sensor_health(
+        self._health_publishers['wheel'].publish(make_sensor_health(
             'wheel', self._sources['wheel'], stamp,
-            self._evaluator.evaluate_wheel(now_sec),
+            wheel_decision,
         ))
-        self._publishers['scan'].publish(make_unknown_sensor_health(
+        self._health_publishers['scan'].publish(make_sensor_health(
             'scan', self._sources['scan'], stamp,
+            self._evaluator.evaluate_scan(now_sec),
         ))
 
     def _now_sec(self):

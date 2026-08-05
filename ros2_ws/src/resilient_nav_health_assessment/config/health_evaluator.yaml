@@ -1,0 +1,8 @@
+health_evaluator:
+  ros__parameters:
+    use_sim_time: true
+    imu_health_topic: /health/imu
+    wheel_health_topic: /health/wheel
+    scan_health_topic: /health/scan
+    fault_status_topic: /fault_injection/status
+    output_json_path: /tmp/phase6_health_evaluation.json
