@@ -6,7 +6,7 @@
 
 ResilientNavLab 的目标是构建基于 ROS 2 的移动机器人多传感器故障注入、健康评估、自适应融合和容错导航平台。
 
-项目的阶段 0（初始化）、阶段 1（ROS 2 基础设施）、阶段 2（Gazebo 基础仿真与时钟链路）、阶段 3（虚拟差速机器人与基础运动）、阶段 4（多传感器与局部定位基线）和阶段 5（可复现故障注入实验闭环）已经完成。当前环境已建立 ROS 2 Jazzy、Gazebo Harmonic、`ros_gz` 和 `ros2_ws` 工作空间，工作空间内已有六个 ROS 2 软件包：
+项目的阶段 0（初始化）、阶段 1（ROS 2 基础设施）、阶段 2（Gazebo 基础仿真与时钟链路）、阶段 3（虚拟差速机器人与基础运动）、阶段 4（多传感器与局部定位基线）、阶段 5（可复现故障注入实验闭环）和阶段 6（传感器健康评估与评价）已经完成。当前环境已建立 ROS 2 Jazzy、Gazebo Harmonic、`ros_gz` 和 `ros2_ws` 工作空间，工作空间内已有七个 ROS 2 软件包：
 
 - `resilient_nav_monitor`：提供已验证的 `system_heartbeat` 和 `odom_tf_broadcaster` 节点。
 - `resilient_nav_simulation`：提供自定义 SDF 世界、阶段 2/3 Launch、ROS—Gazebo bridge、RViz 配置、运动测试工具和相应测试。
@@ -14,10 +14,11 @@ ResilientNavLab 的目标是构建基于 ROS 2 的移动机器人多传感器故
 - `resilient_nav_localization`：提供阶段 4 wheel odometry + IMU EKF 配置和完整健康链入口。
 - `resilient_nav_interfaces`：提供阶段 5 `FaultStatus` 消息接口。
 - `resilient_nav_fault_injection`：提供阶段 5 故障模型、注入器、场景、统一 Launch、faulted EKF、probe、RViz 和 rosbag 工具。
+- `resilient_nav_health_assessment`：提供阶段 6 IMU/wheel/scan 健康监测、`health_evaluator`、统一 Launch、JSON 评价输出和运行级参数测试。
 
-阶段 2 已验证自定义世界加载、Gazebo `/clock` 到 ROS 2 `/clock` 的单向桥接、Launch 集成，以及 `system_heartbeat` 使用 `use_sim_time=true` 时随 Gazebo 暂停和恢复。阶段 3 已验证机器人描述、Gazebo 原生差速和关节状态、ROS 基础运动 bridge、运行时 TF、Gazebo/RViz 联合显示，以及短时直行、原地旋转、圆弧和自动停车。阶段 4 已验证 IMU、二维 Lidar、RGB-D 和健康 EKF。阶段 5 已验证 raw/faulted topic 并存、`FaultStatus` 状态窗口、faulted EKF 对照、IMU bias、wheel freeze、Lidar blindness、rosbag 记录与无 Gazebo 回放。
+阶段 2 已验证自定义世界加载、Gazebo `/clock` 到 ROS 2 `/clock` 的单向桥接、Launch 集成，以及 `system_heartbeat` 使用 `use_sim_time=true` 时随 Gazebo 暂停和恢复。阶段 3 已验证机器人描述、Gazebo 原生差速和关节状态、ROS 基础运动 bridge、运行时 TF、Gazebo/RViz 联合显示，以及短时直行、原地旋转、圆弧和自动停车。阶段 4 已验证 IMU、二维 Lidar、RGB-D 和健康 EKF。阶段 5 已验证 raw/faulted topic 并存、`FaultStatus` 状态窗口、faulted EKF 对照、IMU bias、wheel freeze、Lidar blindness、rosbag 记录与无 Gazebo 回放。阶段 6 已验证 timing/stale/delay、wheel freeze、IMU bias 和 Lidar sector blindness 的健康判定，以及以 `FaultStatus` 真值评价这些输出；Lidar 统一链结果为 1 个事件、检测延迟约 `0.6 s`、F1 约 `0.96`。
 
-完整运动性能、PointCloud2、RGB-D 故障、`ros2_control`、Nav2、SLAM、健康评估、自适应融合和容错导航仍未实现；后续能力必须在单独任务中明确授权和验收。
+完整运动性能、PointCloud2、RGB-D 故障、`ros2_control`、Nav2、SLAM、自适应融合和容错导航仍未实现；后续能力必须在单独任务中明确授权和验收。
 
 ## 开始工作前
 

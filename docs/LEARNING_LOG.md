@@ -2,6 +2,19 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-05 — 阶段 6 传感器健康评估收尾
+
+### 当前事实
+
+- 新增 `resilient_nav_health_assessment`，工作空间当前共 7 个包；它对 IMU、wheel 和 scan 发布 `SensorHealth`，覆盖 timing/stale/delay、wheel freeze、IMU bias 与 Lidar sector blindness。
+- `health_evaluator` 将健康输出与 `FaultStatus` 真值对齐，输出混淆矩阵、检测延迟和分类结果；`phase6_health_evaluation.launch.py` 组合阶段 5/6 链路。
+- Lidar 统一链评价为 `event_count=1`、检测延迟约 `0.6 s`、F1 约 `0.96`。2026-08-05 全工作空间构建完成 7 个包，测试为 249 项、0 错误、0 失败、1 项跳过。
+
+### 当前边界
+
+- 统一 Launch 的 `evaluator_output_json` 命令行覆盖仍不视为可靠；`health_evaluator.yaml` 固定 `/tmp/phase6_health_evaluation.json` 作为可运行回退。
+- 自适应融合、容错导航、Nav2、SLAM、PointCloud2、RGB-D 故障和真实硬件实验仍未实现。
+
 ## 2026-08-03 — 阶段 5 可复现故障注入闭环收尾
 
 ### 当前事实
