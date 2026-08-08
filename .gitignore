@@ -40,6 +40,7 @@ compile_commands.json
 Thumbs.db
 
 # Runtime and local-only files
+experiments/camera_bags/
 *.log
 *.bag
 *.db3

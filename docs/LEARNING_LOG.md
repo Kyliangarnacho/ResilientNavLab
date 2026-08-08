@@ -2,6 +2,79 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-09 — 阶段 7.1 C920 相机集成收尾
+
+### 当前事实
+
+- C920 已通过 WSL/USBIP + `usb_cam` 接入 ROS 2；正式链为 `/dev/video0` → `/camera/c920/image_raw`，采用 MJPG、1280×720、15 FPS request 和 `mmap`。
+- 旧 K/D 已复用验证；正式 ROS `CameraInfo`、`image_proc` 去畸变至 `/camera/c920/image_rect` 和 `rectification_probe` 均已通过。
+- 已录制 `/camera/c920/image_raw`、`/camera/c920/camera_info` 和 `/camera/c920/image_rect`，并完成无相机 rosbag 回放验证。
+
+### 当前技术债
+
+- WSL USB/IP 下仍偶发闪帧、帧率波动和图像偏暗；本阶段只记录，不修改驱动、采集参数或图像处理逻辑。
+
+## 2026-08-09 — 阶段 7.1 C920 CameraInfo 运行时链与可选去畸变准备
+
+### 当前事实
+
+- `c920.launch.py` 新增 `enable_rectification` 参数，默认 `false`，因此现有 `/camera/c920/image_raw` 采集链不变。设为 `true` 时，`image_proc/rectify_node` 在 `/camera/c920` 命名空间订阅 `image_raw` 与同命名空间 CameraInfo，并输出 `/camera/c920/image_rect`。
+- 新增 `rectification_probe`：同时订阅 raw、rect 与 `/camera/c920/camera_info`，检查 1280×720、`c920_camera_optical_frame`、非零时间戳、K/D/R/P 与正式 YAML 一致性、raw/rect 同 stamp 配对，以及两路实际接收帧率；它不读取图像 payload、不做视觉算法也不保存图像。
+- 包清单声明 `image_proc` 运行依赖，`setup.py` 注册 `rectification_probe`。包级构建成功，19 项自动测试均通过；安装区和 `ros2 launch ... --show-args` 确认 CameraInfo URL 默认值和 `enable_rectification=false`。
+
+### 当前边界
+
+- 当前环境中没有 `/dev/video0`，且 `image_proc` 尚未安装；因此本轮没有启动相机或去畸变节点，不能把静态参数链写成 CameraInfo 已在运行时加载或 `image_rect` 已实际发布。
+- 没有安装依赖、修改采集参数、生成新标定、覆盖 raw 图像、保存图像、使用 rosbag 或发布 TF。
+
+## 2026-08-09 — C920 正式 ROS CameraInfo 接入
+
+### 当前事实
+
+- `resilient_nav_camera/config/c920_camera_info.yaml` 新增为 ROS camera_calibration 格式的正式资源：1280×720、`plumb_bob`、旧文件中未改动的 3×3 K 和 5 参数 D、单位 rectification `R` 与 `[K|0]` projection `P`。
+- `c920.yaml` 声明 `camera_name=c920` 和包内 `camera_info_url`；`c920.launch.py` 以相同的 `package://resilient_nav_camera/config/c920_camera_info.yaml` 默认值显式传给 `usb_cam`，可通过 Launch 参数覆盖 URL。`/camera/c920/image_raw`、MJPG、1280×720、15 FPS、`mmap` 与 `c920_camera_optical_frame` 均未变。
+- 包级构建成功；14 项自动测试通过。安装区 YAML 的 K/D、`R`、`P` 和 `camera_info_url` 已通过只读语义检查；本次没有重跑硬件采集或声称新的动态 CameraInfo 证据。
+
+### 当前边界
+
+- 没有加入 `image_proc`、新 TF、其他 ROS 包或新的标定求解；没有覆盖、生成或保存新的内参。
+- C920 长期采集稳定性与 WSL USB/IP/MJPEG 问题仍按既有记录处理，未修改驱动或采集参数。
+
+## 2026-08-09 — C920 旧内参临时复用验证器
+
+### 当前事实
+
+- `resilient_nav_camera` 新增 `calibration_reuse_validator`，可用 `ros2 run resilient_nav_camera calibration_reuse_validator` 启动；它只读 `/tmp/camera_params_old.yaml` 中的 OpenCV `camera_matrix` 与 `dist_coeffs`，不保存、覆盖或更新 K/D。
+- 验证器订阅 `/camera/c920/image_raw`，固定使用 5×7 ChArUco、`DICT_5X5_100`、square `0.0288 m` 和 marker `0.0144 m`。它自动拒绝角点不足、连续帧运动过快以及 X/Y/Size/Skew 覆盖重复的候选帧。
+- 每个接受 Pose 按排序后的 ChArUco ID 交替确定性划分 pose-fit 和 holdout；只用 pose-fit 与旧 K/D 执行 `solvePnP`，并仅以 holdout 角点计算重投影 RMSE。默认目标为 40 个差异 Pose，运行中输出接受数量、holdout RMSE 和覆盖值，结束时输出误差统计与覆盖范围。
+- 所有采样门限都通过 ROS 参数暴露。包级 `colcon build --symlink-install --packages-select resilient_nav_camera` 成功，13 项自动测试均通过；没有运行新的硬件采样验证。
+
+### 当前边界
+
+- 本工具只用于评估旧内参是否可复用，不产生新标定、不覆盖 `CameraInfo`、不使用 `image_proc`、不发布 TF，也不代表已经完成相机标定或真实硬件定位。
+- WSL USB/IP dropped buffers、MJPEG decode error 与实际帧率抖动仍只记录，未借本工具修改驱动或采集参数。
+
+## 2026-08-08 — C920 硬件采集与元数据探针基线
+
+### 当前事实
+
+- 新增 `ament_python` 包 `resilient_nav_camera`，工作空间当前共 8 个包。它包含 C920 的 `usb_cam` 参数、`c920.launch.py` 与 `c920_probe`。
+- `c920.yaml` 固定 `/dev/video0`、MJPG（`usb_cam` 参数为 `mjpeg2rgb`）、`1280x720`、`15 FPS`、`mmap` 和 `c920_camera_optical_frame` frame ID；没有写入标定 URL 或任何假标定参数。
+- Launch 在 `/camera/c920` 命名空间启动 `usb_cam_node_exe`，发布 `/camera/c920/image_raw`，并启动订阅该绝对话题的探针。
+- 探针不访问 Image 的 `data` 字段，以 `time.monotonic_ns()` 统计接收帧率及平均/最小/最大帧间隔；它逐帧检查 width、height、encoding、step、frame_id 和 header stamp 是否倒退，每 5 秒输出摘要。
+- `colcon build --symlink-install --packages-select resilient_nav_camera` 成功；包级 8 项测试均通过。首次限时硬件启动摘要为 54 帧、`13.260 Hz`、平均/最小/最大帧间隔约 `75.416/32.756/168.427 ms`，图像元数据为 `1280x720`、`rgb8`、step `3840`、`camera_c920`，mismatch 和 stamp regression 均为 0。清理修复后的第二次限时启动输出 36 帧、`9.423 Hz`，探针正常结束且无 traceback。
+
+### 问题与处理
+
+- 首次包级测试的 `ament_flake8` 报告 4 项引号和 import 顺序问题。定位到摘要 f-string 与测试 import 排序后修改，重新构建并测试通过。
+- 首次受限沙箱内启动被 ROS 2 Launch 日志目录的只读限制阻断。将本次日志定向到 `/tmp` 后在受限环境外完成限时验证；没有留下 `usb_cam_node_exe`、`c920_probe` 或 Launch 进程。
+- `usb_cam` 在未配置标定时按其默认行为查询不存在的默认标定文件；本包没有伪造或提供标定参数。摘要后还出现少量 MJPEG 解码错误，因此当前证据仅证明短时链路、话题和元数据检查可运行，不能作为长期稳定性结论。
+
+### 当前边界
+
+- 本次没有实现标定、`image_proc`、TF、rosbag、相机故障模型或真实硬件定位。
+- C920 是独立硬件采集接口；没有接入现有虚拟机器人、Gazebo、EKF、健康评估、自适应融合或容错导航链路。
+
 ## 2026-08-05 — 阶段 6 传感器健康评估收尾
 
 ### 当前事实

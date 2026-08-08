@@ -2,9 +2,9 @@
 
 ## 核验信息
 
-- 最近核验日期：2026-08-05
+- 最近核验日期：2026-08-08
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 6 已完成；阶段 6 已建立健康监测、真值评价、统一 Launch 和 JSON 结果输出
+- 当前阶段：阶段 0 至阶段 6 和阶段 7.1 已完成；阶段 7.1 完成 C920 独立采集、CameraInfo、去畸变和 rosbag 回放闭环
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -26,7 +26,7 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor`、`resilient_nav_simulation`、`resilient_nav_description`、`resilient_nav_localization`、`resilient_nav_interfaces`、`resilient_nav_fault_injection`、`resilient_nav_health_assessment` | 7 包构建、自动测试和运行发现验证通过 |
+| 项目 ROS 2 包 | `resilient_nav_monitor`、`resilient_nav_simulation`、`resilient_nav_description`、`resilient_nav_localization`、`resilient_nav_interfaces`、`resilient_nav_fault_injection`、`resilient_nav_health_assessment`、`resilient_nav_camera` | 8 包可构建；新相机包的 8 项自动测试通过并可由 ROS 2 发现 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
@@ -34,6 +34,7 @@
 | 接口包 | `resilient_nav_interfaces`（`ament_cmake`） | `FaultStatus` 消息生成和依赖包构建验证通过 |
 | 故障注入包 | `resilient_nav_fault_injection`（`ament_python`） | IMU/wheel/Lidar 注入器、统一 Launch、faulted EKF、probe、RViz、bag 工具和测试验证通过 |
 | 健康评估包 | `resilient_nav_health_assessment`（`ament_python`） | IMU/wheel/scan 健康监测、`health_evaluator`、阶段 6 Launch、JSON 输出和运行级参数服务测试验证通过 |
+| 相机包 | `resilient_nav_camera`（`ament_python`） | C920 `usb_cam` 基线、正式 CameraInfo、旧 K/D 复用验证、`image_proc` 去畸变、`/camera/c920` Launch、探针及相机 rosbag 无硬件回放已通过 |
 | `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
 | ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` `1.0.22` | `/clock` 与阶段 3 基础运动话题的定向 bridge 已验证 |
@@ -222,7 +223,7 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `--symlink-install` 尽可能在 `install/` 中建立指向源码或构建产物的符号链接，便于 Python 和资源文件修改后的快速迭代；构建系统或安装规则变化后仍应重新构建。
 - `source /opt/ros/jazzy/setup.bash` 加载 ROS 2 及其 vendor 环境；`source ros2_ws/install/setup.bash` 再把当前工作空间叠加到环境中。`source` 只改变当前 shell，不执行构建，也不会自动影响其他已打开的 shell。
 
-当前工作空间包含七个包：
+当前工作空间包含八个包：
 
 - `resilient_nav_monitor`：阶段 1 的心跳节点和阶段 3 的 odom TF 广播节点。
 - `resilient_nav_simulation`：阶段 2 的 Gazebo 世界、桥接，以及阶段 3 的生成、Demo Launch、RViz 资源和运动测试工具。
@@ -231,6 +232,18 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `resilient_nav_interfaces`：阶段 5 的 `FaultStatus` 消息接口。
 - `resilient_nav_fault_injection`：阶段 5 的故障模型、注入器、场景、统一 Launch、faulted EKF 配置、probe、RViz 和 bag 工具。
 - `resilient_nav_health_assessment`：阶段 6 的健康监测、真值评价、配置、Launch 和测试。
+- `resilient_nav_camera`：C920 的 `usb_cam` 参数、正式 CameraInfo YAML、可选 `image_proc` 去畸变、启动入口、不解码 Image payload 的接收时序/元数据探针，以及临时旧 K/D ChArUco 复用验证器。
+
+## C920 硬件采集基线
+
+- `resilient_nav_camera/config/c920.yaml` 固定 `/dev/video0`、MJPG（`usb_cam` 的 `mjpeg2rgb`）、`1280x720`、`15 FPS` 与 `mmap`，并以 `package://resilient_nav_camera/config/c920_camera_info.yaml` 作为 `usb_cam` 的 `camera_info_url`。
+- `c920.launch.py` 在 `/camera/c920` 命名空间启动 `usb_cam_node_exe`，因此其原始图像话题为 `/camera/c920/image_raw`，并同时启动 `c920_probe`。
+- `c920_probe` 只读取 Image 的接收时刻、width、height、encoding、step、frame_id 和 header stamp；以 `time.monotonic_ns()` 累积帧率和平均/最小/最大帧间隔，每 5 秒输出一次摘要。
+- `c920_camera_info.yaml` 是 1280×720 的 ROS camera_calibration 格式文件，使用旧文件中未改动的 5 参数 K/D、`plumb_bob`、单位 `R` 和 `[K|0]` 的 `P`；Launch 把同一默认 URL 显式传给 `usb_cam`，用户可用 `camera_info_url:=...` 覆盖。
+- `c920.launch.py` 的 `enable_rectification` 默认 `false`；设为 `true` 时会在 `/camera/c920` 命名空间启动 `image_proc/rectify_node`，把相对 `image` 输入重映射为 `image_raw`，标准输出为 `/camera/c920/image_rect`，并启动只检查元数据、时间戳配对和收帧率的 `rectification_probe`。它不改变 `/camera/c920/image_raw`，也不发布 TF。
+- 阶段 7.1 已在 C920 上验证正式 CameraInfo 与 `image_proc` 去畸变链；`rectification_probe` 检查通过。已录制 `/camera/c920/image_raw`、`/camera/c920/camera_info` 和 `/camera/c920/image_rect`，并在无相机条件下完成回放验证。
+- `calibration_reuse_validator` 只读 `/tmp/camera_params_old.yaml` 的 OpenCV `camera_matrix` 与 `dist_coeffs`，在 `/camera/c920/image_raw` 上检测固定 5×7、`DICT_5X5_100`、square `0.0288 m`、marker `0.0144 m` 的 ChArUco；它以确定性 pose-fit/holdout 划分报告旧 K/D 的 holdout 重投影误差，不保存或发布标定数据。
+- 当前已知技术债：WSL USB/IP 下仍偶发闪帧、帧率波动和图像偏暗；本阶段如实记录，未修改驱动、传输或图像处理参数。
 
 ## 阶段 5 故障注入闭环
 
@@ -372,4 +385,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价。完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合和容错导航仍未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价；阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 rosbag 回放。完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合和容错导航仍未实现。
