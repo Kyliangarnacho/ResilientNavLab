@@ -63,6 +63,10 @@ setup(
                 'phase5_replay_bag = '
                 'resilient_nav_fault_injection.phase5_replay_bag:main'
             ),
+            (
+                'manual_fault_event = '
+                'resilient_nav_fault_injection.manual_fault_event:main'
+            ),
         ],
     },
 )

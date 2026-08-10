@@ -4,5 +4,8 @@ health_evaluator:
     imu_health_topic: /health/imu
     wheel_health_topic: /health/wheel
     scan_health_topic: /health/scan
+    # Empty preserves the completed phase 6 three-sensor behavior. Set this
+    # to /health/camera only for an explicitly requested camera evaluation.
+    camera_health_topic: ''
     fault_status_topic: /fault_injection/status
     output_json_path: /tmp/phase6_health_evaluation.json

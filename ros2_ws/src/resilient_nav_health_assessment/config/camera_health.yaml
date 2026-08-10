@@ -1,0 +1,65 @@
+camera_health_monitor:
+  ros__parameters:
+    # Phase 7.2 frozen evaluation config.  These values are fixed for the
+    # completed phase's reproducible evaluation, not universal production
+    # calibration or permission to alter C920 controls.
+    use_sim_time: false
+    image_topic: /camera/c920/image_raw
+    health_topic: /health/camera
+    publish_rate_hz: 5.0
+
+    # The five-session baseline observed 8.22--14.43 FPS and a 0.382 s
+    # maximum gap.  This 1.0 s timeout leaves substantial measured margin;
+    # it is deliberately not derived from the requested 15 FPS setting.
+    window_duration_sec: 3.0
+    min_samples: 3
+    stale_timeout_sec: 1.0
+
+    # Development v1 uses exact canonical-frame fingerprint equality only.
+    # These are conservative development durations, not final freeze
+    # thresholds.  Real freeze experiments are still required.
+    freeze_duration_sec: 2.0
+    fault_confirmation_sec: 0.6
+    recovery_confirmation_sec: 1.0
+
+    # Development underexposure v1: all three conditions must hold together.
+    # The values separate the severe underexposure development run from the
+    # five-session baseline, including its healthy black-keyboard samples.
+    # They are conservative development thresholds, not frozen final values.
+    dark_mean_gray_candidate: 6.0
+    dark_p95_candidate: 8.0
+    dark_ratio_candidate: 0.90
+
+    # Development overexposure v1: these three values must hold together.
+    # bright_ratio is intentionally excluded because the development run
+    # remained near zero.  Values cover only obvious whole-frame brightness.
+    bright_mean_gray_candidate: 170.0
+    bright_p05_candidate: 150.0
+    bright_p95_candidate: 180.0
+
+    # Retained as observational evidence only; not part of overexposure v1.
+    bright_ratio_candidate: 0.95
+
+    # Development blur v1 requires a recent textured reference, simultaneous
+    # Laplacian/edge collapse, and enough remaining intensity information.
+    # This avoids treating naturally blank or low-texture scenes as blur.
+    blur_reference_max_age_sec: 3.0
+    blur_reference_laplacian_variance_min: 100.0
+    blur_reference_edge_density_min: 0.01
+    blur_laplacian_variance_candidate: 10.0
+    blur_edge_density_candidate: 0.001
+    blur_gray_std_min: 20.0
+    blur_entropy_min: 5.5
+
+    # Development low-information v1 requires a recent usable-information
+    # reference, then simultaneous edge collapse, lower entropy, appreciable
+    # dark area, and retained gray variation.  This models loss of usable
+    # spatial/texture information, not a claim that occlusion is the cause.
+    # These are conservative development values, not final frozen thresholds.
+    low_information_reference_max_age_sec: 3.0
+    low_information_reference_edge_density_min: 0.01
+    low_information_reference_entropy_min: 5.2
+    low_information_edge_density_candidate: 0.0005
+    low_information_entropy_candidate: 5.8
+    low_information_dark_ratio_min: 0.20
+    low_information_gray_std_min: 20.0

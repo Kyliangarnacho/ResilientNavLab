@@ -16,6 +16,8 @@
   <exec_depend>image_proc</exec_depend>
   <exec_depend>python3-numpy</exec_depend>
   <exec_depend>python3-opencv</exec_depend>
+  <exec_depend>resilient_nav_health_assessment</exec_depend>
+  <exec_depend>rqt_image_view</exec_depend>
   <exec_depend>usb_cam</exec_depend>
 
   <test_depend>ament_flake8</test_depend>

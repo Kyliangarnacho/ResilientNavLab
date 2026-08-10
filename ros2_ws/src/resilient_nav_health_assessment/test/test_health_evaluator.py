@@ -4,6 +4,7 @@ import json
 
 from builtin_interfaces.msg import Time
 from resilient_nav_health_assessment.health_evaluator import (
+    FAULT_CLASSIFICATIONS,
     HealthEvaluationAccumulator,
 )
 from resilient_nav_interfaces.msg import FaultStatus, SensorHealth
@@ -131,6 +132,7 @@ def test_complete_missed_event_is_settled_on_ended():
     assert event['first_alarm_time_sec'] is None
     assert event['detection_delay_sec'] is None
     assert event['positive_health_samples'] == 1
+    assert event['recovery']['observed'] is None
 
 
 def test_fault_classification_mapping_and_mismatch():
@@ -150,6 +152,150 @@ def test_fault_classification_mapping_and_mismatch():
     assert events['delay']['classification']['matched'] is True
     assert events['drop']['classification']['expected'] == 'stale'
     assert events['drop']['classification']['matched'] is False
+
+
+def test_camera_truth_models_map_to_camera_health_labels():
+    assert {
+        model: FAULT_CLASSIFICATIONS[model]
+        for model in (
+            'stream_stop',
+            'freeze',
+            'underexposure',
+            'overexposure',
+            'blur',
+            'occlusion',
+        )
+    } == {
+        'stream_stop': 'stale',
+        'freeze': 'freeze',
+        'underexposure': 'underexposed',
+        'overexposure': 'overexposed',
+        'blur': 'blurred',
+        'occlusion': 'low_information',
+    }
+
+
+def test_camera_anomaly_detection_is_separate_from_exact_classification():
+    accumulator = HealthEvaluationAccumulator(
+        sensors=('imu', 'wheel', 'scan', 'camera')
+    )
+    activate(
+        accumulator,
+        event_id='camera_dark',
+        sensor='camera',
+        model='underexposure',
+    )
+    accumulator.record_health(health(
+        sensor='camera',
+        state=SensorHealth.FAULT,
+        at=11.0,
+        fault='stale',
+    ))
+
+    result = accumulator.result()
+    event = result['events'][0]
+
+    assert result['sensors']['camera']['tp'] == 1
+    assert event['anomaly_detection']['detected'] is True
+    assert event['classification']['expected'] == 'underexposed'
+    assert event['classification']['exact_match'] is False
+    assert event['classification']['all_alarms_exact'] is False
+
+
+def test_camera_exact_classification_can_match_after_detection():
+    accumulator = HealthEvaluationAccumulator(
+        sensors=('imu', 'wheel', 'scan', 'camera')
+    )
+    activate(
+        accumulator,
+        event_id='camera_freeze',
+        sensor='c920',
+        model='freeze',
+    )
+    accumulator.record_health(health(
+        sensor='camera',
+        state=SensorHealth.DEGRADED,
+        at=11.0,
+        fault='freeze',
+    ))
+
+    event = accumulator.result()['events'][0]
+
+    assert event['sensor'] == 'camera'
+    assert event['anomaly_detection']['detected'] is True
+    assert event['classification']['exact_match'] is True
+    assert event['classification']['all_alarms_exact'] is True
+
+
+def test_camera_event_json_covers_detection_recovery_classification_and_counts():
+    accumulator = HealthEvaluationAccumulator(
+        sensors=('imu', 'wheel', 'scan', 'camera')
+    )
+    accumulator.record_health(health(sensor='camera', at=5.0))
+    activate(
+        accumulator,
+        event_id='camera_complete',
+        sensor='camera',
+        model='freeze',
+        start=10.0,
+        end=20.0,
+    )
+    accumulator.record_health(health(sensor='camera', at=10.5))
+    accumulator.record_health(health(
+        sensor='camera',
+        state=SensorHealth.FAULT,
+        at=12.25,
+        fault='freeze',
+    ))
+    end(
+        accumulator,
+        event_id='camera_complete',
+        sensor='camera',
+        model='freeze',
+        start=10.0,
+        end=20.0,
+    )
+    accumulator.record_health(health(
+        sensor='camera',
+        state=SensorHealth.FAULT,
+        at=20.5,
+        fault='freeze',
+    ))
+    accumulator.record_health(health(sensor='camera', at=22.0))
+
+    result = accumulator.result()
+    event = result['events'][0]
+    counts = result['sensors']['camera']
+
+    assert event['anomaly_detection']['detected'] is True
+    assert event['detection_delay_sec'] == 2.25
+    assert event['classification']['exact_match'] is True
+    assert event['recovery']['observed'] is True
+    assert event['recovery_time_sec'] == 22.0
+    assert event['recovery_delay_sec'] == 2.0
+    assert event['recovery']['first_healthy_time_sec'] == 22.0
+    assert counts['tp'] == 1
+    assert counts['fp'] == 1
+    assert counts['fn'] == 1
+    assert counts['tn'] == 2
+
+
+def test_recovery_is_not_claimed_before_a_post_event_healthy_sample():
+    accumulator = HealthEvaluationAccumulator()
+    activate(accumulator, event_id='pending_recovery')
+    accumulator.record_health(health(
+        state=SensorHealth.FAULT, at=11.0, fault='bias'
+    ))
+    end(accumulator, event_id='pending_recovery')
+    accumulator.record_health(health(
+        state=SensorHealth.FAULT, at=21.0, fault='bias'
+    ))
+
+    event = accumulator.result()['events'][0]
+
+    assert event['recovery']['observed'] is False
+    assert event['recovery_time_sec'] is None
+    assert event['recovery_delay_sec'] is None
 
 
 def test_duplicate_statuses_do_not_duplicate_an_event():

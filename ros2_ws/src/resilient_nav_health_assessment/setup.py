@@ -18,7 +18,7 @@ setup(
         (os.path.join('share', package_name, 'config'),
             glob(os.path.join('config', '*.yaml'))),
     ],
-    install_requires=['setuptools'],
+    install_requires=['numpy', 'setuptools'],
     zip_safe=True,
     maintainer='Kylian',
     maintainer_email='296032282@qq.com',
@@ -38,6 +38,36 @@ setup(
             (
                 'health_evaluator = '
                 'resilient_nav_health_assessment.health_evaluator:main'
+            ),
+            (
+                'camera_health_feature_demo = '
+                'resilient_nav_health_assessment.camera_health_feature_demo:main'
+            ),
+            (
+                'camera_health_calibrate = '
+                'resilient_nav_health_assessment.camera_health_calibrate:main'
+            ),
+            (
+                'camera_health_baseline_report = '
+                'resilient_nav_health_assessment.'
+                'camera_health_baseline_report:main'
+            ),
+            (
+                'camera_fault_feature_report = '
+                'resilient_nav_health_assessment.'
+                'camera_fault_feature_report:main'
+            ),
+            (
+                'camera_health_monitor = '
+                'resilient_nav_health_assessment.camera_health_monitor:main'
+            ),
+            (
+                'camera_freeze_source = '
+                'resilient_nav_health_assessment.camera_freeze_source:main'
+            ),
+            (
+                'camera_health_watch = '
+                'resilient_nav_health_assessment.camera_health_watch:main'
             ),
         ],
     },

@@ -28,6 +28,7 @@ def test_phase6_launch_declares_and_forwards_required_arguments():
         'use_rviz',
         'record_bag',
         'evaluator_output_json',
+        'camera_health_topic',
     ]:
         assert f"'{argument}'" in launch_source
     assert "'scenario_file': scenario_file" in launch_source

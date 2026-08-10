@@ -14,6 +14,9 @@ def create_health_evaluator(context, *args, **kwargs):
         get_package_share_directory('resilient_nav_health_assessment')
     )
     output_json_path = LaunchConfiguration('evaluator_output_json').perform(context)
+    camera_health_topic = LaunchConfiguration('camera_health_topic').perform(
+        context
+    )
     return [
         Node(
             package='resilient_nav_health_assessment',
@@ -25,6 +28,7 @@ def create_health_evaluator(context, *args, **kwargs):
                 {
                     'use_sim_time': True,
                     'output_json_path': output_json_path,
+                    'camera_health_topic': camera_health_topic,
                 },
             ],
         )

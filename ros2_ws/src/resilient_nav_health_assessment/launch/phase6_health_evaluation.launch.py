@@ -78,6 +78,13 @@ def generate_launch_description():
             default_value='/tmp/phase6_health_evaluation.json',
             description='Path written by health_evaluator when the launch stops.',
         ),
+        DeclareLaunchArgument(
+            'camera_health_topic',
+            default_value='',
+            description=(
+                'Optional camera SensorHealth topic; empty preserves phase 6.'
+            ),
+        ),
         SetParameter(name='use_sim_time', value=True),
         phase5_fault_injection,
         health_monitor,

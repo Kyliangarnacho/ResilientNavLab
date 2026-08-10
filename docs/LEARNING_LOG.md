@@ -2,6 +2,67 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-10 — 阶段 7.2 C920 baseline 与 camera health monitor v1
+
+### 当前事实
+
+- 实机只读执行 `v4l2-ctl --device /dev/video0 --list-ctrls-menus`，记录曝光、gain、白平衡、对焦、brightness、contrast、sharpness 等当前值；未执行控制写操作，完整结果见 `docs/PHASE7_2_CAMERA_CONTROLS_BASELINE.md`。
+- `resilient_nav_health_assessment` 新增不依赖 ROS 的 `camera_health_features.py`，对常见 NumPy 灰度、RGB/BGR 和四通道图像输出灰度统计、分位数、暗亮比例、Laplacian 方差、边缘密度、熵、帧差和确定性帧指纹。
+- 新增 `camera_health_feature_demo`，自动构造纯黑、纯白、均匀灰、灰度渐变、清晰棋盘、高斯模糊棋盘、重复帧和轻微变化帧，只调用既有特征 API 并打印紧凑对照表，不接入 ROS topic。
+- `camera_health_calibrate` 现支持 `scenario_label` 和 `session_id`；每条 CSV 样本及 JSON 都保留场景/session 元数据。同一 baseline 根目录可容纳多个独立 session 子目录，自动 ID 使用 UTC 微秒时间，显式同名 ID 会拒绝启动而不覆盖旧数据。
+- 新增纯分析 `camera_health_baseline_report`：扫描多个 session，输出全局和按 `scenario_label` 分组的 FPS、interarrival、max gap、亮度、Laplacian variance、edge density、entropy 和 frame difference 描述统计，同时生成 `baseline_report.json` 与终端表格。
+- 读取 5-session `baseline_report.json`：共 3560 帧，observed FPS 为 `8.22--14.43 Hz`，全局 interarrival p95/p99 约 `0.158/0.249 s`，最大正常 gap 约 `0.382 s`。
+- 新增 `camera_health_monitor`，默认订阅 `/camera/c920/image_raw`，复用现有特征和阶段 6 的通用 `HealthDecision`/`SensorHealth` 构造，以固定 `5 Hz` 发布 `/health/camera`。
+- 初版正式故障为 stale 和 exact-fingerprint freeze；后续加入保守 underexposed/overexposed/blurred/low-information v1。stale 在停止收图时优先；所有候选、确认和恢复均按持续时间，不依赖固定帧数。
+- underexposed 同时要求 `mean_gray<=6`、`p95<=8`、`dark_ratio>=0.90`。ACTIVE 开发汇总 `4.035/5.506/0.946` 满足规则；健康黑键盘最低 `p95=10.545` 不满足，健康近黑启动两帧仅持续约 `0.063 s`，再由 `0.6 s` confirmation 排除。
+- overexposed 同时要求 `mean_gray>=170`、`p05>=150`、`p95>=180`。ACTIVE 开发汇总 `183.974/175.070/188.091` 满足；健康 baseline 的 mean 最大约 `163.255`、p05 最大约 `64.620`，局部高光产生的高 p95 不足以触发。bright ratio 不进入正式规则。
+- blurred 要求近期 reference 同时满足 `Laplacian>=100`、`edge_density>=0.01`，当前同时降到 `<=10`、`<=0.001`，且 `gray_std>=20`、`entropy>=5.5`。blur pre/ACTIVE 为 `309.680/0.028` 与 `6.853/0.000`；低纹理 baseline 无法建立 reference。
+- low-information v1 先要求最近 `3.0 s` 内有 `edge_density>=0.01 && entropy>=5.2` 的可用 reference，再要求当前 `edge_density<=0.0005 && entropy<=5.8 && dark_ratio>=0.20 && gray_std>=20`；遮挡 ACTIVE 汇总满足该组合，而健康低纹理场景不能建立 reference。bright ratio 在本次数据中接近零，不进入规则。
+- development 参数为 stale `1.0 s`、freeze `2.0 s`、fault confirmation `0.6 s`、recovery `1.0 s`；low-information 复用同一 confirmation/recovery 时间结构。
+- `health_score` 表示规则下当前数据健康程度；`confidence` 表示对当前状态判断的确定程度。二者由样本充分度、confirmation/recovery 进度和可解释 evidence 直接计算，不使用机器学习。
+- 5 秒真实 C920 验证采集 54 帧、0 次转换错误，observed FPS 约 `11.0`；interarrival p50/p95/p99 约 `0.066/0.189/0.229 s`，max gap 约 `0.264 s`。该结果只验证短时链路，不作为健康阈值。
+- 单元测试覆盖纯黑、纯白、纹理、模糊、低纹理、重复帧、不同帧、常见通道布局、浮点输入和错误输入。
+- 仅构建 `resilient_nav_health_assessment` 成功；安装区可发现 demo、采集、report 和 monitor。包级测试最终汇总为 125 项、0 错误、0 失败、0 跳过；monitor 新增 15 项覆盖正常流、stale、freeze、stamp 不前进、静止微变化、confirmation、连续 recovery、8--15 Hz 波动、视觉 candidate、配置和 Launch。
+- 无相机短时动态验证中，节点正常启动并持续发布 `/health/camera`；超过 development timeout/confirmation 后输出 `state=FAULT`、`detected_fault=stale`、`health_score=0.0`、`confidence=1.0`，Ctrl-C 后 cleanly 退出。
+- stale 已由用户在真实 C920 链路完成实机触发与恢复验证；本次 freeze 专项工作没有调整 camera monitor 状态机或参数。
+- 新增 `camera_freeze_source`：第一张有效真实 Image 到达后只缓存其完整像素与必要 metadata，默认以 `10 Hz` 向独立 `/test/camera/image_frozen` 发布像素完全相同、当前 ROS stamp 持续前进的副本；源输出同名或频率非法会拒绝启动，未获得有效源图像时不发布。
+- 新增纯显示 `camera_health_watch`：在 `state`/`detected_fault` 变化时立即输出，状态不变时默认每 `5 s` 输出；单行包含 score、confidence、message age、rolling FPS、fingerprint identical duration、confirmation 和 recovery，且不产生任何判定。
+- 新增 13 项 freeze source/watch/resource 测试；目标包构建成功，安装区可发现两个新入口，完整包级测试最终为 138 项、0 错误、0 失败、0 跳过。
+- 新增真正的 freeze runtime 集成测试：测试代码发布有效 `rgb8` Image，经 `camera_freeze_source` 和独立 frozen topic 进入未修改的 camera monitor；验证持续消息、像素一致、stamp 前进、metadata、最终 `FAULT/freeze` 以及全程无 stale 抢占。
+- `resilient_nav_fault_injection` 新增 `manual_fault_event`，复用既有 `FaultStatus`，只发布 SCHEDULED/ACTIVE/ENDED 人工真值时间窗，不修改相机或 health 数据；unit/runtime 测试均验证自动状态进展。
+- `health_evaluator` 增加默认关闭的 `camera_health_topic`。camera 映射覆盖 stream_stop/freeze/underexposure/overexposure/blur/occlusion；事件结果显式区分 anomaly detected 与 exact classification match，同时保留阶段 6 所有旧字段和默认三传感器集合。
+- 真值/evaluator 基础设施完成时包级测试为 `resilient_nav_fault_injection` 142 项和 `resilient_nav_health_assessment` 144 项，均通过。
+- `resilient_nav_camera` 新增 `phase7_2_camera_health.launch.py`：原样 Include 阶段 7.1 C920 Launch，并启动 monitor；evaluator/watch 由条件控制，manual event 明确不自动启动。默认 source 为 raw，health 固定发布 `/health/camera`。
+- evaluator 审计确认 detection delay、anomaly detected、exact classification 和 TP/FP/FN/TN 已存在；最小补充事件 ENDED 后第一条 HEALTHY 的 recovery time/delay，不改变旧计数语义。
+- 联合 Launch runtime 测试关闭 camera 分支，确认 monitor 的 source/config、evaluator 的 camera topic/JSON、watch topic 和 use_sim_time 实际传递；关闭 evaluator/watch 时两个节点均不存在，未访问 `/dev/video0`。
+- 本轮最终完整测试为 `resilient_nav_camera` 26 项、`resilient_nav_health_assessment` 146 项，均为 0 错误、0 失败、0 跳过；阶段 7.1 原 Launch/配置测试和阶段 6 测试全部通过。
+- `camera_health_calibrate` 增加默认关闭的 truth 模式；开启时仅在特征计算后给样本附加 FaultStatus 标签，并把状态 transition 写入 summary。普通 baseline 新 truth 列为空，既有多 session report 继续通过。
+- camera truth 状态变化触发 before/fault/after 三份额外 controls 文件；before 复用启动只读快照，ACTIVE/ENDED 重新执行只读 list controls，未增加 V4L2 写操作。
+- 新增纯离线 `camera_fault_feature_report`，用默认 `2.0 s` margin 严格排除 ACTIVE/ENDED 边界两侧样本，输出三个阶段、三个视觉 family 的描述统计与 p05–p95 candidate interval，明确不是阈值。
+- 最新 health assessment 构建成功，完整包级测试为 171 项、0 错误、0 失败、0 跳过；truth isolation、underexposure、overexposure、blurred、low-information、stale、freeze 和阶段 6 回归均通过。
+
+### 问题与处理
+
+- 受限设备命名空间内看不到 `/dev/video0`；改在获准的宿主环境执行同一条只读查询后成功取得真实控制状态。
+- 初版低纹理测试图每 8 列存在一次灰度回绕，导致离散 Laplacian 方差高于过严的近零预期；确认算法正确后，把测试约束修正为低灰度跨度、低二阶变化且无显著边缘。
+- 从工作空间根目录手动运行 flake8 时混入 build/install 和其他包既有告警；在目标包目录复核后定位并修正本次代码的两处 import 顺序和一个未使用导入。
+- 首次真实 Ctrl+C 验证已成功落盘，但退出后 logger 尝试向已关闭的 rosout context 发布。修正为 context 有效时才记录落盘日志；重复验证后无该错误，三份文件仍齐全且 `stop_reason=keyboard_interrupt`。
+- 当前 C920 画面整体偏暗，既有 `usb_cam` 启动日志显示 runtime brightness=50；两者仅记录为技术债，不在本轮推断因果或调整。运行期快照还会反映自动曝光、增益、白平衡和对焦的变化。新节点调用的 V4L2 命令只有 `--list-ctrls-menus`；文档明确区分驱动/相机自动控制与采集工具只读行为。
+- 上一轮 baseline 扩展初次在受限沙箱复跑既有 runtime launch 测试时，DDS 因 `getifaddrs: Operation not permitted` 无法创建参与者，102 项基线表现为 1 项环境失败；当时在获准环境复跑的 110 项及本轮扩展后的 125 项均全部通过，没有为绕过环境限制修改阶段 6 代码或测试。
+- monitor 首轮 flake8 定位到两处 import 顺序问题，按仓库规则调整后通过。首轮状态测试还把均匀暗灰图误当作“正常纹理”样本，代码正确生成三个视觉 candidate 并降低 score；测试改用确定性纹理图，并用真正均匀图单独验证视觉 candidate 边界。
+- 安装后 `ros2 launch --show-args` 首次因默认 `~/.ros/log` 在受限环境只读而失败；把本次 `ROS_LOG_DIR` 定向到 `/tmp` 后参数解析通过。这不是 Launch 语法错误。
+- freeze 专项完整测试首次在受限网络命名空间得到 137 项通过、1 项既有阶段 6 runtime 失败；日志为 `getifaddrs/socket: Operation not permitted`。在允许 DDS 本机通信的环境原样重跑后 138 项全部通过，没有修改阶段 6 测试或逻辑。
+- 本次首次把两个包的 flake8 测试放在同一 pytest 进程收集，因同名 `test_flake8.py` 产生 import path mismatch；改为按包目录分别运行，不修改测试。freeze runtime 首轮话题含纯数字 PID token，违反 ROS 2 topic 命名规则；改为 `run_<pid>` 后通过。另移除 runtime 测试中的一个未使用 `Path` 导入。
+- 联合 Launch 静态测试首轮只有 3 处双引号不符合包内 flake8 quote 规则；统一为单引号后通过，Launch 实现无需修改。
+- 故障 report 测试首轮仅有一行 100 字符超过包内 99 字符限制；拆行后针对性 39 项和完整 160 项均通过。构建时因当前 shell 已包含同一 workspace install 前缀出现 colcon override 提示，但目标包仍成功构建。
+- underexposure 首轮完整测试在受限网络命名空间得到 162 项通过、1 项既有阶段 6 runtime 失败；日志为 `getifaddrs/socket: Operation not permitted`。在允许 DDS 本机通信的环境重跑最终 164 项全部通过。另一次从仓库根目录单独调用包内 flake8 时误扫 build/install 和其他包；回到目标包目录及 colcon 测试后本包 lint 通过。
+- low-information 首轮完整测试在受限环境得到 168 项通过、2 项 runtime 环境失败：一项因默认 `~/.ros/log` 只读，另一项因 DDS `getifaddrs/socket: Operation not permitted`。将 `ROS_LOG_DIR` 指向 `/tmp` 并在允许本机 DDS 的环境原样复跑后 170 项全部通过；没有修改 runtime 测试或阶段 6 逻辑。
+
+### 当前边界
+
+- 没有修改任何 C920 控制参数或 K/D，没有重复阶段 7.1 相机接入、标定、去畸变或 rosbag 流程。
+- 没有实现新的图像修改型故障模型或通用生产阈值；manual event 只产生现有 FaultStatus 标签。C920 K/D 与阶段 6 旧语义未修改。
+
 ## 2026-08-09 — 阶段 7.1 C920 相机集成收尾
 
 ### 当前事实

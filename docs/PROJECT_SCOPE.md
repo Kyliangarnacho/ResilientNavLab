@@ -48,7 +48,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 ## 4. 当前阶段边界
 
-阶段 0 至阶段 6 以及阶段 7.1 已经完成。阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz，以及轮式里程计与 IMU 的固定字段二维 EKF 基线。阶段 5 已建立可复现故障注入闭环，包含 `FaultStatus` 真值标签、IMU/wheel/Lidar 首批故障模型、统一 Launch、faulted EKF 对照、`fault_probe` JSON 指标、RViz 和 rosbag 记录/回放。阶段 6 已建立 IMU/wheel/scan 的在线健康评估、`health_evaluator` 真值评价和统一 Launch；Lidar 统一链已得到 1 个事件、约 `0.6 s` 检测延迟和约 `0.96` F1。阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、去畸变和 rosbag 无相机回放。现有运动基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
+阶段 0 至阶段 7.2 已经完成。阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz，以及轮式里程计与 IMU 的固定字段二维 EKF 基线。阶段 5 已建立可复现故障注入闭环，包含 `FaultStatus` 真值标签、IMU/wheel/Lidar 首批故障模型、统一 Launch、faulted EKF 对照、`fault_probe` JSON 指标、RViz 和 rosbag 记录/回放。阶段 6 已建立 IMU/wheel/scan 的在线健康评估、`health_evaluator` 真值评价和统一 Launch；Lidar 统一链已得到 1 个事件、约 `0.6 s` 检测延迟和约 `0.96` F1。阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、去畸变和 rosbag 无相机回放。阶段 7.2 已完成 C920 baseline、stale/freeze、保守 underexposed/overexposed/blurred/low-information v1、freeze 自动 runtime 验证、人工 FaultStatus 时间窗和可选 camera evaluator；evaluation config 冻结用于本阶段可复现实验，并非通用生产标定。现有运动基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
 
 当前已完成：
 
@@ -60,6 +60,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **阶段 5：故障注入（已完成）。** 已完成 `resilient_nav_interfaces/FaultStatus`、`resilient_nav_fault_injection`、IMU bias/noise/dropout/fixed_delay、wheel freeze、Lidar sector blindness、统一 `phase5_fault_injection.launch.py`、faulted EKF `/odometry/faulted`、阶段 5 RViz、`fault_probe` 指标和 rosbag 记录/回放闭环。原始健康 topic 保持不覆盖，faulted EKF `publish_tf=false`。
 - **阶段 6：健康评估（已完成）。** 已完成 `resilient_nav_health_assessment` 的 timing/stale/delay、wheel freeze、IMU bias 与 Lidar sector blindness 健康判定，`health_evaluator` 按 `FaultStatus` 输出 JSON 评价，`phase6_health_evaluation.launch.py` 统一阶段 5/6 链路。命令行 `evaluator_output_json` 覆盖仍不作为可靠入口；YAML 固定输出路径为可运行回退。
 - **阶段 7.1：C920 相机集成（已完成）。** 已完成 WSL/USBIP + `usb_cam` 采集、正式 CameraInfo、旧 K/D 复用验证、`image_proc` 去畸变，以及 image_raw / camera_info / image_rect 的 rosbag 无相机回放；WSL USB/IP 下的偶发闪帧、帧率波动和图像偏暗仅记录为技术债。
+- **阶段 7.2：相机健康（已完成）。** 已完成 baseline、monitor v1、自动验证、人工真值、camera evaluator、联合 Launch，以及 truth-labelled 故障特征采集/描述报告。正式故障包含 stale、exact-fingerprint freeze 和保守 underexposed/overexposed/blurred/low-information v1。
 
 当前工作空间已有八个 ROS 2 软件包：
 
@@ -68,9 +69,9 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - `resilient_nav_description`：包含阶段 3 的基础两轮差速机器人 Xacro、Gazebo 原生 DiffDrive / JointStatePublisher 插件、Display Launch 和 RViz 配置，以及阶段 4 的六个固定安装坐标。
 - `resilient_nav_localization`：包含 `robot_localization` EKF 配置、完整阶段 4 启动入口和资源测试。
 - `resilient_nav_interfaces`：包含阶段 5 `FaultStatus` 消息接口。
-- `resilient_nav_fault_injection`：包含阶段 5 故障模型、注入器、场景 YAML、统一 Launch、faulted EKF 配置、probe、RViz、bag 工具和测试。
-- `resilient_nav_health_assessment`：包含阶段 6 健康监测、真值评价、配置、统一 Launch 和测试。
-- `resilient_nav_camera`：包含 C920 的 `usb_cam` 基线配置、正式 CameraInfo YAML、`/camera/c920` Launch、只检查 Image 元数据与到达时间的 `c920_probe`、可选 `image_proc` 去畸变与 `rectification_probe`，以及只读旧 K/D 的临时 ChArUco 复用验证器。
+- `resilient_nav_fault_injection`：包含阶段 5 故障模型、注入器、场景 YAML、统一 Launch、faulted EKF 配置、probe、RViz、bag 工具和测试，以及阶段 7.2 不修改数据的 `manual_fault_event` 真值窗发布器。
+- `resilient_nav_health_assessment`：包含阶段 6 链，以及阶段 7.2 相机特征、baseline/故障采集、描述报告、monitor、freeze 测试/观察、runtime 验证和可选 camera evaluator。
+- `resilient_nav_camera`：包含 C920 的 `usb_cam` 基线配置、正式 CameraInfo YAML、阶段 7.1 C920 Launch、probe/去畸变/旧 K/D 验证，以及阶段 7.2 只组合现有节点的 camera health 联合 Launch。
 
 当前明确未完成：
 
@@ -79,13 +80,14 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - IMU、二维 Lidar 和 RGB-D 基础接口已建立；IMU/wheel/Lidar 首批故障模型已完成；PointCloud2 bridge、RGB-D 故障模型和长期性能验收尚未完成。
 - wheel odometry + IMU 的 odom-frame EKF 基线已建立；Nav2、SLAM、map-frame 全局定位和真实硬件定位尚未开始。
 - 可复现故障注入与健康评估闭环已完成；自适应融合和容错导航尚未开发。
-- 阶段 7.1 已完成 C920 的正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 image_raw / camera_info / image_rect 的 rosbag 无相机回放；真实机器人部署、相机再标定、TF、相机故障模型和真实硬件定位尚未开始。
+- 阶段 7.1 已完成 C920 的正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 image_raw / camera_info / image_rect 的 rosbag 无相机回放；真实机器人部署、相机再标定、TF、修改真实数据的相机故障模型和真实硬件定位尚未开始。阶段 7.2 的 freeze 专项源仅生成隔离测试输入，manual event 仅生成真值标签。
+- 阶段 7.2 已完成保守的 stale/freeze/underexposed/overexposed/blurred/low-information v1、人工 `FaultStatus` 时间窗、camera evaluator 和恢复评价接口；冻结 config 只适用于本阶段评价，不构成通用生产阈值。
 
 ## 5. 当前不在范围内
 
 - 阶段 3 已按当前基础运动边界收尾；完整运动性能、传感器和导航能力必须在后续任务中单独授权。
 - 当前不安装或集成 Nav2、SLAM 及其他尚未授权的软件依赖。
-- 当前技术里程碑止于已验收的阶段 7.1 C920 相机集成；不开展阶段 7.2、自适应融合或容错导航开发。
+- 阶段 7.2 已收尾；后续视觉故障规则、自适应融合或容错导航必须在单独任务中授权。
 - 在仿真链路稳定并形成安全方案前，不开展真实机器人部署。
 - 不把尚未验证的算法性能作为项目结论。
 

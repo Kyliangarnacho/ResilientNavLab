@@ -14,6 +14,7 @@ DEFAULT_HEALTH_TOPICS = {
     'wheel': '/health/wheel',
     'scan': '/health/scan',
 }
+DEFAULT_CAMERA_HEALTH_TOPIC = ''
 DEFAULT_FAULT_STATUS_TOPIC = '/fault_injection/status'
 
 FAULT_CLASSIFICATIONS = {
@@ -23,6 +24,11 @@ FAULT_CLASSIFICATIONS = {
     'dropout': 'stale',
     'freeze': 'freeze',
     'sector_blindness': 'sector_blindness',
+    'stream_stop': 'stale',
+    'underexposure': 'underexposed',
+    'overexposure': 'overexposed',
+    'blur': 'blurred',
+    'occlusion': 'low_information',
 }
 SENSOR_ALIASES = {
     'imu': 'imu',
@@ -31,6 +37,8 @@ SENSOR_ALIASES = {
     'lidar': 'scan',
     'laser_scan': 'scan',
     'scan': 'scan',
+    'camera': 'camera',
+    'c920': 'camera',
 }
 
 
@@ -102,6 +110,7 @@ class EvaluationEvent:
     transitions: list = field(default_factory=list)
     settled: bool = False
     first_alarm_time_sec: float = None
+    recovery_time_sec: float = None
     positive_health_samples: int = 0
     alarm_count: int = 0
     matched_classification_count: int = 0
@@ -129,7 +138,7 @@ class EvaluationEvent:
     @property
     def expected_classification(self):
         """Return the expected health fault label for this truth model."""
-        return FAULT_CLASSIFICATIONS.get(self.model)
+        return FAULT_CLASSIFICATIONS.get(self.model.strip().lower())
 
     def record_alarm(self, stamp_sec, detected_fault):
         """Record an event-local positive prediction and its classification."""
@@ -145,6 +154,12 @@ class EvaluationEvent:
         else:
             self.mismatched_classification_count += 1
 
+    def record_recovery(self, stamp_sec):
+        """Record the first post-event HEALTHY sample after a detected alarm."""
+        if self.first_alarm_time_sec is None or self.recovery_time_sec is not None:
+            return
+        self.recovery_time_sec = stamp_sec
+
     def as_dict(self):
         """Return a completed or in-progress event result."""
         expected = self.expected_classification
@@ -152,9 +167,21 @@ class EvaluationEvent:
             classification_matched = None
         else:
             classification_matched = self.matched_classification_count > 0
+        classification_all_matched = None
+        if expected is not None and self.alarm_count > 0:
+            classification_all_matched = (
+                self.matched_classification_count == self.alarm_count
+            )
         delay_sec = None
         if self.first_alarm_time_sec is not None:
             delay_sec = self.first_alarm_time_sec - self.start_time_sec
+        anomaly_detected = self.first_alarm_time_sec is not None
+        recovery_delay_sec = None
+        if self.recovery_time_sec is not None:
+            recovery_delay_sec = self.recovery_time_sec - self.end_time_sec
+        recovery_observed = None
+        if anomaly_detected and self.settled:
+            recovery_observed = self.recovery_time_sec is not None
         return {
             'event_id': self.event_id,
             'sensor': self.sensor,
@@ -165,10 +192,25 @@ class EvaluationEvent:
             'positive_health_samples': self.positive_health_samples,
             'first_alarm_time_sec': self.first_alarm_time_sec,
             'detection_delay_sec': delay_sec,
-            'missed': self.first_alarm_time_sec is None,
+            'recovery_time_sec': self.recovery_time_sec,
+            'recovery_delay_sec': recovery_delay_sec,
+            'missed': not anomaly_detected,
+            'anomaly_detection': {
+                'detected': anomaly_detected,
+                'alarm_count': self.alarm_count,
+                'first_alarm_time_sec': self.first_alarm_time_sec,
+                'detection_delay_sec': delay_sec,
+            },
+            'recovery': {
+                'observed': recovery_observed,
+                'first_healthy_time_sec': self.recovery_time_sec,
+                'recovery_delay_sec': recovery_delay_sec,
+            },
             'classification': {
                 'expected': expected,
                 'matched': classification_matched,
+                'exact_match': classification_matched,
+                'all_alarms_exact': classification_all_matched,
                 'matched_alarm_count': self.matched_classification_count,
                 'mismatched_alarm_count': self.mismatched_classification_count,
                 'observed_faults': sorted(self.observed_faults),
@@ -220,6 +262,14 @@ class HealthEvaluationAccumulator:
             event.positive_health_samples += 1
             if predicted_positive:
                 event.record_alarm(stamp_sec, msg.detected_fault)
+        if msg.state == SensorHealth.HEALTHY:
+            ended_events = [
+                event for event in self._events.values()
+                if event.sensor == sensor
+                and event.state_at(stamp_sec) == FaultStatus.ENDED
+            ]
+            for event in ended_events:
+                event.record_recovery(stamp_sec)
 
     def result(self):
         """Build the stable JSON-serializable evaluation result."""
@@ -254,9 +304,18 @@ class HealthEvaluatorNode(Node):
         self.declare_parameter('imu_health_topic', DEFAULT_HEALTH_TOPICS['imu'])
         self.declare_parameter('wheel_health_topic', DEFAULT_HEALTH_TOPICS['wheel'])
         self.declare_parameter('scan_health_topic', DEFAULT_HEALTH_TOPICS['scan'])
+        self.declare_parameter(
+            'camera_health_topic', DEFAULT_CAMERA_HEALTH_TOPIC
+        )
         self.declare_parameter('fault_status_topic', DEFAULT_FAULT_STATUS_TOPIC)
         self.declare_parameter('output_json_path', '')
-        self._accumulator = HealthEvaluationAccumulator()
+        camera_health_topic = str(
+            self.get_parameter('camera_health_topic').value
+        ).strip()
+        sensors = ['imu', 'wheel', 'scan']
+        if camera_health_topic:
+            sensors.append('camera')
+        self._accumulator = HealthEvaluationAccumulator(sensors=tuple(sensors))
         self._result_emitted = False
         self.create_subscription(
             SensorHealth,
@@ -276,6 +335,13 @@ class HealthEvaluatorNode(Node):
             self._on_health,
             10,
         )
+        if camera_health_topic:
+            self.create_subscription(
+                SensorHealth,
+                camera_health_topic,
+                self._on_health,
+                10,
+            )
         self.create_subscription(
             FaultStatus,
             self.get_parameter('fault_status_topic').value,

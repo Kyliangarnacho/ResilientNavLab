@@ -2,9 +2,9 @@
 
 ## 核验信息
 
-- 最近核验日期：2026-08-08
+- 最近核验日期：2026-08-10
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 6 和阶段 7.1 已完成；阶段 7.1 完成 C920 独立采集、CameraInfo、去畸变和 rosbag 回放闭环
+- 当前阶段：阶段 0 至阶段 7.2 已完成；阶段 7.2 完成 baseline、monitor、自动验证、真值/evaluator、联合 Launch 和故障特征描述工具
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -32,9 +32,9 @@
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
 | 定位包 | `resilient_nav_localization`（`ament_cmake`） | EKF 配置、完整阶段 4 Launch、安装和自动测试验证通过 |
 | 接口包 | `resilient_nav_interfaces`（`ament_cmake`） | `FaultStatus` 消息生成和依赖包构建验证通过 |
-| 故障注入包 | `resilient_nav_fault_injection`（`ament_python`） | IMU/wheel/Lidar 注入器、统一 Launch、faulted EKF、probe、RViz、bag 工具和测试验证通过 |
-| 健康评估包 | `resilient_nav_health_assessment`（`ament_python`） | IMU/wheel/scan 健康监测、`health_evaluator`、阶段 6 Launch、JSON 输出和运行级参数服务测试验证通过 |
-| 相机包 | `resilient_nav_camera`（`ament_python`） | C920 `usb_cam` 基线、正式 CameraInfo、旧 K/D 复用验证、`image_proc` 去畸变、`/camera/c920` Launch、探针及相机 rosbag 无硬件回放已通过 |
+| 故障注入包 | `resilient_nav_fault_injection`（`ament_python`） | 阶段 5 IMU/wheel/Lidar 链保持；阶段 7.2 增加不修改数据的 `manual_fault_event` 真值窗 |
+| 健康评估包 | `resilient_nav_health_assessment`（`ament_python`） | 阶段 6 默认三传感器语义保持；阶段 7.2 增加相机 baseline/monitor、freeze runtime 验证和可选 camera evaluator |
+| 相机包 | `resilient_nav_camera`（`ament_python`） | 阶段 7.1 C920/CameraInfo/image_proc 保持；阶段 7.2 增加只组合现有节点的 health 联合 Launch |
 | `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
 | ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` `1.0.22` | `/clock` 与阶段 3 基础运动话题的定向 bridge 已验证 |
@@ -230,8 +230,8 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `resilient_nav_description`：阶段 3 的基础差速机器人描述及 Gazebo 原生差速/关节状态插件资源。
 - `resilient_nav_localization`：阶段 4 的 EKF 参数、完整 Launch 入口和资源测试。
 - `resilient_nav_interfaces`：阶段 5 的 `FaultStatus` 消息接口。
-- `resilient_nav_fault_injection`：阶段 5 的故障模型、注入器、场景、统一 Launch、faulted EKF 配置、probe、RViz 和 bag 工具。
-- `resilient_nav_health_assessment`：阶段 6 的健康监测、真值评价、配置、Launch 和测试。
+- `resilient_nav_fault_injection`：阶段 5 的故障模型、注入器、场景、统一 Launch、faulted EKF 配置、probe、RViz 和 bag 工具，以及阶段 7.2 manual truth event。
+- `resilient_nav_health_assessment`：阶段 6 的健康监测、真值评价、配置、Launch 和测试，以及阶段 7.2 相机特征、baseline、stale/freeze monitor、freeze runtime 验证和可选 camera evaluator。
 - `resilient_nav_camera`：C920 的 `usb_cam` 参数、正式 CameraInfo YAML、可选 `image_proc` 去畸变、启动入口、不解码 Image payload 的接收时序/元数据探针，以及临时旧 K/D ChArUco 复用验证器。
 
 ## C920 硬件采集基线
@@ -244,6 +244,33 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - 阶段 7.1 已在 C920 上验证正式 CameraInfo 与 `image_proc` 去畸变链；`rectification_probe` 检查通过。已录制 `/camera/c920/image_raw`、`/camera/c920/camera_info` 和 `/camera/c920/image_rect`，并在无相机条件下完成回放验证。
 - `calibration_reuse_validator` 只读 `/tmp/camera_params_old.yaml` 的 OpenCV `camera_matrix` 与 `dist_coeffs`，在 `/camera/c920/image_raw` 上检测固定 5×7、`DICT_5X5_100`、square `0.0288 m`、marker `0.0144 m` 的 ChArUco；它以确定性 pose-fit/holdout 划分报告旧 K/D 的 holdout 重投影误差，不保存或发布标定数据。
 - 当前已知技术债：WSL USB/IP 下仍偶发闪帧、帧率波动和图像偏暗；本阶段如实记录，未修改驱动、传输或图像处理参数。
+
+## 阶段 7.2 相机控制与特征基线
+
+- 2026-08-10 对 `/dev/video0` 实机执行只读 `v4l2-ctl --list-ctrls-menus`；完整状态见 `docs/PHASE7_2_CAMERA_CONTROLS_BASELINE.md`，没有执行任何相机控制写操作。
+- `resilient_nav_health_assessment/camera_health_features.py` 只接受 NumPy 图像并输出灰度统计、分位数、暗亮比例、Laplacian 方差、边缘密度、熵、帧差和确定性帧指纹，不导入 ROS。
+- `camera_health_feature_demo` 自动构造纯黑、纯白、均匀灰、灰度渐变、棋盘、同棋盘高斯模糊、重复帧和轻微变化帧，通过既有特征 API 输出紧凑对照表；运行命令为 `ros2 run resilient_nav_health_assessment camera_health_feature_demo`，不订阅 ROS topic。
+- `camera_health_calibrate` 默认订阅 `/camera/c920/image_raw`，通过 `cv_bridge` 转为 NumPy 并复用同一特征 API；默认运行 `60 s`，以 `scenario_label=unspecified` 和自动 UTC `session_id` 写入 `/tmp/phase7_2_calibration/<session_id>/`。同一根目录可保存多个独立 session，显式同名 session 拒绝覆盖。
+- `camera_health_baseline_report` 扫描根目录下的 session，按 session 汇总 FPS/max gap，按样本汇总 interarrival、亮度、Laplacian variance、edge density、entropy 和 frame difference；输出 `baseline_report.json` 与终端表格，只含全局/场景描述统计。
+- 5-session report 共含 3560 帧，observed FPS 为 `8.22--14.43 Hz`、interarrival p95/p99 约 `0.158/0.249 s`、最大正常 gap 约 `0.382 s`。
+- `camera_health_monitor` 默认订阅 `/camera/c920/image_raw` 并以 `5 Hz` 发布 `/health/camera`；复用现有特征与阶段 6 的 `HealthDecision`/`SensorHealth` 消息构造，正式故障包含 stale、exact-fingerprint freeze、underexposed、overexposed、带纹理 reference 的 blurred，以及带近期有信息 reference 的 low-information v1。
+- development 配置使用 `stale_timeout_sec=1.0`、`freeze_duration_sec=2.0`、`fault_confirmation_sec=0.6`、`recovery_confirmation_sec=1.0`。underexposed 要求 `mean_gray<=6 && p95<=8 && dark_ratio>=0.90`；overexposed 要求 `mean_gray>=170 && p05>=150 && p95>=180`，不依赖 bright ratio。
+- `camera_freeze_source` 默认只读 `/camera/c920/image_raw` 的第一张有效图像，并以 `10 Hz` 向独立 `/test/camera/image_frozen` 发布像素完全相同、ROS stamp 前进的副本；有效源图像到达前不发布。source/output/rate 均可配置，source 与 output 相同会拒绝启动。
+- `camera_health_watch` 只订阅 `/health/camera`，状态或故障类型变化时立即打印，状态不变时默认每 `5 s` 打印；不发布消息也不参与 monitor 判断。
+- freeze runtime 测试以测试代码构造 `rgb8` Image，贯通 source → frozen topic → monitor；确认消息持续、像素一致、stamp 严格前进、metadata 一致，最终进入 `FAULT/freeze`，且观察期没有 `stale`。
+- `manual_fault_event` 启动后发布 SCHEDULED，并按 start delay/duration 自动发布 ACTIVE 和 ENDED；它只写 `/fault_injection/status`，不读写相机话题。
+- `health_evaluator` 的 `camera_health_topic` 默认空值以保持阶段 6 旧行为；显式设置 `/health/camera` 后支持 camera model 映射，并分别输出异常检出与 exact classification match。
+- evaluator 对已检测且 ENDED 的事件记录其后第一条 HEALTHY，输出 recovery time/delay；原 detection delay、anomaly detected、classification exact match 和 TP/FP/FN/TN 字段保留。
+- `phase7_2_camera_health.launch.py` 复用原 `c920.launch.py`，默认启动 C920 + monitor，可选 evaluator/watch；runtime 测试以 `run_camera=false` 验证条件分支和实际参数服务，未打开真实设备。
+- 本轮两个目标包重新构建成功；完整包级测试分别为 camera 26 项、health assessment 146 项，均为 0 错误、0 失败、0 跳过；上一轮 fault injection 142 项结果保持。
+- calibrate 的 `record_fault_truth=false` 默认不订阅 FaultStatus；启用后 CSV 附加 event/model/state/severity，并在状态转换保存 before/fault/after controls。controls 命令仍只有 `--list-ctrls-menus`。
+- `camera_fault_feature_report` 读取单个 truth session，以默认 `2.0 s` margin 排除 ACTIVE/ENDED 两侧过渡，按 pre/active/post 汇总 exposure、blur、low-information 特征和观测 p05–p95 区间，不生成阈值。
+- `resilient_nav_health_assessment` 最新构建成功，完整包级测试为 171 项、0 错误、0 失败、0 跳过；欠曝、过曝、模糊、low-information、stale、freeze 和阶段 6 回归均通过。
+- 无相机短时 Launch 验证确认 `/health/camera` 固定发布；超过 timeout/confirmation 后为 `state=3`、`detected_fault=stale`、`health_score=0.0`、`confidence=1.0`，进程随后 cleanly 退出。
+- stale 已由用户在真实 C920 链路完成实机触发与恢复验证；本次没有重复或扩展 monitor 判定逻辑。
+- 5 秒真实 C920 验证采集 54 帧、0 次转换错误，observed FPS 约 `11.0`；interarrival p50/p95/p99 约 `0.066/0.189/0.229 s`，max gap 约 `0.264 s`。该短时结果只验证数据链和输出，不作为最终 baseline 阈值。
+- 运行期 controls 快照只执行 `v4l2-ctl --device /dev/video0 --list-ctrls-menus`。现有 `usb_cam` 启动日志会设置其自身控制默认值，自动曝光/白平衡也会使相关实时值变化；这些驱动/相机行为与新采集节点的只读快照必须区分。
+- 当前没有修改相机数据的通用故障模型、通用生产阈值或 C920 K/D；阶段 6 默认三传感器语义保持不变。
 
 ## 阶段 5 故障注入闭环
 

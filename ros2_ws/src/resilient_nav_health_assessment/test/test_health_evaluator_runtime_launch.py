@@ -9,6 +9,7 @@ import time
 def test_minimal_launch_sets_evaluator_output_json_parameter(tmp_path):
     """The running node must expose the non-empty launch output path."""
     requested_output = tmp_path / 'phase6_health_evaluation.json'
+    requested_camera_topic = '/test/health/camera'
     environment = os.environ.copy()
     environment['ROS_LOG_DIR'] = str(tmp_path / 'ros_logs')
     environment['ROS_DOMAIN_ID'] = str(1 + (os.getpid() % 231))
@@ -22,6 +23,7 @@ def test_minimal_launch_sets_evaluator_output_json_parameter(tmp_path):
                 'resilient_nav_health_assessment',
                 'health_evaluator_minimal.launch.py',
                 f'evaluator_output_json:={requested_output}',
+                f'camera_health_topic:={requested_camera_topic}',
             ],
             env=environment,
             stdout=launch_log,
@@ -51,6 +53,20 @@ def test_minimal_launch_sets_evaluator_output_json_parameter(tmp_path):
             )
             assert parameter_result.stdout.strip() == (
                 f'String value is: {requested_output}'
+            )
+            camera_parameter_result = subprocess.run(
+                [
+                    'ros2', 'param', 'get', '/health_evaluator',
+                    'camera_health_topic',
+                ],
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            assert camera_parameter_result.returncode == 0
+            assert camera_parameter_result.stdout.strip() == (
+                f'String value is: {requested_camera_topic}'
             )
         finally:
             if launch_process.poll() is None:
