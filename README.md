@@ -4,7 +4,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 ## 当前状态
 
-项目已完成阶段 0 至阶段 7.2。阶段 7.2 在真实 C920 输入上完成相机健康监测、FaultStatus 真值与 `health_evaluator` 评价链，并通过真实硬件和 runtime 验证；相关三包最终回归为 339 tests passed / 0 failures。
+项目已完成阶段 0 至阶段 7.2，并完成 Robot Diagnostic Agent 的 RA-1A Offline Case checkpoint。Step 1 的离线只读 Domain、严格 Schema、Ground Truth Sanitizer 和独立 agent-core Fake Runtime 保持不变；当前进一步完成 Agent Input/Benchmark Truth 双通道、OfflineCaseBuilder、8 个 reference case 和 Robot Diagnosis Prompt/Analyzer V1。Agent package 当前 70 tests 全通过；最近完整九包基线仍为 461 tests、0 errors、0 failures、1 skipped。
 
 - ROS 2 Jazzy、`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 的阶段 1 基线保持可用。
 - 已通过 `ros-jazzy-ros-gz` 安装 Gazebo Harmonic；Gazebo Sim 版本为 8.11.0。
@@ -39,8 +39,11 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - 阶段 7.2 已只读记录 C920 控制状态并完成 5-session baseline；`camera_health_monitor` 正式判定 stale、exact-fingerprint freeze、underexposed、overexposed、需要近期纹理参考的 blurred，以及需要近期有信息 reference 的保守 low-information v1。freeze 自动 runtime 测试已贯通构造 Image、隔离 frozen topic 与 monitor；`manual_fault_event` 只标记人工故障真值窗，既有 `health_evaluator` 可显式订阅 camera。
 - `phase7_2_camera_health.launch.py` 复用阶段 7.1 C920 Launch，并组合 monitor、可选 evaluator/watch；manual truth event 仍由第二终端单独启动。evaluator JSON 已覆盖 detection、classification、recovery 和混淆矩阵字段。
 - `camera_health_calibrate` 可选记录 camera FaultStatus 到逐帧 CSV，并在 SCHEDULED/ACTIVE/ENDED 保存三阶段只读 V4L2 controls；`camera_fault_feature_report` 以 transition margin 比较 pre/active/post 分布，只输出描述统计和候选区间。
+- RA-1A Step 1 已新增 `resilient_nav_agent`，包含 Pydantic v2 `HealthObservation` / `RobotIncident` / `EvidenceItem` / `DiagnosisResult` 合同、fail-closed `AgentInputSanitizer`、离线 Incident/Evidence builder 和 `RobotDomainExtension`；它通过仓库外 `Kyliangarnacho/agent-core` 的 editable install 完成 Fake integration，不调用真实模型 API。
+- Robot Agent 当前不订阅 Live ROS，不接收 `FaultStatus` 或 fault injection truth，不提供 Tool、RAG、Planner、Recovery、参数写入或控制输出。
+- Offline Case checkpoint 新增 8 个非 recorded-run 的 reference fixture；`OfflineRobotCase.agent_view()`、Domain context 和 Trace 保持 Ground Truth leakage 为 0。Tools、Runner 和 Benchmark Scorer 明确 deferred。
 
-阶段 3 已完成机器人描述、独立关节状态发布、运行时 TF、独立与 Gazebo 联合 RViz 显示、物理落地、Gazebo 原生差速插件、ROS 2 基础速度/里程计/仿真关节状态链路、ROS 侧 odom TF、运动测试工具，以及直行、原地旋转、圆弧和停车同步基线。阶段 4 已完成多传感器接口和 wheel odometry + IMU 的固定字段 EKF 基线；阶段 5 已完成可复现故障注入和真值闭环；阶段 6 已完成在线健康监测和基于真值的评价。Gazebo 原生 TF 未桥接，PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合和容错导航均未实现。
+阶段 3 已完成机器人描述、独立关节状态发布、运行时 TF、独立与 Gazebo 联合 RViz 显示、物理落地、Gazebo 原生差速插件、ROS 2 基础速度/里程计/仿真关节状态链路、ROS 侧 odom TF、运动测试工具，以及直行、原地旋转、圆弧和停车同步基线。阶段 4 已完成多传感器接口和 wheel odometry + IMU 的固定字段 EKF 基线；阶段 5 已完成可复现故障注入和真值闭环；阶段 6 已完成在线健康监测和基于真值的评价；RA-1A Step 1 已完成离线 Robot Agent 基础合同与 Core integration。Gazebo 原生 TF 未桥接，PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航均未实现。
 
 ## 核心方向
 
@@ -70,7 +73,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | `resilient_nav_monitor`、`resilient_nav_simulation`、`resilient_nav_description`、`resilient_nav_localization`、`resilient_nav_interfaces`、`resilient_nav_fault_injection`、`resilient_nav_health_assessment`、`resilient_nav_camera` 可构建并由 ROS 2 发现 |
+| 项目 ROS 2 包 | 既有八包加 `resilient_nav_agent`，共九包可构建并由 ROS 2 发现 |
 | 项目 ROS 2 节点 | `system_heartbeat` 发布存活消息；`odom_tf_broadcaster` 从 `/odom` 发布 `odom -> base_footprint` |
 | Gazebo | Gazebo Harmonic / Gazebo Sim 8.11.0，可用 |
 | ROS 2—Gazebo 集成 | `/clock`、`/cmd_vel`、`/odom` 和 `/joint_states` 的阶段内定向桥接已验证 |
@@ -83,6 +86,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 | 阶段 6 健康评估 | IMU/wheel/scan 健康监测、`health_evaluator`、统一 Launch、JSON 评价与运行级参数服务测试已验证 |
 | 阶段 7.1 C920 相机集成 | WSL/USBIP + `usb_cam`、正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和相机 rosbag 无硬件回放已验证；仍有 WSL USB/IP 闪帧、帧率波动和偏暗技术债 |
 | 阶段 7.2 相机健康 | 已完成真实 C920 健康监测、真值/评价、runtime 验证和 evaluation config 冻结；339 tests passed / 0 failures |
+| RA-1A Robot Agent | Offline Case 双通道、8 个 reference case、Prompt/Analyzer V1 已完成；Agent package 70 tests 全通过，九包最近完整基线 461 tests / 0 failures / 1 skipped |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
 
@@ -105,7 +109,10 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - [阶段 6 收尾总结](docs/PHASE6_SUMMARY.md)
 - [阶段 7.2 C920 控制状态基线](docs/PHASE7_2_CAMERA_CONTROLS_BASELINE.md)
 - [阶段 7.2 相机健康特征说明](docs/PHASE7_2_HEALTH_FEATURES.md)
+- [Robot Agent 长期开发规则](docs/ROBOT_AGENT_DEV_RULES.md)
+- [Robot Agent 开源项目基线](docs/OPEN_SOURCE_BASELINES.md)
+- [RA-1A Step 1 Robot Agent Bootstrap](docs/RA1A_STEP1_ROBOT_AGENT_BOOTSTRAP.md)
 
 ## 近期里程碑
 
-阶段 2 至 7.2 的已授权基线保持完成。阶段 7.2 已在真实 C920 输入上提供 timing/stale/freeze、underexposed/overexposed/blurred/low-information、FaultStatus 真值和 `health_evaluator` 链路。它不代表全部视觉退化、通用生产阈值、真实硬件定位、Nav2、SLAM、自适应融合或容错导航已实现；WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。
+阶段 2 至 7.2 的已授权基线保持完成。阶段 7.2 已在真实 C920 输入上提供 timing/stale/freeze、underexposed/overexposed/blurred/low-information、FaultStatus 真值和 `health_evaluator` 链路。RA-1A Step 1 只把 Sanitized Health 映射为离线 Incident/Evidence 并验证外部 Agent Runtime；它不代表 Live ROS Agent、完整 Diagnosis、真实模型、Planner、Recovery、全部视觉退化、通用生产阈值、真实硬件定位、Nav2、SLAM、自适应融合或容错导航已实现。WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。

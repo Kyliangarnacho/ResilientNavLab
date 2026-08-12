@@ -2,6 +2,52 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-13 — RA-1A Offline Case Checkpoint
+
+### 当前事实
+
+- 新增 `OfflineAgentInput`、独立 `BenchmarkTruth` 和 builder-only `OfflineRobotCase`；Runtime 只取得 `agent_view()`，不接收 truth envelope。
+- `OfflineCaseBuilder` 先把 raw Health 经过既有 Sanitizer 构造成 Health/Evidence/Incident/Agent Input，再单独验证 truth mapping。8 个 `ra1a-reference-v1` case 覆盖 IMU、wheel、scan、camera 和 healthy control，均明确为 reference fixture。
+- Prompt/Analyzer 升级为 Robot Diagnosis V1；Analyzer 与 DiagnosisResult 职责分离，当前只提供 `diagnose`、`needs_more_evidence`、`blocked` route。
+- Agent Input、Domain context、只读 Tool context groundwork 和 Agent Trace 的禁止 token 扫描均为 0 命中。package pytest/colcon test 为 70 项通过；package build 通过。
+
+### 问题与处理
+
+- 直接运行 `/usr/bin/colcon test` 会用系统 Python 收集测试，而 Pydantic/agent-core 按 Step 1 约定安装在 `.venv`，因此出现 Pydantic import error。改由 `.venv/bin/python -m colcon test` 启动后 70 项全部通过；没有安装系统依赖。
+
+### 当前边界
+
+- 本次按紧急 STOP POINT 没有继续正式 Tools、OfflineDiagnosisRunner、structured final service、Benchmark Scorer/Report/batch 或 Langfuse-style observability，也没有运行 workspace regression。
+- 真实 Qwen、Live ROS、ROS Adapter、rosbag parser、RAG、Skills、MCP、Planner 和 Recovery 继续 deferred。
+
+## 2026-08-13 — RA-1A Step 1 Robot Agent Bootstrap
+
+### 当前事实
+
+- 新增第九个 ROS 2 包 `resilient_nav_agent`。它是 `ament_python` 包，但 RA-1A Step 1 的核心只使用纯 Python，不 import `rclpy`、`sensor_msgs`、`nav_msgs`、`geometry_msgs` 或 `diagnostic_msgs`。
+- Pydantic v2 Schema 已覆盖 `HealthObservation`、`EvidenceItem`、`RobotIncident`、`DiagnosisHypothesis` 和 `DiagnosisResult`；所有主要模型 `extra="forbid"`，数值拒绝 NaN/Inf，Diagnosis 使用定性 support level 而非伪概率。
+- `AgentInputSanitizer` 接受 plain Mapping，递归拒绝 FaultStatus/场景/benchmark truth 和危险字符串。现有 `/faulted/*` source topic 只用于 component normalization，最终 Agent-facing object 不保留 transport topic。
+- 真实 `FaultStatus.msg` 字段确认包含 `scenario_id`、`scenario_seed`、`event_id`、`faulted_topic`、`model`、`severity`、`affected_fields` 和 `parameters_yaml` 等真值；全字段 fixture 无法作为 Health 输入通过。
+- IMU、wheel、scan、camera 四类当前 `SensorHealth.msg` 形状均由测试 fixture 覆盖。UNKNOWN 的既有 `health_score=-1.0` 哨兵规范化为 `None`；`metric_names[]` / `metric_values[]` 经等长和有限数值检查转换为 dict。
+- 最小 Incident builder 只允许 DEGRADED/FAULT，分别映射 warning/fault；HEALTHY/UNKNOWN 不创建故障诊断 Incident。Evidence 使用 canonical source，不保留 ROS topic。
+- 仓库外 `Kyliangarnacho/agent-core` sibling 当前提交为 `0dcce13`，包版本 `0.1.0`；实际 editable import 指向 `/home/kylian/projects/agent-core/agent_core/__init__.py`，ResilientNavLab 内没有 `agent_core/` copy。
+- 系统 Python 受 PEP 668 管理，因此没有使用 `--break-system-packages`；改用既有 `.gitignore` 覆盖的 `.venv --system-site-packages`。实际 Pydantic 为 `2.13.4`。
+- `RobotDomainExtension` 通过外部 `AgentRuntime` 和纯内存 Fake completion 得到合法 `AgentResult`、`diagnose` route 和空 Tool records；没有创建真实模型 client 或调用 API。
+- targeted tests 分别为 44、7、5 项通过；包级 pytest 和 colcon 均为 58 项通过。九包构建成功，最终工作空间汇总为 461 项、0 错误、0 失败、1 项跳过。
+
+### 问题与处理
+
+- 首轮 Ground Truth denylist 测试把 fixture secret 写成 `prohibited`，而固定安全错误文案也包含该普通单词，造成 13 个测试误判；改为唯一 fixture secret 后 37 项 targeted tests 全部通过，Sanitizer 逻辑未变。
+- 首轮包级测试为 49 项通过、2 项 lint 失败；原因是 import 顺序/未使用 import 和两个 docstring 首词大小写。按 lint 精确建议做机械修复后 51 项全部通过。
+- 首次 `colcon test-result` 错把结果路径作为 positional argument；当前 colcon 只接受 `--test-result-base`。改用实际 help 中的参数后得到包级 51/0/0/0 汇总，错误只影响结果查询命令。
+- 首次受限沙箱全回归得到 5 个环境失败：DDS `getifaddrs/socket Operation not permitted` 和默认 `~/.ros/log` 只读。设置 `ROS_LOG_DIR=/tmp/resilient_nav_ra1a_ros_logs` 并在允许本机 DDS 的环境仅复跑受影响三包一次后全部通过；没有修改既有 ROS 代码或测试。
+
+### 当前边界
+
+- 本 Step 没有 Live ROS Adapter/subscriber、自动 Incident listener、rosbag Case Builder、正式 Robot Tools、RAG、Skills、MCP、Multi-Agent、Planner、Recovery、`/cmd_vel` 或 ROS 参数写入。
+- 本 Step 没有调用真实 Qwen/LLM API，也没有修改 `SensorHealth.msg`、`FaultStatus.msg`、Health Monitor、EKF 或 Fault Injection 逻辑。
+- `RobotAnalysis` 和 route 只用于外部 Core bootstrap smoke，不代表完整 Robot Diagnosis Prompt 或策略已完成。
+
 ## 2026-08-10 — 阶段 7.2 C920 baseline 与 camera health monitor v1
 
 ### 当前事实

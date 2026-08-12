@@ -1,6 +1,14 @@
 # 当前状态
 
-阶段 0 至 7.2 已完成。**Phase 7.2 COMPLETE**：在真实 C920 输入上完成相机健康监测、FaultStatus 真值与 `health_evaluator` 评价链、自动 runtime 验证和故障特征采集/描述工具；`resilient_nav_health_assessment`、`resilient_nav_fault_injection`、`resilient_nav_camera` 最终回归共 339 tests passed / 0 failures。
+阶段 0 至 7.2 已完成。**RA-1A OFFLINE CASE CHECKPOINT COMPLETE**：Step 1 的 Robot Schema、Ground Truth Sanitizer、Incident/Evidence builder 和独立 agent-core Fake integration 全部保留；本 checkpoint 进一步完成 OfflineAgentInput/BenchmarkTruth 双通道、OfflineCaseBuilder、8 个 reference case，以及第一版正式 Robot Diagnostic Prompt/Analyzer/route。Agent package 当前 70 tests、0 errors、0 failures、0 skipped；最近完整 workspace 基线仍为 Step 1 的 461 tests、0 errors、0 failures、1 skipped，本轮按 STOP POINT 未重跑 workspace regression。
+
+- 独立 `Kyliangarnacho/agent-core` 以仓库外 sibling editable install 接入，实际版本 `0.1.0`；Pydantic 版本为 `2.13.4`。ResilientNavLab 内没有复制 `agent_core/` 源码。
+- `AgentInputSanitizer` 接受 plain Mapping，递归拒绝 FaultStatus/场景/benchmark truth；现有 `/faulted/*` source topic 只用于 component normalization，最终 Agent-facing object 不保留 transport topic。
+- IMU、wheel、scan、camera 的真实 `SensorHealth.msg` 字段形状已由 fixture 覆盖，并统一转换为 `HealthObservation`；未修改原消息或监测算法。
+- `RobotDomainExtension` 已经通过外部 `AgentRuntime` 和 Fake completion 得到合法 `AgentResult`；没有真实模型 API、Tool 或网络推理。
+- `OfflineRobotCase` 只在 builder 层组合 `OfflineAgentInput` 与 `BenchmarkTruth`；`agent_view()`、Domain context、`OfflineDiagnosisContext` 和 Agent Trace 的 Ground Truth leakage 测试均为 0。
+- `ra1a-reference-v1` 提供 IMU bias、wheel freeze、Lidar sector blindness、camera stale/freeze/underexposed/blurred 和 healthy control；全部明确为 reference fixture，不是 recorded run。
+- Robot Diagnostic Prompt V1 要求引用 evidence ID、区分 detector hint 与 diagnosis 并允许 insufficient evidence；Analyzer 只做 route，当前 route 为 `diagnose`、`needs_more_evidence`、`blocked`。
 
 - C920 已经 WSL/USBIP + `usb_cam` 接入 ROS 2：`/dev/video0` 以 MJPG、1280×720、15 FPS request、`mmap` 发布 `/camera/c920/image_raw`。
 - 旧 K/D 已复用验证；正式 `CameraInfo`、`image_proc` 去畸变至 `/camera/c920/image_rect` 与 `rectification_probe` 已通过。
@@ -21,4 +29,4 @@
 - 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
 - 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
 
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
+本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有正式 Robot Tools、OfflineDiagnosisRunner、strict final DiagnosisResult service、Benchmark Scorer/Report、真实模型、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
