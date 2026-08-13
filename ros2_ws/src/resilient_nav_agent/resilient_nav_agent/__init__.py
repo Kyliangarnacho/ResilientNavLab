@@ -11,6 +11,7 @@ from resilient_nav_agent.schemas import (
     HealthObservation,
     RobotIncident,
 )
+from resilient_nav_agent.tools import create_robot_tool_registry
 
 __all__ = [
     'AgentInputSanitizer',
@@ -24,4 +25,5 @@ __all__ = [
     'SanitizationError',
     'build_health_evidence',
     'build_offline_incident',
+    'create_robot_tool_registry',
 ]

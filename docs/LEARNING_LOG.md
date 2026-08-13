@@ -2,6 +2,33 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-13 — RA-1A Offline Diagnosis 闭环收口
+
+### 当前事实
+
+- 新增三个 agent-core `ToolRegistry` Tool：Incident health snapshot、component health comparison 和 metric window inspection。Tool handler 只闭包读取 deep-copied `OfflineDiagnosisContext`，不接 ROS、文件、Shell、BenchmarkTruth 或状态变更接口。
+- `run_offline_diagnosis()` 只接受 `OfflineAgentInput`，创建 truth-free context/extension/registry，调用外部 `AgentRuntime`，并保留 Tool records、Core Trace、model request count 和 latency。builder-only `OfflineRobotCase` 传入 Runtime 会直接拒绝。
+- Core final answer 当前是 text；Robot service 使用严格 JSON parse、Pydantic `DiagnosisResult` validation、Incident contract check 和 Agent-output leakage scan。plain text、malformed JSON、Schema error、healthy false diagnosis 与受保护输出不会被包装成成功。
+- 新增 `OfflineDiagnosisRun`、`BenchmarkCaseResult` 和 `BenchmarkReport`。Scorer 只接收 run 与独立 truth，deterministic 评估 Incident/Diagnosis 期望、primary component、fault alias、top-k、Evidence 引用/类型、可确定 unsupported claim、Tool/model 数、leakage 与 healthy false diagnosis，不再次调用模型。
+- `ra1a_fake_benchmark` 对 8 个 reference fixture 运行完整链，明确输出 `PIPELINE / FAKE BENCHMARK`：8/8 passed，component/fault/top-k/evidence validity 均为 1.0，6 次 Tool call、0 Tool failure、22 次 model request、0 leakage、0 false diagnosis；7 个 completed、1 个 no_diagnosis，其余状态为 0。该结果只验证 pipeline，不代表真实模型智能。
+- adversarial tests 覆盖 insufficient evidence、malformed final JSON、unknown Tool、invalid Tool arguments/repair failure、partial Tool failure、虚构 Evidence、hint 与 truth wording 不一致、受保护数据提及、healthy false diagnosis，以及 tool/no-tool path。
+- Agent Input、Domain/Tool context、Tool output、发送给 completion 的 Agent messages、Tool records、Trace 和 `OfflineDiagnosisRun` 对禁止 token 的回归扫描均为 0；evaluator truth 仍只存在于 Scorer 一侧。
+- package pytest、package colcon test 均为 88 项通过。九包构建成功；完整回归首次仅因受限 DDS socket 得到 3 个既有 runtime 环境失败，在允许本机 DDS 的环境只复跑受影响 health/camera 两包后，最终为 491 tests、0 errors、0 failures、1 skipped。
+
+### 问题与处理
+
+- healthy case 如果只用“没有 diagnosed result”判卷，malformed output 也可能误过。Scorer 改为 healthy 必须有严格 `no_diagnosis` result；新增 regression 后 malformed/blocked healthy output 均不能通过。
+- 外部 agent-core 0.1.0 没有 final schema validation，这是当前 Core 能力缺口但不阻塞 Robot Domain；本阶段在 service boundary 最小补充 Robot-owned Schema 解析，没有复制 Tool/Trace/Runtime。
+- 最小复现确认 `AgentRuntime` 会向 completion 传 `stream=False`，而 public `CompatibleModelClient.complete` 不接受 `stream`；直接组合时 underlying completion 0 次调用，analysis/final 都成为 request error。后续已在 sibling agent-core working tree 以通用 Core 修复、Runtime-owned kwargs 防覆盖和真实 client/runtime/tool integration regression 解决；Robot Domain 没有增加适配层。
+- 修复后的无网络 CASE-001 probe 经 `CompatibleModelClient` 完成 Analyzer → Tool → final：3 次 transport call 均为 `stream=False`，strict diagnosis 与 benchmark 通过，Ground Truth leakage 为 0。agent-core 全量 99 项、Robot offline targeted 18 项通过；该 probe 不是 real-model benchmark，Core 变更尚未 commit 或发布。
+- 当前环境的 `AGENT_CORE_MODEL_*`、Qwen/DashScope/OpenAI key 及模型配置均不存在，因此没有发起真实 Qwen E2E，也没有重试或请求新秘密。
+
+### 当前边界
+
+- 本阶段只完成 Offline、read-only Diagnosis。没有 Live ROS、rosbag ingestion、RAG、Skills、MCP、Planner、Recovery、Safety Gate action、参数写入或 `/cmd_vel`。
+- Fake report 不是 real-model benchmark；真实 Qwen 的 structured-output、Tool usage 和诊断质量仍无结果。
+- agent-core client/runtime 参数缺口已在独立 Core working tree 修复并通过 regression；应先 review/发布，再进行真实模型 E2E。
+
 ## 2026-08-13 — RA-1A Offline Case Checkpoint
 
 ### 当前事实

@@ -6,18 +6,22 @@ from enum import Enum
 
 from agent_core import DomainExtension, RouteDecision
 from agent_core.context import ContextBundle
+from agent_core.tools import ToolRegistry
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
+from resilient_nav_agent.offline.context import OfflineDiagnosisContext
 from resilient_nav_agent.offline.schemas import OfflineAgentInput
 from resilient_nav_agent.prompts import ANALYZER_INSTRUCTION, SYSTEM_PROMPT
 from resilient_nav_agent.sanitizer import AgentInputSanitizer
 from resilient_nav_agent.schemas import ComponentIdentifier, ShortText
+from resilient_nav_agent.tools import create_robot_tool_registry
 
 
 class IncidentCategory(str, Enum):
     """Categories understood by the RA-1A diagnosis Analyzer."""
 
     SENSOR_HEALTH = 'sensor_health'
+    HEALTHY = 'healthy'
     UNKNOWN = 'unknown'
     UNSUPPORTED = 'unsupported'
 
@@ -39,12 +43,26 @@ class RobotAnalysis(BaseModel):
 class RobotDomainExtension(DomainExtension):
     """Offline Robot diagnosis policy consumed by independent agent-core."""
 
-    def __init__(self, agent_input: OfflineAgentInput | None = None):
+    def __init__(
+        self,
+        agent_input: OfflineAgentInput | None = None,
+        tool_context: OfflineDiagnosisContext | None = None,
+    ):
         self._agent_input = agent_input
+        self._tool_context = tool_context
         if agent_input is not None:
             AgentInputSanitizer().assert_safe_payload(
                 agent_input.model_dump(mode='json')
             )
+        if tool_context is not None:
+            AgentInputSanitizer().assert_safe_payload(
+                tool_context.model_dump(mode='json')
+            )
+            if agent_input is None or tool_context.case_id != agent_input.case_id:
+                raise ValueError('Tool context does not match Agent input')
+            self._registry = create_robot_tool_registry(tool_context)
+        else:
+            self._registry = ToolRegistry()
 
     @property
     def extension_id(self) -> str:
@@ -66,6 +84,11 @@ class RobotDomainExtension(DomainExtension):
         """Return the Robot-owned Pydantic analysis schema."""
         return RobotAnalysis
 
+    @property
+    def tool_registry(self) -> ToolRegistry:
+        """Return the explicitly registered read-only Robot Tools."""
+        return self._registry
+
     def fallback_analysis(self, query: str) -> RobotAnalysis:
         """Return a safe needs-more-evidence fallback without parsing query."""
         del query
@@ -83,7 +106,26 @@ class RobotDomainExtension(DomainExtension):
         """Route to diagnose, needs-more-evidence, or blocked."""
         del bundle
         parsed = RobotAnalysis.model_validate(analysis)
+        if self._agent_input is not None and self._agent_input.incident is None:
+            return RouteDecision(
+                route='healthy',
+                should_answer=True,
+                additional_instructions=[
+                    'Return only strict DiagnosisResult JSON with incident_id '
+                    'null, status no_diagnosis, and no hypotheses.'
+                ],
+            )
         if parsed.needs_tools:
+            if len(self._registry):
+                return RouteDecision(
+                    route='diagnose',
+                    should_answer=True,
+                    use_tools=True,
+                    additional_instructions=[
+                        'Use only registered read-only Tools, then return only '
+                        'strict DiagnosisResult JSON citing evidence_id values.'
+                    ],
+                )
             return RouteDecision(
                 route='blocked',
                 should_answer=False,
@@ -115,7 +157,8 @@ class RobotDomainExtension(DomainExtension):
             should_answer=True,
             additional_instructions=[
                 'Return only strict DiagnosisResult JSON. Diagnose using only '
-                'the sanitized evidence and cite evidence_id values.'
+                'the sanitized evidence, use a concise cause/fault type, and '
+                'cite evidence_id values.'
             ],
         )
 

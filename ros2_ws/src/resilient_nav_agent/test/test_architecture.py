@@ -22,7 +22,11 @@ PURE_DOMAIN_FILES = {
     'resilient_nav_agent/offline/case_builder.py',
     'resilient_nav_agent/offline/context.py',
     'resilient_nav_agent/offline/fixtures.py',
+    'resilient_nav_agent/offline/runtime.py',
     'resilient_nav_agent/benchmark/schemas.py',
+    'resilient_nav_agent/benchmark/scorer.py',
+    'resilient_nav_agent/benchmark/runner.py',
+    'resilient_nav_agent/tools.py',
 }
 
 

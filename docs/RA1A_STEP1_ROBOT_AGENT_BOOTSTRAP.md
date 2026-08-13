@@ -308,3 +308,10 @@ Pydantic。按紧急 STOP POINT 没有重跑 workspace regression，461 项仍�
 DiagnosisResult service、Benchmark Scorer/CaseResult/Report、batch benchmark、
 Langfuse-style observability、真实 Qwen、Live ROS/Adapter、rosbag parser、RAG、
 Skills、MCP、Planner 和 Recovery。
+
+## 13. 后续状态
+
+以上 deferred 列表是本 checkpoint 当时的历史状态。三个只读 Robot Tools、
+Offline Diagnosis Runtime、strict DiagnosisResult service、Benchmark Scorer 和
+Batch Report 已在 RA-1A 后半阶段完成；最终事实、Fake report、Core 缺口和仍未实现
+边界见 [RA-1A Offline Diagnosis Final](RA1A_OFFLINE_DIAGNOSIS_FINAL.md)。

@@ -62,7 +62,7 @@ def test_system_prompt_v1_contains_diagnosis_and_safety_contract():
     assert 'resilientnav robot diagnostic agent' in lowered
     assert 'evidence_id' in lowered
     assert 'detected_fault_hint' in lowered
-    assert 'never as ground truth' in lowered
+    assert 'never as a verified answer' in lowered
     assert 'insufficient_evidence' in lowered
     assert 'never control the robot' in lowered
     assert 'diagnosisresult' in lowered

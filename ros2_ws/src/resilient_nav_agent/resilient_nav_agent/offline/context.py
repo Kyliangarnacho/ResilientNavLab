@@ -18,8 +18,8 @@ class OfflineDiagnosisContext(DomainModel):
 
     case_id: str
     incident: RobotIncident
-    evidence: list[EvidenceItem] = Field(max_length=128)
-    health_observations: list[HealthObservation] = Field(max_length=64)
+    evidence: tuple[EvidenceItem, ...] = Field(max_length=128)
+    health_observations: tuple[HealthObservation, ...] = Field(max_length=64)
 
     @model_validator(mode='after')
     def validate_context(self):
@@ -36,9 +36,12 @@ class OfflineDiagnosisContext(DomainModel):
             raise ValueError('healthy Agent input has no diagnosis context')
         return cls(
             case_id=agent_input.case_id,
-            incident=agent_input.incident,
-            evidence=agent_input.evidence,
-            health_observations=agent_input.health_observations,
+            incident=agent_input.incident.model_copy(deep=True),
+            evidence=tuple(item.model_copy(deep=True) for item in agent_input.evidence),
+            health_observations=tuple(
+                item.model_copy(deep=True)
+                for item in agent_input.health_observations
+            ),
         )
 
     def evidence_by_id(self, evidence_id: str) -> EvidenceItem:

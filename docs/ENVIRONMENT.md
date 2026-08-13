@@ -4,7 +4,7 @@
 
 - 最近核验日期：2026-08-13
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 7.2 已完成；RA-1A Step 1 离线 Robot Agent bootstrap 已完成
+- 当前阶段：阶段 0 至阶段 7.2 已完成；RA-1A Offline Robot Diagnosis 闭环已完成
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -26,7 +26,7 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | 既有八包加 `resilient_nav_agent` | 9 包可构建并可由 ROS 2 发现；测试汇总 461 tests、0 errors、0 failures、1 skipped |
+| 项目 ROS 2 包 | 既有八包加 `resilient_nav_agent` | 9 包可构建并可由 ROS 2 发现；测试汇总 491 tests、0 errors、0 failures、1 skipped |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
@@ -35,7 +35,7 @@
 | 故障注入包 | `resilient_nav_fault_injection`（`ament_python`） | 阶段 5 IMU/wheel/Lidar 链保持；阶段 7.2 增加不修改数据的 `manual_fault_event` 真值窗 |
 | 健康评估包 | `resilient_nav_health_assessment`（`ament_python`） | 阶段 6 默认三传感器语义保持；阶段 7.2 增加相机 baseline/monitor、freeze runtime 验证和可选 camera evaluator |
 | 相机包 | `resilient_nav_camera`（`ament_python`） | 阶段 7.1 C920/CameraInfo/image_proc 保持；阶段 7.2 增加只组合现有节点的 health 联合 Launch |
-| Robot Agent 包 | `resilient_nav_agent`（`ament_python`） | Offline Case 双通道、8 个 reference case、Prompt/Analyzer V1 与外部 agent-core Fake integration 通过；package 70 tests；无 Live ROS 节点 |
+| Robot Agent 包 | `resilient_nav_agent`（`ament_python`） | Offline Case、3 个只读 Tools、strict Runtime、Scorer/Batch 与 8-case Fake pipeline 通过；package 88 tests；无 Live ROS 节点 |
 | Robot Agent Python 环境 | 仓库根 `.venv`（Git ignored，`--system-site-packages`） | Python 3.12.3；agent-core 0.1.0 editable import；Pydantic 2.13.4 |
 | `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
@@ -235,7 +235,7 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - `resilient_nav_fault_injection`：阶段 5 的故障模型、注入器、场景、统一 Launch、faulted EKF 配置、probe、RViz 和 bag 工具，以及阶段 7.2 manual truth event。
 - `resilient_nav_health_assessment`：阶段 6 的健康监测、真值评价、配置、Launch 和测试，以及阶段 7.2 相机特征、baseline、stale/freeze monitor、freeze runtime 验证和可选 camera evaluator。
 - `resilient_nav_camera`：C920 的 `usb_cam` 参数、正式 CameraInfo YAML、可选 `image_proc` 去畸变、启动入口、不解码 Image payload 的接收时序/元数据探针，以及临时旧 K/D ChArUco 复用验证器。
-- `resilient_nav_agent`：RA-1A Step 1 的纯 Python Robot Domain；包含严格 Pydantic Schema、Agent Input Sanitizer、Incident/Evidence builder、Robot DomainExtension 和外部 agent-core Fake Runtime 测试，不包含 ROS Adapter 或节点。
+- `resilient_nav_agent`：RA-1A 的纯 Python Robot Domain；包含严格 Pydantic Schema、Agent Input Sanitizer、Incident/Evidence builder、Robot DomainExtension、只读 Tools、Offline Runtime、Benchmark/Batch 和外部 agent-core Fake 测试，不包含 ROS Adapter 或在线节点。
 
 ## C920 硬件采集基线
 
@@ -275,15 +275,17 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - 运行期 controls 快照只执行 `v4l2-ctl --device /dev/video0 --list-ctrls-menus`。现有 `usb_cam` 启动日志会设置其自身控制默认值，自动曝光/白平衡也会使相关实时值变化；这些驱动/相机行为与新采集节点的只读快照必须区分。
 - 当前没有修改相机数据的通用故障模型、通用生产阈值或 C920 K/D；阶段 6 默认三传感器语义保持不变。
 
-## RA-1A Step 1 Robot Agent 环境
+## RA-1A Robot Agent 环境
 
 - 系统没有 `python` 命令，使用 Python 3.12.3 的 `python3`。系统 Python 受 PEP 668 externally-managed 保护，直接 editable install 被安全拒绝，没有使用 `--break-system-packages`。
 - 仓库根目录创建 `.venv` 并启用 `--system-site-packages`，因此同一解释器既能访问 ROS 2/colcon 系统包，又能隔离 Python Agent 依赖；`.venv/` 已由既有 `.gitignore` 排除。
 - 独立仓库 `Kyliangarnacho/agent-core` 位于 ResilientNavLab 外的 `/home/kylian/projects/agent-core`，当前提交 `0dcce13`，editable import 路径为 `/home/kylian/projects/agent-core/agent_core/__init__.py`，包版本 `0.1.0`。
 - agent-core 声明并安装 Pydantic `>=2.8`；本次实际为 Pydantic `2.13.4`。`resilient_nav_agent/setup.py` 同时声明 `agent-core>=0.1.0` 与 `pydantic>=2.8`，没有在源码中硬编码 sibling 绝对路径。
-- `resilient_nav_agent` package pytest 为 58 passed；包级 colcon 结果为 58 tests、0 errors、0 failures、0 skipped。
-- 九包 `colcon build --symlink-install` 成功。首次受限沙箱全测试的 5 个失败均为既有 DDS `getifaddrs/socket Operation not permitted` 或默认 `~/.ros/log` 只读；只对三包设置 `/tmp` 日志并在允许本机 DDS 的环境复跑后，最终汇总为 461 tests、0 errors、0 failures、1 skipped。
-- Robot Agent 当前只接受 plain Mapping 并执行离线诊断 bootstrap；没有真实模型 API、Live ROS、Tool、RAG、Planner、Recovery 或控制权限。
+- Step 1 历史基线中，`resilient_nav_agent` package/colcon 为 58 tests，九包汇总为 461 tests、0 errors、0 failures、1 skipped；以下本轮结果已取代它作为当前验证状态。
+- Robot Agent 当前从 plain Mapping 构建 sanitized OfflineAgentInput，并完成只读 Tool/strict Runtime/Benchmark 闭环；没有真实模型结果、Live ROS、RAG、Planner、Recovery 或控制权限。
+- 当前 shell 未配置 `AGENT_CORE_MODEL_*`、Qwen/DashScope/OpenAI API key 或模型名，真实 Qwen E2E 未执行。
+- agent-core 0.1.0 sibling working tree 已在通用 Core 层补齐 `CompatibleModelClient.complete(stream=False)`，并拒绝 streaming 与 Runtime-owned kwargs 覆盖；Core 全量 99 项通过。无网络 Robot CASE-001 probe 经 `CompatibleModelClient` 完成 Analyzer → Tool → final，3 次 transport call 均收到 `stream=False`，诊断/scoring 通过且 leakage 为 0。该修复尚未 commit 或发布。
+- 本轮 Agent package pytest/colcon test 为 88 项通过；九包 build 成功。完整 test 首轮 3 个失败均为已记录的 DDS socket 权限，获准环境只复跑受影响两包后最终为 491 tests、0 errors、0 failures、1 skipped。
 
 ## 阶段 5 故障注入闭环
 
@@ -369,7 +371,7 @@ ros2 pkg prefix resilient_nav_simulation
 ros2 pkg prefix resilient_nav_description
 ```
 
-RA-1A Step 1 Robot Agent 复核：
+RA-1A Robot Agent 复核：
 
 ```bash
 cd /home/kylian/projects/resilient_nav_lab
@@ -382,6 +384,9 @@ cd ros2_ws
 ../.venv/bin/python -m colcon test --packages-select resilient_nav_agent
 ../.venv/bin/python -m colcon test-result \
   --test-result-base build/resilient_nav_agent --verbose
+
+source install/setup.bash
+ros2 run resilient_nav_agent ra1a_fake_benchmark
 ```
 
 SDF 语义检查：
@@ -440,4 +445,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价；阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 rosbag 回放；RA-1A Step 1 已完成离线 Robot Agent bootstrap。完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航仍未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价；阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 rosbag 回放；RA-1A 已完成离线只读 Diagnosis/Benchmark 闭环。完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航仍未实现。

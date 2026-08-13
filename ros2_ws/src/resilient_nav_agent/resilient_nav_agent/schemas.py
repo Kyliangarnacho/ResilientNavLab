@@ -115,6 +115,7 @@ class DiagnosisStatus(str, Enum):
     DIAGNOSED = 'diagnosed'
     INSUFFICIENT_EVIDENCE = 'insufficient_evidence'
     BLOCKED = 'blocked'
+    NO_DIAGNOSIS = 'no_diagnosis'
 
 
 class DomainModel(BaseModel):
@@ -284,7 +285,7 @@ class DiagnosisHypothesis(DomainModel):
 class DiagnosisResult(DomainModel):
     """Auditable diagnosis output without fabricated numeric probabilities."""
 
-    incident_id: Identifier
+    incident_id: Identifier | None = None
     status: DiagnosisStatus
     primary_hypothesis_id: Identifier | None = None
     hypotheses: list[DiagnosisHypothesis] = Field(
@@ -300,7 +301,7 @@ class DiagnosisResult(DomainModel):
 
     @model_validator(mode='after')
     def validate_primary_hypothesis(self):
-        """Require a diagnosed result to reference an existing hypothesis."""
+        """Keep incident, status, and primary-hypothesis semantics consistent."""
         hypothesis_ids = [item.hypothesis_id for item in self.hypotheses]
         if len(hypothesis_ids) != len(set(hypothesis_ids)):
             raise ValueError('hypothesis IDs must be unique')
@@ -314,4 +315,11 @@ class DiagnosisResult(DomainModel):
             and self.primary_hypothesis_id is None
         ):
             raise ValueError('diagnosed result requires a primary hypothesis')
+        if self.status != DiagnosisStatus.NO_DIAGNOSIS and self.incident_id is None:
+            raise ValueError('diagnostic result requires an incident ID')
+        if self.status == DiagnosisStatus.NO_DIAGNOSIS:
+            if self.incident_id is not None:
+                raise ValueError('no-diagnosis result cannot reference an incident')
+            if self.primary_hypothesis_id is not None or self.hypotheses:
+                raise ValueError('no-diagnosis result cannot contain hypotheses')
         return self

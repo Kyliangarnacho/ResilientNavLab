@@ -1,14 +1,17 @@
 # 当前状态
 
-阶段 0 至 7.2 已完成。**RA-1A OFFLINE CASE CHECKPOINT COMPLETE**：Step 1 的 Robot Schema、Ground Truth Sanitizer、Incident/Evidence builder 和独立 agent-core Fake integration 全部保留；本 checkpoint 进一步完成 OfflineAgentInput/BenchmarkTruth 双通道、OfflineCaseBuilder、8 个 reference case，以及第一版正式 Robot Diagnostic Prompt/Analyzer/route。Agent package 当前 70 tests、0 errors、0 failures、0 skipped；最近完整 workspace 基线仍为 Step 1 的 461 tests、0 errors、0 failures、1 skipped，本轮按 STOP POINT 未重跑 workspace regression。
+阶段 0 至 7.2 已完成。**RA-1A OFFLINE DIAGNOSIS COMPLETE**：既有 Robot Schema、Ground Truth Sanitizer、双通道 Offline Case、8 个 reference fixture 和独立 agent-core integration 全部保留；本阶段进一步完成三个只读 Robot Tools、strict DiagnosisResult Runtime、OfflineDiagnosisRun、deterministic Benchmark Scorer 与 Batch Runner。Agent package 当前 88 tests、0 errors、0 failures、0 skipped；完整 workspace 回归为 491 tests、0 errors、0 failures、1 skipped。
 
 - 独立 `Kyliangarnacho/agent-core` 以仓库外 sibling editable install 接入，实际版本 `0.1.0`；Pydantic 版本为 `2.13.4`。ResilientNavLab 内没有复制 `agent_core/` 源码。
 - `AgentInputSanitizer` 接受 plain Mapping，递归拒绝 FaultStatus/场景/benchmark truth；现有 `/faulted/*` source topic 只用于 component normalization，最终 Agent-facing object 不保留 transport topic。
 - IMU、wheel、scan、camera 的真实 `SensorHealth.msg` 字段形状已由 fixture 覆盖，并统一转换为 `HealthObservation`；未修改原消息或监测算法。
-- `RobotDomainExtension` 已经通过外部 `AgentRuntime` 和 Fake completion 得到合法 `AgentResult`；没有真实模型 API、Tool 或网络推理。
+- `RobotDomainExtension` 通过外部 `AgentRuntime` 和 agent-core Tool Registry/Runtime 执行；`get_incident_health_snapshot`、`compare_component_health`、`inspect_metric_window` 只读取 immutable/deep-copied `OfflineDiagnosisContext`。
 - `OfflineRobotCase` 只在 builder 层组合 `OfflineAgentInput` 与 `BenchmarkTruth`；`agent_view()`、Domain context、`OfflineDiagnosisContext` 和 Agent Trace 的 Ground Truth leakage 测试均为 0。
 - `ra1a-reference-v1` 提供 IMU bias、wheel freeze、Lidar sector blindness、camera stale/freeze/underexposed/blurred 和 healthy control；全部明确为 reference fixture，不是 recorded run。
-- Robot Diagnostic Prompt V1 要求引用 evidence ID、区分 detector hint 与 diagnosis 并允许 insufficient evidence；Analyzer 只做 route，当前 route 为 `diagnose`、`needs_more_evidence`、`blocked`。
+- Robot Diagnostic Prompt V1 要求引用 evidence ID、区分 detector hint 与 diagnosis 并允许 insufficient evidence；Analyzer 只做 route，当前 route 为 `diagnose`、`needs_more_evidence`、`blocked`，无 Incident 的 control input 由确定性 route 进入 `healthy`。
+- `run_offline_diagnosis()` 只接受 `OfflineAgentInput`，保留 Core Trace/Tool records/model requests/latency，并把 final text 严格解析为 Pydantic `DiagnosisResult`；malformed、Schema mismatch、通道不一致和受保护输出均为显式 structured failure。
+- `BenchmarkScorer` 只在执行结束后接收 `OfflineDiagnosisRun + BenchmarkTruth`，不调用模型；Batch report 汇总 component/fault/top-k、Evidence、leakage、false diagnosis、Tool/model 使用和状态分布。
+- 8-case Fake report 标记为 `PIPELINE / FAKE BENCHMARK`，结果为 8/8 passed、component/fault/top-k/evidence validity 均为 1.0、6 Tool calls、22 model requests、0 leakage、0 false diagnosis；这不是模型智能结论。
 
 - C920 已经 WSL/USBIP + `usb_cam` 接入 ROS 2：`/dev/video0` 以 MJPG、1280×720、15 FPS request、`mmap` 发布 `/camera/c920/image_raw`。
 - 旧 K/D 已复用验证；正式 `CameraInfo`、`image_proc` 去畸变至 `/camera/c920/image_rect` 与 `rectification_probe` 已通过。
@@ -29,4 +32,4 @@
 - 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
 - 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
 
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有正式 Robot Tools、OfflineDiagnosisRunner、strict final DiagnosisResult service、Benchmark Scorer/Report、真实模型、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
+本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有真实模型结果、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。真实 Qwen 因当前环境没有可用配置而跳过。外部 agent-core 0.1.0 sibling working tree 已在 Core 层修复 `AgentRuntime` 与 public `CompatibleModelClient.complete` 的 `stream=False` 契约，并用无网络 CASE-001 probe 验证 Analyzer、Tool 和 final 三次请求全部穿过该 client；修复尚未 commit 或发布。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。

@@ -33,6 +33,19 @@ GROUND_TRUTH_KEYS = frozenset({
     'benchmark_answer',
 })
 
+GROUND_TRUTH_TEXT_MARKERS = frozenset({
+    'faultstatus',
+    'scenario_id',
+    'scenario_seed',
+    'parameters_yaml',
+    'ground_truth',
+    'ground truth',
+    'benchmark_answer',
+    'benchmark answer',
+    'truth_metadata',
+    'fault model truth',
+})
+
 _ALLOWED_TOP_LEVEL = frozenset({
     'header',
     'sensor',
@@ -124,6 +137,8 @@ def _scan_for_prohibited_content(
         return
     lowered = value.casefold()
     if '/fault_injection/status' in lowered:
+        raise SanitizationError('dangerous_content')
+    if any(marker in lowered for marker in GROUND_TRUTH_TEXT_MARKERS):
         raise SanitizationError('dangerous_content')
     source_topic_only = path == ('source_topic',)
     if '/faulted/' in lowered and not source_topic_only:

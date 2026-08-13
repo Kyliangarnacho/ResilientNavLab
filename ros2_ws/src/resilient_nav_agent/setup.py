@@ -26,4 +26,10 @@ setup(
     description='Offline Robot Diagnostic Agent domain for ResilientNavLab.',
     license='Apache-2.0',
     extras_require={'test': ['pytest']},
+    entry_points={
+        'console_scripts': [
+            'ra1a_fake_benchmark = '
+            'resilient_nav_agent.benchmark.runner:main',
+        ],
+    },
 )
