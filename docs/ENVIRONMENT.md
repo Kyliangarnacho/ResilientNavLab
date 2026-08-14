@@ -282,8 +282,8 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 - 独立仓库 `Kyliangarnacho/agent-core` 位于 ResilientNavLab 外的 `/home/kylian/projects/agent-core`，当前提交 `0dcce13`，editable import 路径为 `/home/kylian/projects/agent-core/agent_core/__init__.py`，包版本 `0.1.0`。
 - agent-core 声明并安装 Pydantic `>=2.8`；本次实际为 Pydantic `2.13.4`。`resilient_nav_agent/setup.py` 同时声明 `agent-core>=0.1.0` 与 `pydantic>=2.8`，没有在源码中硬编码 sibling 绝对路径。
 - Step 1 历史基线中，`resilient_nav_agent` package/colcon 为 58 tests，九包汇总为 461 tests、0 errors、0 failures、1 skipped；以下本轮结果已取代它作为当前验证状态。
-- Robot Agent 当前从 plain Mapping 构建 sanitized OfflineAgentInput，并完成只读 Tool/strict Runtime/Benchmark 闭环；没有真实模型结果、Live ROS、RAG、Planner、Recovery 或控制权限。
-- 当前 shell 未配置 `AGENT_CORE_MODEL_*`、Qwen/DashScope/OpenAI API key 或模型名，真实 Qwen E2E 未执行。`ra1a_real_benchmark` 在该状态只输出明确的 blocked report，不发 API 请求；默认选择 CASE-001/002/006/008，`--all` 才选择八 Case。
+- Robot Agent 当前从 plain Mapping 构建 sanitized OfflineAgentInput，并完成只读 Tool/strict Runtime/Benchmark 闭环；已完成 DashScope/Qwen `qwen3.7-flash` 真实 API baseline，但仍没有 Live ROS、RAG、Planner、Recovery 或控制权限。
+- 本地、Git 忽略的 `.env` 可映射兼容 client 的 `AGENT_CORE_MODEL_*`；真实 four-case smoke 和完整八 Case coverage 已执行。Qwen 模型拒绝 `response_format=json_object`，real runner 仅关闭该可选 capability、传递 `enable_thinking=false`，并继续使用 schema prompt 与 strict parse。
 - agent-core sibling checkout 的 `CompatibleModelClient.complete(stream=False)` 已与 Runtime 契约对齐，并拒绝 streaming 与 Runtime-owned kwargs 覆盖。无网络 Robot CASE-001 probe 经 `CompatibleModelClient` 完成 Analyzer → Tool → final，3 次 transport call 均收到 `stream=False`，诊断/scoring 通过且 leakage 为 0。
 - 本轮 Agent package pytest/colcon test 为 88 项通过；九包 build 成功。完整 test 首轮 3 个失败均为已记录的 DDS socket 权限，获准环境只复跑受影响两包后最终为 491 tests、0 errors、0 failures、1 skipped。
 

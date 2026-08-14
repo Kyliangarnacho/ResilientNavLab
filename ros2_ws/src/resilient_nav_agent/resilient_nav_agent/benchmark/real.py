@@ -105,6 +105,8 @@ def run_real_model_benchmark(
         cases,
         lambda agent_input: client_factory(agent_input).complete,
         benchmark_kind=BenchmarkKind.REAL_MODEL,
+        request_options={'extra_body': {'enable_thinking': False}},
+        analysis_response_format=None,
     )
     return RealModelBenchmarkOutcome(
         status=RealModelBenchmarkStatus.COMPLETED,

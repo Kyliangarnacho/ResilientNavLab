@@ -114,6 +114,7 @@ class BenchmarkCaseResult(DomainModel):
     tool_call_count: StrictInt = Field(ge=0)
     tool_failure_count: StrictInt = Field(ge=0)
     model_request_count: StrictInt = Field(ge=0)
+    latency_ms: float = Field(ge=0.0, allow_inf_nan=False)
     ground_truth_leakage: StrictBool
     false_diagnosis: StrictBool
 

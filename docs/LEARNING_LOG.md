@@ -2,18 +2,32 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-15 — RA-1A real API final validation
+
+### 当前事实
+
+- 教师 Agent 的 Windows `.env` 只读映射到本仓库 Git 忽略的本地 `.env`，没有打印、记录或提交 API key。DashScope/Qwen `qwen3.7-flash` 最小 request 和 Robot benchmark 均确认真实网络调用。
+- Qwen 模型对 `response_format=json_object` 返回 400。通用 agent-core 现在保持默认 structured-output 行为，但允许 Runtime 显式关闭该可选 capability；Analyzer 仍注入 Pydantic JSON schema 并严格解析。真实 runner 复用教师 Agent 的 `enable_thinking=false` provider option，未覆盖 Runtime-owned request 字段。
+- Robot final route 现在注入 `DiagnosisResult` schema；这修复模型缺少字段合同导致的 invalid schema，不引入 CASE/Truth 内容。`BenchmarkCaseResult` 透传 per-case latency，便于审计真实 runs。
+- Real smoke CASE-001/002/006/008 为 2/4 passed、component 3/3、fault/top-k 1/3、8 requests、14,677.1 ms、0 leakage/false diagnosis。完整八 Case coverage 为 3/8 passed、component 7/7、fault/top-k 2/7、16 requests、32,647.7 ms、0 leakage/false diagnosis；模型本轮没有选择只读 Tool。
+
+### 问题与处理
+
+- CASE-002/004/005/006/007 的 primary component 正确但 fault label 粒度不符合 fixture alias；记录为 model baseline，不修改 Prompt、Fixture、Truth 或 Scorer。
+- 单次 `ra1a_real_benchmark --all` 尝试超过宿主约 30 秒 output window，未得到可审计 stdout；用同一 BatchBenchmarkRunner 分两组运行以取得全部八 Case 结果，并在 Audit 明确该执行限制。
+
 ## 2026-08-14 — RA-1A real-model offline validation closeout
 
 ### 当前事实
 
 - 新增 `resilient_nav_agent.benchmark.real` 与 `ra1a_real_benchmark`。默认只跑 CASE-001、CASE-002、CASE-006、CASE-008；`--all` 才运行 CASE-001 至 CASE-008。两种报告明确标记 `REAL MODEL BENCHMARK`，不会与 `PIPELINE / FAKE BENCHMARK` 混淆。
 - 真实 runner 复用 `OfflineRobotCase.agent_view()`、`BatchBenchmarkRunner`、`run_offline_diagnosis()`、`BenchmarkScorer` 和 agent-core `CompatibleModelClient`。client factory 的形参是 `OfflineAgentInput`，因此 `BenchmarkTruth` 仍只在单次 diagnosis 结束后由 Scorer 消费。
-- runner 从 agent-core 既有 `AGENT_CORE_MODEL_*` 读取配置，不硬编码或输出 key。当前 shell 未配置 API key/model name，真实执行安全 blocked；没有伪造模型结果或重试网络调用。
+- runner 从 agent-core 既有 `AGENT_CORE_MODEL_*` 读取配置，不硬编码或输出 key；本条历史的配置缺失状态已由 2026-08-15 真实 API 验收取代。
 - no-network regression 通过 injected `CompatibleModelClient` 运行 CASE-001 的 Analyzer → Tool → final 三阶段，验证三个 transport request 均为 `stream=False`，并扫描到 0 个 truth marker。Fake reference fixture 或标准答案未改变。
 
 ### 当前边界
 
-- 真实 Provider 的质量基线仍待在已获授权且配置完整的环境执行。若模型诊断失误，应记录为 model baseline，不能对 CASE fixture、Prompt 或 Scorer 写特判。
+- 真实 Provider baseline 已在 2026-08-15 记录；模型诊断失误仍只能记为 model baseline，不能对 CASE fixture、Prompt 或 Scorer 写特判。
 - Live ROS、rosbag/live 输入、RAG/Memory、Planner、Recovery、Safety Gate action、Nav2 control 和 Multi-Agent 仍未授权。
 
 ## 2026-08-13 — RA-1A Offline Diagnosis 闭环收口

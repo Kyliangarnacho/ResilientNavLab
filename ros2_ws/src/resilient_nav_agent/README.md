@@ -11,7 +11,7 @@
 - Tool 只读取 sanitized `OfflineDiagnosisContext`，不接 ROS、文件、Shell 或机器人状态。
 - `ra1a_real_benchmark` 是明确标记为 `REAL MODEL BENCHMARK` 的可选离线入口；
   没有有效 `AGENT_CORE_MODEL_*` 配置时它会安全报告 blocked，不发 API 请求。
-- 当前没有真实 LLM 结果、Planner、Recovery 或 Live ROS Adapter。
+- 已完成 DashScope/Qwen `qwen3.7-flash` 真实 baseline；仍没有 Planner、Recovery 或 Live ROS Adapter。
 
 ## 开发依赖
 

@@ -6,7 +6,7 @@ from collections.abc import Callable
 from enum import Enum
 import json
 from time import monotonic
-from typing import Any
+from typing import Any, Mapping
 
 from agent_core import AgentRuntime
 from agent_core.observability import RunStatus, RunTrace
@@ -171,6 +171,9 @@ def run_offline_diagnosis(
     completion: Callable[..., Any],
     *,
     request_options: dict[str, Any] | None = None,
+    analysis_response_format: Mapping[str, Any] | None = {
+        'type': 'json_object'
+    },
 ) -> OfflineDiagnosisRun:
     """Run Core against sanitized input and strictly parse DiagnosisResult."""
     if not isinstance(agent_input, OfflineAgentInput):
@@ -190,6 +193,7 @@ def run_offline_diagnosis(
             extension,
             completion,
             request_options=request_options,
+            analysis_response_format=analysis_response_format,
         ).run(
             f'offline:{safe_input.case_id}',
             'Assess the current sanitized offline Robot health input.',

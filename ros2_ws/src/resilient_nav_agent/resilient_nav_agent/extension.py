@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
+import json
 
 from agent_core import DomainExtension, RouteDecision
 from agent_core.context import ContextBundle
@@ -13,7 +14,11 @@ from resilient_nav_agent.offline.context import OfflineDiagnosisContext
 from resilient_nav_agent.offline.schemas import OfflineAgentInput
 from resilient_nav_agent.prompts import ANALYZER_INSTRUCTION, SYSTEM_PROMPT
 from resilient_nav_agent.sanitizer import AgentInputSanitizer
-from resilient_nav_agent.schemas import ComponentIdentifier, ShortText
+from resilient_nav_agent.schemas import (
+    ComponentIdentifier,
+    DiagnosisResult,
+    ShortText,
+)
 from resilient_nav_agent.tools import create_robot_tool_registry
 
 
@@ -38,6 +43,12 @@ class RobotAnalysis(BaseModel):
     needs_more_evidence: StrictBool
     candidate_checks: list[ShortText] = Field(default_factory=list, max_length=16)
     short_reason: ShortText
+
+
+_DIAGNOSIS_RESULT_INSTRUCTION = (
+    'Return only one JSON object matching this DiagnosisResult schema: '
+    + json.dumps(DiagnosisResult.model_json_schema(), ensure_ascii=False)
+)
 
 
 class RobotDomainExtension(DomainExtension):
@@ -112,7 +123,8 @@ class RobotDomainExtension(DomainExtension):
                 should_answer=True,
                 additional_instructions=[
                     'Return only strict DiagnosisResult JSON with incident_id '
-                    'null, status no_diagnosis, and no hypotheses.'
+                    'null, status no_diagnosis, and no hypotheses.',
+                    _DIAGNOSIS_RESULT_INSTRUCTION,
                 ],
             )
         if parsed.needs_tools:
@@ -123,7 +135,8 @@ class RobotDomainExtension(DomainExtension):
                     use_tools=True,
                     additional_instructions=[
                         'Use only registered read-only Tools, then return only '
-                        'strict DiagnosisResult JSON citing evidence_id values.'
+                        'strict DiagnosisResult JSON citing evidence_id values.',
+                        _DIAGNOSIS_RESULT_INSTRUCTION,
                     ],
                 )
             return RouteDecision(
@@ -143,7 +156,8 @@ class RobotDomainExtension(DomainExtension):
                 should_answer=True,
                 additional_instructions=[
                     'Return a DiagnosisResult with status insufficient_evidence '
-                    'and state which read-only evidence is missing.'
+                    'and state which read-only evidence is missing.',
+                    _DIAGNOSIS_RESULT_INSTRUCTION,
                 ],
             )
         if parsed.primary_component is None:
@@ -158,7 +172,8 @@ class RobotDomainExtension(DomainExtension):
             additional_instructions=[
                 'Return only strict DiagnosisResult JSON. Diagnose using only '
                 'the sanitized evidence, use a concise cause/fault type, and '
-                'cite evidence_id values.'
+                'cite evidence_id values.',
+                _DIAGNOSIS_RESULT_INSTRUCTION,
             ],
         )
 

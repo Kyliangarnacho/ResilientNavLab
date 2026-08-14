@@ -32,4 +32,4 @@
 - 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
 - 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
 
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有真实模型结果、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。`ra1a_real_benchmark` 已提供明确标记的四 Case smoke 与显式八 Case compatible-model 离线入口；本 shell 没有可用配置，因此真实 Qwen 仍跳过。外部 agent-core 已在 Core 层修复 `AgentRuntime` 与 public `CompatibleModelClient.complete` 的 `stream=False` 契约，并用无网络 CASE-001 probe 验证 Analyzer、Tool 和 final 三次请求全部穿过该 client。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
+本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 已通过 DashScope/Qwen `qwen3.7-flash` 真实 API 完成四 Case smoke（2/4）和八 Case baseline（3/8）：组件 7/7 正确、fault/top-k 2/7、Evidence validity 1.0、leakage/healthy false diagnosis 均为 0。fault-label 粒度失败是模型 baseline，不修改 fixture、truth、Scorer 或 CASE prompt。为支持该模型，agent-core 的 Analyzer response-format capability 可显式关闭且仍注入 JSON schema；Robot final 同时注入 strict `DiagnosisResult` schema。Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限仍未实现。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。

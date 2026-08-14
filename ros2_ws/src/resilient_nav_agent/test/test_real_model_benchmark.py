@@ -1,6 +1,7 @@
 """No-network contract tests for the explicit RA-1A real-model runner."""
 
 import json
+from types import SimpleNamespace
 
 from agent_core.model import CompatibleModelClient
 
@@ -62,11 +63,21 @@ def test_real_runner_uses_agent_view_with_compatible_client_only():
     captured = []
 
     def client_factory(agent_input):
-        completion = ReferencePipelineFakeCompletion(agent_input)
+        fixture_completion = ReferencePipelineFakeCompletion(agent_input)
+        call_count = 0
 
         def transport(**kwargs):
+            nonlocal call_count
             captured.append(kwargs)
-            return completion(**kwargs)
+            call_count += 1
+            if call_count == 1:
+                return SimpleNamespace(choices=[SimpleNamespace(
+                    message=SimpleNamespace(
+                        content=json.dumps(fixture_completion._analysis()),
+                        tool_calls=None,
+                    ),
+                )])
+            return fixture_completion(**kwargs)
 
         return CompatibleModelClient(completion=transport)
 
@@ -80,6 +91,7 @@ def test_real_runner_uses_agent_view_with_compatible_client_only():
     assert outcome.report.passed_case_count == 1
     assert outcome.report.total_model_requests == 3
     assert all(call['stream'] is False for call in captured)
-    assert any('response_format' in call for call in captured)
+    assert all('response_format' not in call for call in captured)
+    assert all(call['extra_body'] == {'enable_thinking': False} for call in captured)
     assert any('tools' in call for call in captured)
     assert all(forbidden_hits(call) == [] for call in captured)

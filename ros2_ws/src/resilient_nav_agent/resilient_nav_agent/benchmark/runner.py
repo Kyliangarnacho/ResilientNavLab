@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 import json
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Mapping
 
 from resilient_nav_agent.benchmark.schemas import (
     BenchmarkKind,
@@ -204,6 +204,10 @@ class BatchBenchmarkRunner:
         completion_factory: CompletionFactory,
         *,
         benchmark_kind: BenchmarkKind,
+        request_options: Mapping[str, Any] | None = None,
+        analysis_response_format: Mapping[str, Any] | None = {
+            'type': 'json_object'
+        },
     ) -> BenchmarkReport:
         """Return one aggregate report without feeding truth to completions."""
         runs = []
@@ -212,7 +216,12 @@ class BatchBenchmarkRunner:
         for case in cases:
             agent_input = case.agent_view()
             completion = completion_factory(agent_input)
-            run = run_offline_diagnosis(agent_input, completion)
+            run = run_offline_diagnosis(
+                agent_input,
+                completion,
+                request_options=dict(request_options or {}),
+                analysis_response_format=analysis_response_format,
+            )
             result = self._scorer.score(run, case.benchmark_truth)
             runs.append(run)
             results.append(result)

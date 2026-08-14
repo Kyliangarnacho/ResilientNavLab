@@ -231,6 +231,7 @@ class BenchmarkScorer:
             tool_call_count=len(latest_records),
             tool_failure_count=tool_failures,
             model_request_count=run.model_request_count,
+            latency_ms=run.latency_ms,
             ground_truth_leakage=leakage,
             false_diagnosis=false_diagnosis,
         )
