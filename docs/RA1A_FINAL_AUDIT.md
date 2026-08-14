@@ -60,7 +60,7 @@ to its client factory; `BenchmarkTruth` remains within the post-run Scorer.
 | No-network real-runner/client regression | Passed: CASE-001 traversed Analyzer -> Tool -> final through `CompatibleModelClient`; 3 requests, all `stream=False`, no leakage |
 | RA-1A targeted/adversarial/leakage tests | 31 passed |
 | `resilient_nav_agent` pytest / colcon test | 91 passed / 91 tests, 0 errors, 0 failures |
-| agent-core pytest | 99 passed (only its read-only checkout could not write pytest cache) |
+| agent-core pytest | 100 passed (only its read-only checkout could not write pytest cache) |
 
 Configure only through the existing agent-core variables; never store or print
 credentials:
