@@ -30,6 +30,8 @@ setup(
         'console_scripts': [
             'ra1a_fake_benchmark = '
             'resilient_nav_agent.benchmark.runner:main',
+            'ra1a_real_benchmark = '
+            'resilient_nav_agent.benchmark.real:main',
         ],
     },
 )

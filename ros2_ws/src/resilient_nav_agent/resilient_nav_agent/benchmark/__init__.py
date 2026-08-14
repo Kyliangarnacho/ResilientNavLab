@@ -13,3 +13,4 @@ __all__ = [
     'BenchmarkReport',
     'BenchmarkTruth',
 ]
+"""RA-1A deterministic scoring and explicitly labeled benchmark runners."""
