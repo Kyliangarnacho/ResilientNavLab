@@ -9,6 +9,8 @@
 - `FaultStatus` 和 fault injection truth 不得进入本包的 Agent Input。
 - `agent_core` 必须来自独立 `Kyliangarnacho/agent-core` 安装，不得复制到本仓库。
 - Tool 只读取 sanitized `OfflineDiagnosisContext`，不接 ROS、文件、Shell 或机器人状态。
+- `ra1a_real_benchmark` 是明确标记为 `REAL MODEL BENCHMARK` 的可选离线入口；
+  没有有效 `AGENT_CORE_MODEL_*` 配置时它会安全报告 blocked，不发 API 请求。
 - 当前没有真实 LLM 结果、Planner、Recovery 或 Live ROS Adapter。
 
 ## 开发依赖
@@ -38,6 +40,12 @@ cd ros2_ws
 
 source install/setup.bash
 ros2 run resilient_nav_agent ra1a_fake_benchmark
+ros2 run resilient_nav_agent ra1a_real_benchmark       # CASE-001/002/006/008
+ros2 run resilient_nav_agent ra1a_real_benchmark --all # CASE-001..008
 ```
 
-完整架构、验证证据和限制见 [RA-1A final 报告](../../../docs/RA1A_OFFLINE_DIAGNOSIS_FINAL.md)。
+真实入口使用 agent-core 既有 `AGENT_CORE_MODEL_API_KEY`、
+`AGENT_CORE_MODEL_NAME`（可选 `AGENT_CORE_MODEL_BASE_URL`、
+`AGENT_CORE_MODEL_TIMEOUT_SECONDS`）配置；不要把 secret 写入文件、fixture 或报告。
+
+完整架构、验证证据和限制见 [RA-1A final audit](../../../docs/RA1A_FINAL_AUDIT.md)。

@@ -41,7 +41,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - `camera_health_calibrate` 可选记录 camera FaultStatus 到逐帧 CSV，并在 SCHEDULED/ACTIVE/ENDED 保存三阶段只读 V4L2 controls；`camera_fault_feature_report` 以 transition margin 比较 pre/active/post 分布，只输出描述统计和候选区间。
 - RA-1A 已形成 `OfflineAgentInput → RobotDomainExtension → agent-core AgentRuntime → 0..N read-only Tools → strict DiagnosisResult → OfflineDiagnosisRun` 执行链；三个 Tool 分别提供 Incident health snapshot、组件 health 比较和 metric window 检查。
 - evaluator 侧以独立 `BenchmarkTruth` 对 `OfflineDiagnosisRun` 判卷并生成 `BenchmarkCaseResult` / `BenchmarkReport`；会检测 component/fault/top-k、Evidence 引用、最小 Evidence 类型、可确定 unsupported claim、Tool/model 使用、leakage 与 healthy false diagnosis。
-- Robot Agent 仍不订阅 Live ROS，不接收 evaluator truth，不提供 RAG、Planner、Recovery、参数写入或控制输出。真实 Qwen 未运行，因为当前环境没有可用配置。
+- Robot Agent 仍不订阅 Live ROS，不接收 evaluator truth，不提供 RAG、Planner、Recovery、参数写入或控制输出。`ra1a_real_benchmark` 已提供明确标记的四 Case/八 Case compatible-model 离线入口；当前 shell 没有可用模型配置，因此未运行真实 Qwen。
 
 阶段 3 已完成机器人描述、独立关节状态发布、运行时 TF、独立与 Gazebo 联合 RViz 显示、物理落地、Gazebo 原生差速插件、ROS 2 基础速度/里程计/仿真关节状态链路、ROS 侧 odom TF、运动测试工具，以及直行、原地旋转、圆弧和停车同步基线。阶段 4 已完成多传感器接口和 wheel odometry + IMU 的固定字段 EKF 基线；阶段 5 已完成可复现故障注入和真值闭环；阶段 6 已完成在线健康监测和基于真值的评价；RA-1A 已完成可重复、可判卷的 Offline Robot Diagnosis 闭环。Gazebo 原生 TF 未桥接，PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航均未实现。
 
@@ -113,6 +113,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 - [Robot Agent 开源项目基线](docs/OPEN_SOURCE_BASELINES.md)
 - [RA-1A Step 1 Robot Agent Bootstrap](docs/RA1A_STEP1_ROBOT_AGENT_BOOTSTRAP.md)
 - [RA-1A Offline Diagnosis Final](docs/RA1A_OFFLINE_DIAGNOSIS_FINAL.md)
+- [RA-1A Final Audit](docs/RA1A_FINAL_AUDIT.md)
 
 ## 近期里程碑
 

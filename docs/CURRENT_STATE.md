@@ -32,4 +32,4 @@
 - 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
 - 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
 
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有真实模型结果、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。真实 Qwen 因当前环境没有可用配置而跳过。外部 agent-core 0.1.0 sibling working tree 已在 Core 层修复 `AgentRuntime` 与 public `CompatibleModelClient.complete` 的 `stream=False` 契约，并用无网络 CASE-001 probe 验证 Analyzer、Tool 和 final 三次请求全部穿过该 client；修复尚未 commit 或发布。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
+本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 当前没有真实模型结果、Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限。`ra1a_real_benchmark` 已提供明确标记的四 Case smoke 与显式八 Case compatible-model 离线入口；本 shell 没有可用配置，因此真实 Qwen 仍跳过。外部 agent-core 已在 Core 层修复 `AgentRuntime` 与 public `CompatibleModelClient.complete` 的 `stream=False` 契约，并用无网络 CASE-001 probe 验证 Analyzer、Tool 和 final 三次请求全部穿过该 client。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。

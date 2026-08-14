@@ -2,6 +2,20 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-14 — RA-1A real-model offline validation closeout
+
+### 当前事实
+
+- 新增 `resilient_nav_agent.benchmark.real` 与 `ra1a_real_benchmark`。默认只跑 CASE-001、CASE-002、CASE-006、CASE-008；`--all` 才运行 CASE-001 至 CASE-008。两种报告明确标记 `REAL MODEL BENCHMARK`，不会与 `PIPELINE / FAKE BENCHMARK` 混淆。
+- 真实 runner 复用 `OfflineRobotCase.agent_view()`、`BatchBenchmarkRunner`、`run_offline_diagnosis()`、`BenchmarkScorer` 和 agent-core `CompatibleModelClient`。client factory 的形参是 `OfflineAgentInput`，因此 `BenchmarkTruth` 仍只在单次 diagnosis 结束后由 Scorer 消费。
+- runner 从 agent-core 既有 `AGENT_CORE_MODEL_*` 读取配置，不硬编码或输出 key。当前 shell 未配置 API key/model name，真实执行安全 blocked；没有伪造模型结果或重试网络调用。
+- no-network regression 通过 injected `CompatibleModelClient` 运行 CASE-001 的 Analyzer → Tool → final 三阶段，验证三个 transport request 均为 `stream=False`，并扫描到 0 个 truth marker。Fake reference fixture 或标准答案未改变。
+
+### 当前边界
+
+- 真实 Provider 的质量基线仍待在已获授权且配置完整的环境执行。若模型诊断失误，应记录为 model baseline，不能对 CASE fixture、Prompt 或 Scorer 写特判。
+- Live ROS、rosbag/live 输入、RAG/Memory、Planner、Recovery、Safety Gate action、Nav2 control 和 Multi-Agent 仍未授权。
+
 ## 2026-08-13 — RA-1A Offline Diagnosis 闭环收口
 
 ### 当前事实
