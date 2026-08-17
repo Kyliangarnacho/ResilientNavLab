@@ -61,10 +61,14 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **阶段 6：健康评估（已完成）。** 已完成 `resilient_nav_health_assessment` 的 timing/stale/delay、wheel freeze、IMU bias 与 Lidar sector blindness 健康判定，`health_evaluator` 按 `FaultStatus` 输出 JSON 评价，`phase6_health_evaluation.launch.py` 统一阶段 5/6 链路。命令行 `evaluator_output_json` 覆盖仍不作为可靠入口；YAML 固定输出路径为可运行回退。
 - **阶段 7.1：C920 相机集成（已完成）。** 已完成 WSL/USBIP + `usb_cam` 采集、正式 CameraInfo、旧 K/D 复用验证、`image_proc` 去畸变，以及 image_raw / camera_info / image_rect 的 rosbag 无相机回放；WSL USB/IP 下的偶发闪帧、帧率波动和图像偏暗仅记录为技术债。
 - **阶段 7.2：相机健康（已完成）。** 已完成 baseline、monitor v1、自动验证、人工真值、camera evaluator、联合 Launch，以及 truth-labelled 故障特征采集/描述报告。正式故障包含 stale、exact-fingerprint freeze 和保守 underexposed/overexposed/blurred/low-information v1。
+- **阶段 8 里程碑 1–4 与 evaluation channel（部分完成）。** 已冻结 healthy reference、fixed faulted、adaptive 与 ground-truth 四条链、`FusionStatus` 接口、TF owner 与真值隔离；新增 `resilient_nav_fusion/FusionPolicy`、只读测量 adapter、独立 adaptive EKF、受控 healthy smoke、evaluator-only Gazebo pose channel 和只读 Localization Evaluator。adaptive EKF 只消费 `/fusion/input/*`，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；Ground Truth 固定在 `/evaluation/*`，Evaluator 只读 truth/fixed/adaptive trajectory 并输出 benchmark 指标，不接入融合链；不含动态参数写入、TF owner 切换或容错导航。
+- **阶段 8 IMU bias benchmark（已完成首轮）。** 已复用 Phase 6 的既有 `imu_bias_ekf_comparison.yaml` 运行 fixed/adaptive 公平对照：两者面对同一 `/faulted/*` 数据，独立 Ground Truth/Evaluator 只输出 benchmark 指标和时间线。首次受控运行确认 adaptive 相对 fixed 的 position RMSE 改善；不改变 fault model、fixed baseline、健康算法、TF owner 或任何运行中 EKF 参数。
+- **阶段 8 IMU delay benchmark（已完成首轮）。** 已复用 Phase 5/6 的既有 `imu_delay_demo.yaml`，以相同的 fixed/adaptive 公平对照完成完整 Health/Fusion/recovery evidence，并得到 adaptive 的位置与 yaw RMSE 改善。既有 dropout 模型保持可用但当前 `p=0.30` 场景无法可靠触发 Phase 6 的 `0.5 s` stale 判定；没有改变它的概率或健康阈值来追求 benchmark 结论。
+- **阶段 8 wheel freeze benchmark（已完成首轮）。** 已复用 Phase 5/6 的既有 `wheel_freeze_ekf_comparison.yaml` 和 wheel Health 逻辑，在同一 faulted wheel/IMU 数据上完成 fixed/adaptive 公平对照。运行证实 Health/Fusion 能将 `wheel_velocity` fail-closed suppress，同时保持 `imu_yaw_rate` 输入；没有独立 translation redundancy，因而不构造替代线速度或宣称恢复准确前进位移。实验完整性与性能结论分离：正式运行 `benchmark_outcome=PASS`，但因 yaw RMSE 未改善，`adaptive_improved=false`。
 - **RA-1A Step 1：Robot Agent Bootstrap（已完成）。** 新增离线 `resilient_nav_agent` 包，以 Pydantic v2 定义 Agent-facing 合同，通过 fail-closed Sanitizer 隔离 FaultStatus/实验真值，构造最小 Incident/Evidence，并通过 Fake completion 使用独立 `Kyliangarnacho/agent-core`；不含 Live ROS、真实 LLM、Tool、Planner 或 Recovery。
 - **RA-1A Offline Diagnosis（已完成）。** 在 Step 1 合同上接入 agent-core Tool Runtime，完成三个 sanitized-context-only 只读 Tool、strict DiagnosisResult service、OfflineDiagnosisRun、deterministic Scorer 与 Batch Report；不含 Live ROS、真实模型结论、Planner 或 Recovery。
 
-当前工作空间已有九个 ROS 2 软件包：
+当前工作空间已有十个 ROS 2 软件包：
 
 - `resilient_nav_monitor`：包含 `system_heartbeat` 和 `odom_tf_broadcaster` 节点。
 - `resilient_nav_simulation`：包含阶段 2 的 Gazebo 世界、仅声明 `/clock` 的静态 bridge 配置，以及阶段 3 在 Launch 中动态建立的机器人基础运动 bridge、模型生成、Gazebo/RViz Demo、`motion_test` 工具和静态/单元测试。
@@ -74,6 +78,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - `resilient_nav_fault_injection`：包含阶段 5 故障模型、注入器、场景 YAML、统一 Launch、faulted EKF 配置、probe、RViz、bag 工具和测试，以及阶段 7.2 不修改数据的 `manual_fault_event` 真值窗发布器。
 - `resilient_nav_health_assessment`：包含阶段 6 链，以及阶段 7.2 相机特征、baseline/故障采集、描述报告、monitor、freeze 测试/观察、runtime 验证和可选 camera evaluator。
 - `resilient_nav_camera`：包含 C920 的 `usb_cam` 基线配置、正式 CameraInfo YAML、阶段 7.1 C920 Launch、probe/去畸变/旧 K/D 验证，以及阶段 7.2 只组合现有节点的 camera health 联合 Launch。
+- `resilient_nav_fusion`：阶段 8 的纯 Python `FusionPolicy`、`measurement_adapter` ROS Node、adaptive EKF YAML、最小 Launch 与单元测试；没有 TF 或控制接口。
 - `resilient_nav_agent`：包含 RA-1A 的纯 Python Schema、Sanitizer、Incident/Evidence builder、Robot DomainExtension、只读 Tools、Offline Runtime、Benchmark/Batch 和外部 agent-core Fake integration；当前没有 ROS Adapter 或在线节点入口。
 
 当前明确未完成：
@@ -82,7 +87,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - Gazebo 原生 TF/位姿输出没有桥接；ROS TF 由 `odom_tf_broadcaster` 只根据桥接后的 `/odom` 单独发布，避免重复来源。
 - IMU、二维 Lidar 和 RGB-D 基础接口已建立；IMU/wheel/Lidar 首批故障模型已完成；PointCloud2 bridge、RGB-D 故障模型和长期性能验收尚未完成。
 - wheel odometry + IMU 的 odom-frame EKF 基线已建立；Nav2、SLAM、map-frame 全局定位和真实硬件定位尚未开始。
-- 可复现故障注入与健康评估闭环已完成；自适应融合和容错导航尚未开发。
+- 可复现故障注入与健康评估闭环已完成；健康感知 policy、ROS measurement adapter 与独立 adaptive EKF 已实现并已有受控 benchmark；容错导航尚未开发。
 - 阶段 7.1 已完成 C920 的正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 image_raw / camera_info / image_rect 的 rosbag 无相机回放；真实机器人部署、相机再标定、TF、修改真实数据的相机故障模型和真实硬件定位尚未开始。阶段 7.2 的 freeze 专项源仅生成隔离测试输入，manual event 仅生成真值标签。
 - 阶段 7.2 已完成保守的 stale/freeze/underexposed/overexposed/blurred/low-information v1、人工 `FaultStatus` 时间窗、camera evaluator 和恢复评价接口；冻结 config 只适用于本阶段评价，不构成通用生产阈值。
 - RA-1A 已完成离线只读诊断闭环；Live ROS Adapter、自动 Incident lifecycle、RAG、真实模型验证、Planner、Recovery 和实时控制均未实现。
