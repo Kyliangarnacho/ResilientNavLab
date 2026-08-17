@@ -1,0 +1,4 @@
+# Empty scenario: Phase 5 creates disabled passthrough injectors for every
+# measurement.  This file is consumed only by the controlled healthy smoke
+# upstream and is not an adaptive-EKF, policy, or health configuration.
+{}

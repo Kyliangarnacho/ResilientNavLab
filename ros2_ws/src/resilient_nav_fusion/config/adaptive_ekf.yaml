@@ -1,0 +1,57 @@
+# Phase 8 adaptive EKF measurement contract.
+#
+# Health interpretation, suppression, covariance inflation, and wheel yaw-rate
+# fallback selection happen only in resilient_nav_fusion.measurement_adapter.
+# This EKF therefore consumes adapter-owned measurements and has no direct
+# fault-injection or health-state input.
+adaptive_ekf_filter_node:
+  ros__parameters:
+    use_sim_time: true
+    frequency: 20.0
+    sensor_timeout: 0.1
+    two_d_mode: true
+    publish_tf: false
+    publish_acceleration: false
+    print_diagnostics: true
+
+    world_frame: odom
+    odom_frame: odom
+    base_link_frame: base_footprint
+
+    # Wheel longitudinal velocity, forwarded or covariance-scaled by the
+    # measurement adapter according to FusionPolicy.
+    odom0: /fusion/input/wheel/odometry
+    odom0_config: [false, false, false,
+                   false, false, false,
+                   true,  false, false,
+                   false, false, false,
+                   false, false, false]
+    odom0_queue_size: 10
+    odom0_nodelay: true
+    odom0_differential: false
+    odom0_relative: false
+
+    # IMU yaw-rate, forwarded or covariance-scaled by the measurement adapter.
+    imu0: /fusion/input/imu/data
+    imu0_config: [false, false, false,
+                  false, false, false,
+                  false, false, false,
+                  false, false, true,
+                  false, false, false]
+    imu0_queue_size: 20
+    imu0_nodelay: true
+    imu0_differential: false
+    imu0_relative: false
+    imu0_remove_gravitational_acceleration: false
+
+    # Independent wheel yaw-rate fallback.  The adapter publishes it only when
+    # FusionPolicy has suppressed the IMU and accepted the wheel measurement.
+    twist0: /fusion/input/wheel/yaw_rate
+    twist0_config: [false, false, false,
+                    false, false, false,
+                    false, false, false,
+                    false, false, true,
+                    false, false, false]
+    twist0_queue_size: 10
+    twist0_differential: false
+    twist0_relative: false
