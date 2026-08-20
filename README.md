@@ -4,9 +4,11 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 ## 当前状态
 
-项目已完成阶段 0 至阶段 7.2，并完成 Robot Diagnostic Agent 的 RA-1A Offline Diagnosis 闭环。现有离线只读 Domain、严格 Schema、Ground Truth Sanitizer、双通道 Case 和 8 个 reference fixture 保持不变；当前进一步完成 3 个只读 Robot Tools、严格 DiagnosisResult Runtime、deterministic Benchmark Scorer 和 Batch Runner。Fake pipeline 8/8 通过且明确标记为 `PIPELINE / FAKE BENCHMARK`；Agent package 当前 88 tests 全通过，完整九包回归为 491 tests、0 errors、0 failures、1 skipped。
+项目已完成阶段 0 至阶段 9，并完成 Robot Diagnostic Agent 的 RA-1A Offline Diagnosis 闭环。现有离线只读 Domain、严格 Schema、Ground Truth Sanitizer、双通道 Case 和 8 个 reference fixture 保持不变。
 
 Phase 8 里程碑 1–4 已冻结四条实验链与真值隔离，并新增 `resilient_nav_fusion`：纯 Python `FusionPolicy` 可基于 wheel/IMU 健康状态给出测量接纳、显式协方差倍率、wheel yaw fallback 与恢复滞回；`measurement_adapter` 只发布匿名化 `/fusion/input/*` 和 `/fusion/status`；独立 adaptive EKF 只订阅这些输入，固定发布 `/odometry/adaptive` 且不发布 TF。没有控制或容错导航实现。
+
+Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 本机 Jazzy Slam Toolbox，healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 和 `/map`。Occupancy Map 与 Serialized Pose Graph 已保存并能在全新 process localization reload；Ground Truth 仅在独立 evaluation overlay 中用于事后评价。loop closure 未确认；Nav2、fault-aware SLAM 和 Adaptive EKF+SLAM 比较不在 Phase 9 范围。
 
 - ROS 2 Jazzy、`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 的阶段 1 基线保持可用。
 - 已通过 `ros-jazzy-ros-gz` 安装 Gazebo Harmonic；Gazebo Sim 版本为 8.11.0。
@@ -75,7 +77,7 @@ Phase 8 里程碑 1–4 已冻结四条实验链与真值隔离，并新增 `res
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | 既有九包加 `resilient_nav_fusion`，共十包；新增 fusion 包已完成包级构建与 11 项测试 |
+| 项目 ROS 2 包 | 共 11 包；`resilient_nav_slam` 是第 11 个 ROS package |
 | 项目 ROS 2 节点 | `system_heartbeat` 发布存活消息；`odom_tf_broadcaster` 从 `/odom` 发布 `odom -> base_footprint` |
 | Gazebo | Gazebo Harmonic / Gazebo Sim 8.11.0，可用 |
 | ROS 2—Gazebo 集成 | `/clock`、`/cmd_vel`、`/odom` 和 `/joint_states` 的阶段内定向桥接已验证 |

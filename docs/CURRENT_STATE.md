@@ -1,6 +1,8 @@
 # 当前状态
 
-阶段 0 至 7.2 已完成。**RA-1A OFFLINE DIAGNOSIS COMPLETE**：既有 Robot Schema、Ground Truth Sanitizer、双通道 Offline Case、8 个 reference fixture 和独立 agent-core integration 全部保留；本阶段进一步完成三个只读 Robot Tools、strict DiagnosisResult Runtime、OfflineDiagnosisRun、deterministic Benchmark Scorer 与 Batch Runner。Agent package 当前 88 tests、0 errors、0 failures、0 skipped；完整 workspace 回归为 491 tests、0 errors、0 failures、1 skipped。
+阶段 0 至阶段 9 已完成。**RA-1A OFFLINE DIAGNOSIS COMPLETE**：既有 Robot Schema、Ground Truth Sanitizer、双通道 Offline Case、8 个 reference fixture 和独立 agent-core integration 全部保留；本阶段进一步完成三个只读 Robot Tools、strict DiagnosisResult Runtime、OfflineDiagnosisRun、deterministic Benchmark Scorer 与 Batch Runner。
+
+- Phase 9 已完成健康二维 LiDAR Slam Toolbox baseline：healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 与 `/map`；M8 occupancy map 和 serialized pose graph 已持久化并在全新 localization process 重载。不同安全 spawn 使用人为已知、map-frame `map_start_pose` 初始化；Ground Truth 仅经 evaluation overlay 进入只读 adapter/evaluator，绝不回流估计器、Health/Fusion 或 Agent。loop closure 没有直接可区分证据，状态为“未确认”。Nav2、fault-aware SLAM、Adaptive EKF+SLAM 正式比较仍未实现；Phase 10 才进入 healthy Nav2 baseline。
 
 - Phase 8 里程碑 1–4 已完成接口、策略、measurement adapter 与独立 adaptive EKF：`FusionStatus` 已生成；`FusionPolicy` 只接收 sanitized wheel/IMU health 与显式配置，输出测量接纳、协方差倍率、wheel yaw fallback、状态、结构化 reasons 与置信度。`measurement_adapter` 订阅 wheel/IMU 输入及 `SensorHealth`，只发布匿名化 `/fusion/input/*` 与 `/fusion/status`，并在非法协方差时 fail closed。`adaptive_ekf.yaml` 仅订阅这三个 fusion input，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；它不读取 `FaultStatus` 或 scenario，也没有 TF 或控制能力。包级 build 与 35 个 pytest 均通过。
 
@@ -42,4 +44,4 @@
 - 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
 - 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
 
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 已通过 DashScope/Qwen `qwen3.7-flash` 真实 API 完成四 Case smoke（2/4）和八 Case baseline（3/8）：组件 7/7 正确、fault/top-k 2/7、Evidence validity 1.0、leakage/healthy false diagnosis 均为 0。fault-label 粒度失败是模型 baseline，不修改 fixture、truth、Scorer 或 CASE prompt。为支持该模型，agent-core 的 Analyzer response-format capability 可显式关闭且仍注入 JSON schema；Robot final 同时注入 strict `DiagnosisResult` schema。Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限仍未实现。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM、自适应融合和容错导航仍未实现。
+本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 已通过 DashScope/Qwen `qwen3.7-flash` 真实 API 完成四 Case smoke（2/4）和八 Case baseline（3/8）：组件 7/7 正确、fault/top-k 2/7、Evidence validity 1.0、leakage/healthy false diagnosis 均为 0。fault-label 粒度失败是模型 baseline，不修改 fixture、truth、Scorer 或 CASE prompt。为支持该模型，agent-core 的 Analyzer response-format capability 可显式关闭且仍注入 JSON schema；Robot final 同时注入 strict `DiagnosisResult` schema。Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Planner、Recovery 或控制权限仍未实现。修改图像的数据故障模型、真实硬件定位、Nav2、SLAM 和容错导航仍未实现；Phase 8 自适应融合的已完成边界以上文为准。

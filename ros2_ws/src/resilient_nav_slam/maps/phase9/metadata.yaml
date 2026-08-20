@@ -1,0 +1,17 @@
+git:
+  head: dcb063a07df950f37c972d4da1e6300fced240c7
+  working_tree_dirty: true
+world: ros2_ws/src/resilient_nav_simulation/worlds/phase9_slam_world.sdf
+slam_config: ros2_ws/src/resilient_nav_slam/config/mapper_params_online_async.yaml
+route: ros2_ws/src/resilient_nav_simulation/scripts/phase9_mapping_route.py
+ros_distro: jazzy
+resolution: 0.05000000074505806
+map_width: 227
+map_height: 226
+mapping_duration_sec: 74.930444854
+occupancy_map:
+  yaml: occupancy/phase9_map.yaml
+  pgm: occupancy/phase9_map.pgm
+serialized_pose_graph:
+  data: posegraph/phase9_posegraph.data
+  posegraph: posegraph/phase9_posegraph.posegraph

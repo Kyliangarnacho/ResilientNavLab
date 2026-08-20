@@ -19,6 +19,7 @@ def generate_launch_description():
     )
 
     use_rviz = LaunchConfiguration('use_rviz')
+    world_path = LaunchConfiguration('world')
     entity_name = LaunchConfiguration('entity_name')
     spawn_x = LaunchConfiguration('spawn_x')
     spawn_y = LaunchConfiguration('spawn_y')
@@ -35,6 +36,7 @@ def generate_launch_description():
         ),
         launch_arguments={
             'use_rviz': use_rviz,
+            'world': world_path,
             'entity_name': entity_name,
             'spawn_x': spawn_x,
             'spawn_y': spawn_y,
@@ -64,6 +66,13 @@ def generate_launch_description():
             'use_rviz',
             default_value='true',
             description='Start the existing stage 3 RViz display.',
+        ),
+        DeclareLaunchArgument(
+            'world',
+            default_value=str(
+                simulation_share / 'worlds' / 'phase2_world.sdf'
+            ),
+            description='Absolute SDF world path passed to the Phase 3 launch.',
         ),
         DeclareLaunchArgument(
             'entity_name',

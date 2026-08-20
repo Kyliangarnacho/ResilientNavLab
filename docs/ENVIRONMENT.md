@@ -1,5 +1,7 @@
 # 开发环境基线
 
+> 2026-08-21 更新：本机已核验 Jazzy Slam Toolbox；当前工作空间有 11 个 ROS package，含 `resilient_nav_slam`。健康 2D SLAM、M8 posegraph reload 与 evaluator-only Ground Truth overlay 已完成；Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 对比仍未实现。
+
 ## 核验信息
 
 - 最近核验日期：2026-08-13

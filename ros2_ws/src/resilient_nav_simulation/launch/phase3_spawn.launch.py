@@ -24,6 +24,7 @@ def generate_launch_description():
     )
 
     entity_name = LaunchConfiguration('entity_name')
+    world_path = LaunchConfiguration('world')
     spawn_x = LaunchConfiguration('spawn_x')
     spawn_y = LaunchConfiguration('spawn_y')
     spawn_z = LaunchConfiguration('spawn_z')
@@ -59,7 +60,8 @@ def generate_launch_description():
     phase2_world = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             str(simulation_share / 'launch' / 'phase2_world.launch.py')
-        )
+        ),
+        launch_arguments={'world': world_path}.items(),
     )
 
     robot_state_publisher = Node(
@@ -134,6 +136,13 @@ def generate_launch_description():
             'entity_name',
             default_value='resilient_nav_robot',
             description='Gazebo entity name; duplicate names are rejected.',
+        ),
+        DeclareLaunchArgument(
+            'world',
+            default_value=str(
+                simulation_share / 'worlds' / 'phase2_world.sdf'
+            ),
+            description='Absolute SDF world path passed to the Phase 2 launch.',
         ),
         DeclareLaunchArgument(
             'spawn_x',

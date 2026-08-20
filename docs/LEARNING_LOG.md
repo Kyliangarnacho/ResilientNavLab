@@ -2,6 +2,12 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-21 Phase 9 healthy SLAM baseline
+
+- Jazzy Slam Toolbox 被 Borrow 为健康 2D LiDAR mapping/localization runtime；TF ownership 保持 healthy EKF 的 `odom -> base_footprint` 与 Slam Toolbox 的 `map -> odom` 分离。
+- M8 occupancy map 与 serialized pose graph 已保存、安装并在新进程重载；不同 spawn 的 map-frame 初值必须按建图时 odom 原点解释，不能把 Gazebo world 坐标直接当作 map 坐标。
+- Phase 8 Ground Truth bridge/adapter 只复用于 evaluator-only overlay；它不得反馈到 SLAM、Health/Fusion 或 Agent。公开 graph 信息不能稳定区分普通更新和 loop closure，结论保持未确认。
+
 ## 2026-08-15 — RA-1A real API final validation
 
 ### 当前事实

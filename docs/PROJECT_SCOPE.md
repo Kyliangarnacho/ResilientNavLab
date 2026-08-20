@@ -48,9 +48,11 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 ## 4. 当前阶段边界
 
-阶段 0 至阶段 7.2 已经完成。阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz，以及轮式里程计与 IMU 的固定字段二维 EKF 基线。阶段 5 已建立可复现故障注入闭环，包含 `FaultStatus` 真值标签、IMU/wheel/Lidar 首批故障模型、统一 Launch、faulted EKF 对照、`fault_probe` JSON 指标、RViz 和 rosbag 记录/回放。阶段 6 已建立 IMU/wheel/scan 的在线健康评估、`health_evaluator` 真值评价和统一 Launch；Lidar 统一链已得到 1 个事件、约 `0.6 s` 检测延迟和约 `0.96` F1。阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、去畸变和 rosbag 无相机回放。阶段 7.2 已完成 C920 baseline、stale/freeze、保守 underexposed/overexposed/blurred/low-information v1、freeze 自动 runtime 验证、人工 FaultStatus 时间窗和可选 camera evaluator；evaluation config 冻结用于本阶段可复现实验，并非通用生产标定。Robot Diagnostic Agent 的 RA-1A 已建立离线、只读 Robot Domain、严格 Schema、Ground Truth Sanitizer、Incident/Evidence builder、三个只读 Robot Tools、严格 Diagnosis Runtime、Benchmark Scorer 和 Batch Runner；8 个 reference fixture 已通过 Fake pipeline，未调用真实模型。现有运动基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
+阶段 0 至阶段 8 已经完成。阶段 4 已建立 IMU、二维 Lidar、RGB-D、专用 RViz，以及轮式里程计与 IMU 的固定字段二维 EKF 基线。阶段 5 已建立可复现故障注入闭环，包含 `FaultStatus` 真值标签、IMU/wheel/Lidar 首批故障模型、统一 Launch、faulted EKF 对照、`fault_probe` JSON 指标、RViz 和 rosbag 记录/回放。阶段 6 已建立 IMU/wheel/scan 的在线健康评估、`health_evaluator` 真值评价和统一 Launch；Lidar 统一链已得到 1 个事件、约 `0.6 s` 检测延迟和约 `0.96` F1。阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、去畸变和 rosbag 无相机回放。阶段 7.2 已完成 C920 baseline、stale/freeze、保守 underexposed/overexposed/blurred/low-information v1、freeze 自动 runtime 验证、人工 FaultStatus 时间窗和可选 camera evaluator；evaluation config 冻结用于本阶段可复现实验，并非通用生产标定。阶段 8 已完成健康感知 `FusionPolicy`、只读 measurement adapter、独立 adaptive EKF、evaluator-only Ground Truth/Localization Evaluator 和受控 benchmark；不含 TF owner 切换或容错导航。Robot Diagnostic Agent 的 RA-1A 已建立离线、只读 Robot Domain、严格 Schema、Ground Truth Sanitizer、Incident/Evidence builder、三个只读 Robot Tools、严格 Diagnosis Runtime、Benchmark Scorer 和 Batch Runner；8 个 reference fixture 已通过 Fake pipeline，未调用真实模型。现有运动基线包含虚拟差速机器人的描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 物理落地、原生差速插件、ROS 2 基础运动话题、ROS 侧 odom TF、可安全停车的运动测试工具，以及直行、原地旋转和圆弧同步验收。
 
 当前已完成：
+
+- **阶段 9：健康 2D LiDAR SLAM（已完成）。** 已完成 Slam Toolbox mapping、M8 occupancy/serialized pose graph 持久化、全新进程 localization reload、不同初始 pose、evaluator-only Ground Truth 评价和最小 rosbag 证据。健康 EKF 保持唯一 `odom -> base_footprint` owner，Slam Toolbox 保持唯一 `map -> odom`/`/map` owner。loop closure 未确认；Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 正式比较仍不在范围内。
 
 - **阶段 0：初始化。** 明确项目目标和初始范围，记录环境基线，建立仓库协作约束、学习日志和忽略规则。
 - **阶段 1：ROS 2 基础设施。** 安装 ROS 2 Jazzy，验证官方 talker/listener 通信，创建 `ros2_ws` 工作空间和 `resilient_nav_monitor` 包，实现并验证 `system_heartbeat` 节点。
@@ -61,7 +63,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **阶段 6：健康评估（已完成）。** 已完成 `resilient_nav_health_assessment` 的 timing/stale/delay、wheel freeze、IMU bias 与 Lidar sector blindness 健康判定，`health_evaluator` 按 `FaultStatus` 输出 JSON 评价，`phase6_health_evaluation.launch.py` 统一阶段 5/6 链路。命令行 `evaluator_output_json` 覆盖仍不作为可靠入口；YAML 固定输出路径为可运行回退。
 - **阶段 7.1：C920 相机集成（已完成）。** 已完成 WSL/USBIP + `usb_cam` 采集、正式 CameraInfo、旧 K/D 复用验证、`image_proc` 去畸变，以及 image_raw / camera_info / image_rect 的 rosbag 无相机回放；WSL USB/IP 下的偶发闪帧、帧率波动和图像偏暗仅记录为技术债。
 - **阶段 7.2：相机健康（已完成）。** 已完成 baseline、monitor v1、自动验证、人工真值、camera evaluator、联合 Launch，以及 truth-labelled 故障特征采集/描述报告。正式故障包含 stale、exact-fingerprint freeze 和保守 underexposed/overexposed/blurred/low-information v1。
-- **阶段 8 里程碑 1–4 与 evaluation channel（部分完成）。** 已冻结 healthy reference、fixed faulted、adaptive 与 ground-truth 四条链、`FusionStatus` 接口、TF owner 与真值隔离；新增 `resilient_nav_fusion/FusionPolicy`、只读测量 adapter、独立 adaptive EKF、受控 healthy smoke、evaluator-only Gazebo pose channel 和只读 Localization Evaluator。adaptive EKF 只消费 `/fusion/input/*`，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；Ground Truth 固定在 `/evaluation/*`，Evaluator 只读 truth/fixed/adaptive trajectory 并输出 benchmark 指标，不接入融合链；不含动态参数写入、TF owner 切换或容错导航。
+- **阶段 8 里程碑 1–4 与 evaluation channel（已完成）。** 已冻结 healthy reference、fixed faulted、adaptive 与 ground-truth 四条链、`FusionStatus` 接口、TF owner 与真值隔离；新增 `resilient_nav_fusion/FusionPolicy`、只读测量 adapter、独立 adaptive EKF、受控 healthy smoke、evaluator-only Gazebo pose channel 和只读 Localization Evaluator。adaptive EKF 只消费 `/fusion/input/*`，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；Ground Truth 固定在 `/evaluation/*`，Evaluator 只读 truth/fixed/adaptive trajectory 并输出 benchmark 指标，不接入融合链；不含动态参数写入、TF owner 切换或容错导航。
 - **阶段 8 IMU bias benchmark（已完成首轮）。** 已复用 Phase 6 的既有 `imu_bias_ekf_comparison.yaml` 运行 fixed/adaptive 公平对照：两者面对同一 `/faulted/*` 数据，独立 Ground Truth/Evaluator 只输出 benchmark 指标和时间线。首次受控运行确认 adaptive 相对 fixed 的 position RMSE 改善；不改变 fault model、fixed baseline、健康算法、TF owner 或任何运行中 EKF 参数。
 - **阶段 8 IMU delay benchmark（已完成首轮）。** 已复用 Phase 5/6 的既有 `imu_delay_demo.yaml`，以相同的 fixed/adaptive 公平对照完成完整 Health/Fusion/recovery evidence，并得到 adaptive 的位置与 yaw RMSE 改善。既有 dropout 模型保持可用但当前 `p=0.30` 场景无法可靠触发 Phase 6 的 `0.5 s` stale 判定；没有改变它的概率或健康阈值来追求 benchmark 结论。
 - **阶段 8 wheel freeze benchmark（已完成首轮）。** 已复用 Phase 5/6 的既有 `wheel_freeze_ekf_comparison.yaml` 和 wheel Health 逻辑，在同一 faulted wheel/IMU 数据上完成 fixed/adaptive 公平对照。运行证实 Health/Fusion 能将 `wheel_velocity` fail-closed suppress，同时保持 `imu_yaw_rate` 输入；没有独立 translation redundancy，因而不构造替代线速度或宣称恢复准确前进位移。实验完整性与性能结论分离：正式运行 `benchmark_outcome=PASS`，但因 yaw RMSE 未改善，`adaptive_improved=false`。
@@ -96,7 +98,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 - 阶段 3 已按当前基础运动边界收尾；完整运动性能、传感器和导航能力必须在后续任务中单独授权。
 - 当前不安装或集成 Nav2、SLAM 及其他尚未授权的软件依赖。
-- 阶段 7.2 已收尾；后续视觉故障规则、自适应融合或容错导航必须在单独任务中授权。
+- 阶段 7.2 已收尾；后续视觉故障规则或容错导航必须在单独任务中授权。
 - RA-1A Offline Diagnosis 已收尾；任何 Live ROS 读取、写 Tool、真实模型产品化、Planner 或 Recovery 必须在后续任务中单独授权。
 - 在仿真链路稳定并形成安全方案前，不开展真实机器人部署。
 - 不把尚未验证的算法性能作为项目结论。
@@ -110,6 +112,6 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 5. **阶段 4：传感器与定位基线（已完成）。** 已建立 IMU、二维 Lidar、RGB-D、专用 RViz 和 wheel odometry + IMU EKF 基线；PointCloud2 和更高层定位导航仍需单独任务。
 6. **阶段 5：故障注入（已完成）。** 已实现故障模型、场景配置、标签、faulted EKF 对照、probe、RViz 与 rosbag 回放闭环。
 7. **阶段 6：健康评估（已完成）。** 已建立 IMU/wheel/scan 健康判定、真值评价和统一 Launch；自适应融合未包含在本阶段。
-8. **阶段 7：自适应融合与容错导航（计划）。** 实现健康感知融合、降级决策、恢复机制与端到端对照实验。
+8. **阶段 8：健康感知融合与定位评估（已完成）。** 已完成有限、只读的健康感知 policy、measurement adapter、独立 adaptive EKF 和 evaluator-only 对照；容错导航、控制与 TF owner 切换不在完成范围内。
 
 每个尚未开始的阶段都必须在单独任务中明确授权后开展。

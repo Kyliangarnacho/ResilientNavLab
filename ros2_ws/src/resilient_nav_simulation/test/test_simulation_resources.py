@@ -8,6 +8,7 @@ import yaml
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 WORLD_PATH = PACKAGE_ROOT / 'worlds' / 'phase2_world.sdf'
+PHASE9_WORLD_PATH = PACKAGE_ROOT / 'worlds' / 'phase9_slam_world.sdf'
 BRIDGE_PATH = PACKAGE_ROOT / 'config' / 'bridge.yaml'
 LAUNCH_PATH = PACKAGE_ROOT / 'launch' / 'phase2_world.launch.py'
 SPAWN_LAUNCH_PATH = PACKAGE_ROOT / 'launch' / 'phase3_spawn.launch.py'
@@ -32,6 +33,39 @@ def test_sdf_exists_and_is_valid_xml():
     assert WORLD_PATH.is_file()
     root = ET.parse(WORLD_PATH).getroot()
     assert root.tag == 'sdf'
+
+
+def test_phase9_mapping_world_has_static_asymmetric_scan_geometry():
+    """The dedicated Phase 9 world supplies walls, corners, and occlusions."""
+    assert PHASE9_WORLD_PATH.is_file()
+    root = ET.parse(PHASE9_WORLD_PATH).getroot()
+    world = root.find("./world[@name='resilient_lab']")
+
+    assert world is not None
+    model_names = {model.attrib['name'] for model in world.findall('./model')}
+    assert {
+        'wall_north', 'wall_south', 'wall_east', 'wall_west',
+        'l_horizontal', 'l_vertical', 't_horizontal', 't_vertical',
+        'central_rectangular_obstacle', 'northwest_occluder',
+        'east_cylinder', 'small_asymmetric_block',
+    } <= model_names
+    assert all(
+        model.findtext('static') == 'true'
+        for model in world.findall('./model')
+        if model.attrib['name'] != 'ground_plane'
+    )
+    assert world.find("./model[@name='east_cylinder']//geometry/cylinder") is not None
+    assert world.find("./model[@name='l_horizontal']//geometry/box") is not None
+
+
+def test_phase9_world_keeps_the_route_inside_the_lidar_scale():
+    """The room and route start remain well inside the 12 m LiDAR envelope."""
+    root = ET.parse(PHASE9_WORLD_PATH).getroot()
+    north_wall = root.find("./world/model[@name='wall_north']/pose")
+    south_wall = root.find("./world/model[@name='wall_south']/pose")
+
+    assert north_wall.text.split()[1] == '5.75'
+    assert south_wall.text.split()[1] == '-5.75'
 
 
 def test_world_name_and_static_entities():
@@ -105,6 +139,8 @@ def test_launch_contains_required_startup_parts():
 
     assert 'ros_gz_sim' in launch_source
     assert "'phase2_world.sdf'" in launch_source
+    assert "LaunchConfiguration('world')" in launch_source
+    assert "'gz_args': ['-r ', world_path]" in launch_source
     assert (
         "get_package_share_directory('resilient_nav_simulation')"
         in launch_source
@@ -120,7 +156,7 @@ def test_launch_starts_gazebo_gui_and_runs_simulation_by_default():
     """Gazebo should start running with its GUI instead of server-only mode."""
     launch_source = LAUNCH_PATH.read_text(encoding='utf-8')
 
-    assert "'gz_args': f'-r {world_path}'" in launch_source
+    assert "'gz_args': ['-r ', world_path]" in launch_source
     assert "f'-r -s " not in launch_source
     assert '--headless-rendering' not in launch_source
 
@@ -131,6 +167,7 @@ def test_phase3_launch_reuses_world_and_spawns_robot():
     launch_source = SPAWN_LAUNCH_PATH.read_text(encoding='utf-8')
 
     assert "'phase2_world.launch.py'" in launch_source
+    assert "launch_arguments={'world': world_path}.items()" in launch_source
     assert (
         "get_package_share_directory('resilient_nav_description')"
         in launch_source
@@ -263,6 +300,7 @@ def test_phase4_demo_reuses_phase3_and_only_adds_sensor_bridge():
     launch_source = PHASE4_LAUNCH_PATH.read_text(encoding='utf-8')
 
     assert "'phase3_demo.launch.py'" in launch_source
+    assert "'world': world_path" in launch_source
     assert "name='sensor_bridge'" in launch_source
     assert "'phase4_sensor_bridge.yaml'" in launch_source
     assert "'odom_ros_topic': odom_ros_topic" in launch_source
@@ -398,6 +436,8 @@ def test_rgbd_launch_and_rviz_are_installed_by_package_directory_rule():
     cmake_source = CMAKE_PATH.read_text(encoding='utf-8')
 
     assert 'DIRECTORY config launch rviz worlds' in cmake_source
+    assert 'scripts/phase9_mapping_route.py' in cmake_source
+    assert 'scripts/motion_safety.py' in cmake_source
     assert RGBD_LAUNCH_PATH.parent.name == 'launch'
     assert PHASE4_RVIZ_PATH.parent.name == 'rviz'
 

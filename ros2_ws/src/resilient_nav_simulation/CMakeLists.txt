@@ -14,6 +14,17 @@ install(
   RENAME motion_test
 )
 
+install(
+  PROGRAMS scripts/phase9_mapping_route.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME phase9_mapping_route
+)
+
+install(
+  FILES scripts/motion_safety.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
 

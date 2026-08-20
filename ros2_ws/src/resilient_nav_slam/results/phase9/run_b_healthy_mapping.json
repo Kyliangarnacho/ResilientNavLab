@@ -1,0 +1,36 @@
+{
+  "final_position_drift": 1.2465147466573885,
+  "final_yaw_drift": 0.4551043589630783,
+  "initial_alignment": {
+    "x": 6.639948891094808e-15,
+    "y": 5.900409207390548e-19,
+    "yaw": -4.316944834803493e-05
+  },
+  "map_metrics": {
+    "height": 226,
+    "origin": {
+      "x": -2.219568500721019,
+      "y": -2.1474032504888694,
+      "yaw": 0.0
+    },
+    "ratios": {
+      "free": 0.7624069237066781,
+      "occupied": 0.024911309500604266,
+      "unknown": 0.21268176679271764
+    },
+    "resolution": 0.05000000074505806,
+    "width": 227
+  },
+  "max_position_error": 1.252462464382674,
+  "max_yaw_error": 0.4654028292981254,
+  "position_rmse": 0.3295813039511585,
+  "relocalization_position_rmse": 0.3295813039511585,
+  "relocalization_yaw_rmse": 0.1225631582713568,
+  "return_to_start_position_error": 1.2465147466573885,
+  "return_to_start_yaw_error": 0.4551043589630783,
+  "run_label": "run_b_healthy_closed_loop_mapping",
+  "sample_count": 3035,
+  "startup_time_sec": 0.9500000000000002,
+  "time_to_first_valid_map_to_odom_sec": 0.9500000000000002,
+  "yaw_rmse": 0.1225631582713568
+}
