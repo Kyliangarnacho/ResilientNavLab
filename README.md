@@ -8,7 +8,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 Phase 8 里程碑 1–4 已冻结四条实验链与真值隔离，并新增 `resilient_nav_fusion`：纯 Python `FusionPolicy` 可基于 wheel/IMU 健康状态给出测量接纳、显式协方差倍率、wheel yaw fallback 与恢复滞回；`measurement_adapter` 只发布匿名化 `/fusion/input/*` 和 `/fusion/status`；独立 adaptive EKF 只订阅这些输入，固定发布 `/odometry/adaptive` 且不发布 TF。没有控制或容错导航实现。
 
-Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 本机 Jazzy Slam Toolbox，healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 和 `/map`。Occupancy Map 与 Serialized Pose Graph 已保存并能在全新 process localization reload；Ground Truth 仅在独立 evaluation overlay 中用于事后评价。loop closure 未确认；Nav2、fault-aware SLAM 和 Adaptive EKF+SLAM 比较不在 Phase 9 范围。
+Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 本机 Jazzy Slam Toolbox，healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 和 `/map`。Occupancy Map 与 Serialized Pose Graph 已保存并能在全新 process localization reload；Ground Truth 仅在独立 evaluation overlay 中用于事后评价。Mapping 的正式 SLAM RMSE 使用 timestamp-associated fixed-scale 2D best-fit SE(2)（SVD/Kabsch）；persisted-map localization 则只使用实验前声明的固定 `T_map_odom`，把该次 fresh-odom 的 GT/EKF 直接变换到保存的 M8 `map` frame，绝不从本次轨迹拟合。corrected dynamic different-start run 的 `T_map_odom=(5.5,4.0,pi)`、初始化区域及 fixed-frame SLAM/Healthy EKF RMSE 为 `0.3434 m/0.1788 rad` 与 `0.4594 m/0.1905 rad`；SLAM 相对 Healthy EKF 改善，但 endpoint error 仍分别为 `3.022 m/1.612 rad`，未设成功阈值，不美化为高精度定位。运行中 `/map` raster 会扩展，保留为 localization-runtime 观察。automatic loop closure 为 UNCONFIRMED。Nav2、fault-aware SLAM 和 Adaptive EKF+SLAM 比较不在 Phase 9 范围。
 
 - ROS 2 Jazzy、`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 的阶段 1 基线保持可用。
 - 已通过 `ros-jazzy-ros-gz` 安装 Gazebo Harmonic；Gazebo Sim 版本为 8.11.0。

@@ -1,0 +1,67 @@
+{
+  "validity": "INVALIDATED",
+  "invalidation_reason": "The launch-time parameter file from this run proves map_start_pose was [-3.5, -3.5, 0.0], not the M11-validated [5.5, 4.0, pi] map-frame initial pose for the different Gazebo spawn. Best-fit trajectory alignment must not rescue this wrong global initialization.",
+  "actual_launch_start_pose": {
+    "x": -3.5,
+    "y": -3.5,
+    "yaw": 0.0
+  },
+  "runtime_provenance": {
+    "launch_parameter_file": "/tmp/launch_params_u_ll81s_",
+    "launch_log_directory": "/tmp/resilient_nav_phase9_dynamic_logs/2026-08-21-23-10-40-375336-Mbappe7-53821"
+  },
+  "superseded_by": "run_c3_dynamic_localization_different_start_corrected.json",
+  "best_fit_alignment": {
+    "x": 2.3922472199179805,
+    "y": 3.87691080951903,
+    "yaw": 0.21474097885304078
+  },
+  "final_position_drift": 0.8503747315833096,
+  "final_yaw_drift": 0.11703761920387112,
+  "healthy_ekf_metrics": {
+    "final_endpoint_position_error": 1.5357957585809108,
+    "final_endpoint_yaw_error": 0.1991575381001045,
+    "max_position_error": 1.5397471433433254,
+    "max_yaw_error": 0.5472619799616165,
+    "position_rmse": 0.6526718809077408,
+    "sample_count": 2718,
+    "yaw_rmse": 0.1967888460199554
+  },
+  "initial_alignment": {
+    "x": 2.749496790087727,
+    "y": 3.8115801740027475,
+    "yaw": 0.13601112121544423
+  },
+  "map_metrics": {
+    "height": 384,
+    "origin": {
+      "x": -7.413393030798853,
+      "y": -10.033981639092756,
+      "yaw": 0.0
+    },
+    "ratios": {
+      "free": 0.4860193227593152,
+      "occupied": 0.018740558912386705,
+      "unknown": 0.49524011832829806
+    },
+    "resolution": 0.05000000074505806,
+    "width": 331
+  },
+  "max_position_error": 0.8506609605009843,
+  "max_yaw_error": 0.4671558276295711,
+  "position_rmse": 0.28069478948471865,
+  "relocalization_position_rmse": 0.28069478948471865,
+  "relocalization_yaw_rmse": 0.16591686829066593,
+  "return_to_start_position_error": 0.9663019080387568,
+  "return_to_start_yaw_error": 0.19576747684146767,
+  "run_label": "run_c3_dynamic_localization_different_start",
+  "sample_count": 2711,
+  "slam_vs_healthy_ekf": {
+    "outcome": "IMPROVED",
+    "position_rmse_delta_slam_minus_healthy_ekf": -0.3719770914230221,
+    "yaw_rmse_delta_slam_minus_healthy_ekf": -0.030871977729289457
+  },
+  "startup_time_sec": 0.10999999999999943,
+  "time_to_first_valid_map_to_odom_sec": 0.10999999999999943,
+  "yaw_rmse": 0.16591686829066593
+}

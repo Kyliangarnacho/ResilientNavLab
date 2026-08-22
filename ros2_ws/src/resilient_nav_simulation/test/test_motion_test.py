@@ -154,3 +154,37 @@ def test_phase9_route_options_are_parameterized_and_reject_unsafe_values():
         ROUTE.parse_options(['--laps', '0'])
     with pytest.raises(SystemExit):
         ROUTE.parse_options(['--turn-duration-scale', '0'])
+
+
+def test_phase9_loop_route_reenters_the_historical_corridor():
+    """The loop route separates, then re-enters, its historical middle."""
+    segments = ROUTE.loop_closure_route_segments(
+        0.25, 0.5, 1.57079632679, 1.14,
+    )
+
+    assert [segment[0] for segment in segments] == [
+        'turn_right', 'historical_lower_east', 'turn_left',
+        'historical_middle_north', 'turn_left', 'historical_middle_west',
+        'turn_right', 'historical_upper_north', 'turn_right',
+        'historical_upper_east', 'turn_left', 'outer_north', 'turn_right',
+        'upper_east', 'turn_right', 'east_descent', 'turn_right',
+        'middle_reentry_west', 'turn_left', 'historical_reentry_south',
+        'turn_left', 'historical_overlap_east',
+    ]
+    assert segments[1][2] == pytest.approx(22.0)
+    assert segments[9][2] == pytest.approx(22.0)
+    assert segments[11][2] == pytest.approx(27.6)
+    assert segments[-1][2] == pytest.approx(22.0)
+
+
+def test_phase9_loop_route_can_stop_after_historical_or_diversion_stage():
+    """The CLI exposes the two diagnostic cut points without extra nodes."""
+    historical = ROUTE.parse_options([
+        '--route-shape', 'loop_closure', '--loop-stage', 'historical',
+    ])
+    diversion = ROUTE.parse_options([
+        '--route-shape', 'loop_closure', '--loop-stage', 'diversion',
+    ])
+
+    assert historical.loop_stage == 'historical'
+    assert diversion.loop_stage == 'diversion'

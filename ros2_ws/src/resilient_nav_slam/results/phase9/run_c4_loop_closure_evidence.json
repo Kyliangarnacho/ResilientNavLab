@@ -1,0 +1,36 @@
+{
+  "run_label": "run_c4_automatic_loop_closure_final_overlap_route",
+  "slam_toolbox_version": "2.8.5-1noble.20260615.161600",
+  "configuration": {
+    "do_loop_closing": true,
+    "minimum_travel_distance_m": 0.5,
+    "loop_search_maximum_distance_m": 3.0,
+    "loop_match_minimum_chain_size": 10,
+    "manual_loop_closure_called": false,
+    "temporary_observability_setting": "The existing debug_logging parameter was set true only for this run, then restored to the frozen false baseline. No matcher parameter was changed."
+  },
+  "route": {
+    "command": "resilient_nav_simulation/phase9_mapping_route --route-shape overlap --linear-speed 0.9 --angular-speed 1.5 --straight-duration 6.2 --overlap-offset-duration 2.23",
+    "geometry": "5.58 m historical straight (>10 nominal 0.5 m scan nodes), 2.007 m offset, separated parallel return, 2.007 m re-entry offset, then 5.58 m historical-corridor overlap.",
+    "completion": "CONFIRMED: all 9 route segments completed and the runner sent its automatic zero-velocity stop.",
+    "runtime_log_directory": "/tmp/phase9_loop_overlap_compact_NhXhAn"
+  },
+  "upstream_2_8_5_semantics": {
+    "ordinary_graph_construction": "MapperGraph::AddEdges links the previous scan and nearby/running chains before loop closure; non-sequential graph edges are therefore not loop evidence.",
+    "automatic_loop_path": "MapperGraph::TryCloseLoop calls FindPossibleLoopClosure; the installed libkartoSlamToolbox contains the coarse/fine response and 'Closing loop...'/'Loop closed!' messages, and Mapper.h declares LinkChainToScan followed by CorrectPoses.",
+    "observable_interfaces": "Mapper.h declares MapperLoopClosureListener callbacks, but this installed Slam Toolbox runtime exposes no automatic loop-event topic and graph_visualization does not distinguish loop edges. Enabling existing debug_logging produced none of the upstream candidate/coarse/fine/link/correction messages."
+  },
+  "runtime_observations": {
+    "manual_loop_closure_service_called": false,
+    "upstream_candidate_or_match_log_lines": 0,
+    "upstream_link_or_correction_log_lines": 0,
+    "scan_filter_drops": 4,
+    "interpretation": "The route completed, but the available runtime output cannot establish that FindPossibleLoopClosure formed a candidate, accepted a match, linked a historical constraint, or optimized poses. The four timestamp/cache drops are retained; ordinary processing or graph edges would not repair this evidentiary gap."
+  },
+  "candidate_chain_formed": "UNCONFIRMED",
+  "loop_detection_match_accepted": "UNCONFIRMED",
+  "loop_constraint_accepted": "UNCONFIRMED",
+  "graph_optimization_after_loop": "UNCONFIRMED",
+  "observable_pose_correction": "NOT_DIRECTLY_OBSERVED",
+  "automatic_loop_closure": "UNCONFIRMED"
+}

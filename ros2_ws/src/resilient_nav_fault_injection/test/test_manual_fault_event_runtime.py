@@ -17,13 +17,16 @@ from rclpy.qos import (
 from resilient_nav_interfaces.msg import FaultStatus
 
 
-def test_manual_fault_event_publishes_active_then_ended(tmp_path):
+def test_manual_fault_event_publishes_active_then_ended(tmp_path, monkeypatch):
     """Verify the installed node automatically advances the truth window."""
     domain_id = 1 + (os.getpid() % 231)
     status_topic = f'/test/manual/run_{os.getpid()}/status'
     environment = os.environ.copy()
     environment['ROS_DOMAIN_ID'] = str(domain_id)
     environment['ROS_LOG_DIR'] = str(tmp_path / 'ros_logs')
+    # rclpy configures logging for this probe before the subprocess starts.
+    # Keep its logs in the pytest-owned writable directory as well.
+    monkeypatch.setenv('ROS_LOG_DIR', environment['ROS_LOG_DIR'])
     context = Context()
     rclpy.init(context=context, domain_id=domain_id)
     probe = Node('manual_fault_event_runtime_probe', context=context)

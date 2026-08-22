@@ -1,12 +1,12 @@
 # 开发环境基线
 
-> 2026-08-21 更新：本机已核验 Jazzy Slam Toolbox；当前工作空间有 11 个 ROS package，含 `resilient_nav_slam`。健康 2D SLAM、M8 posegraph reload 与 evaluator-only Ground Truth overlay 已完成；Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 对比仍未实现。
+> 2026-08-21 更新：本机已核验 Jazzy Slam Toolbox 2.8.5；当前工作空间有 11 个 ROS package，含 `resilient_nav_slam`。健康 2D SLAM、M8 posegraph reload、evaluator-only Ground Truth overlay 和不同 spawn 的动态 localization benchmark 已完成。该版本实际发布 `/slam_toolbox/graph_visualization`，不发布自动 closure event topic；闭环路线已观察到非相邻 graph constraints。Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 对比仍未实现。
 
 ## 核验信息
 
-- 最近核验日期：2026-08-13
+- 最近核验日期：2026-08-21
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 7.2 已完成；RA-1A Offline Robot Diagnosis 闭环已完成
+- 当前阶段：阶段 0 至阶段 9 已完成；RA-1A Offline Robot Diagnosis 闭环已完成
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -28,7 +28,7 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | 既有八包加 `resilient_nav_agent` | 9 包可构建并可由 ROS 2 发现；测试汇总 491 tests、0 errors、0 failures、1 skipped |
+| 项目 ROS 2 包 | 11 个包，含 `resilient_nav_slam` | 11 包可构建并可由 ROS 2 发现；最新 sequential regression 为 590 tests、0 errors、1 failure、1 skipped（根 `.venv` + agent-core path）；failure 是既有 `test_camera_freeze_runtime` DDS discovery 未在 6 s 内建立，未隐藏或跳过。 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |

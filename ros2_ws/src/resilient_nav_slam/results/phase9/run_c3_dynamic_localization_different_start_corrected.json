@@ -1,0 +1,64 @@
+{
+  "run_label": "run_c3_dynamic_localization_different_start_corrected",
+  "validity": "VALID_FIXED_MAP_FRAME_RUNTIME_MEASUREMENT",
+  "launch": {
+    "gazebo_spawn": {"x": 2.0, "y": 0.5, "yaw": 3.141592653589793},
+    "serialized_pose_graph": "maps/phase9/posegraph/phase9_posegraph",
+    "map_start_pose": {"x": 5.5, "y": 4.0, "yaw": 3.141592653589793},
+    "route": "resilient_nav_simulation/phase9_mapping_route (one 4 m square lap)"
+  },
+  "runtime_provenance": {
+    "system_launch_log": "/tmp/c3_absolute_system.log",
+    "evaluation_launch_log": "/tmp/c3_absolute_evaluation.log",
+    "evaluation_output_before_archival": "/tmp/run_c3_absolute_evaluator.json"
+  },
+  "evaluation_definition": {
+    "mode": "persisted_map_localization_absolute",
+    "fixed_T_map_odom": {"x": 5.5, "y": 4.0, "yaw": 3.141592653589793},
+    "fixed_transform_provenance": "M8 began at world (-3.5,-3.5,0), while C3 begins at world (2.0,0.5,pi). The verified M11 map_start_pose is their declared relative SE(2): T_map_odom=(5.5,4.0,pi). It maps this fresh run's Ground Truth and Healthy EKF odom samples directly into the saved M8 map frame before any C3 samples are evaluated; it is never fitted from the C3 trajectory.",
+    "reclassification_note": "The archived fixed-world arithmetic is exactly the same rigid transform expressed without the unnecessary world intermediate: inverse(T_world_map) composed with T_world_odom equals T_map_odom above. Therefore the retained direct-error numeric values are unchanged; no best-fit diagnostic participates in this formal localization record."
+  },
+  "functional_localization": {
+    "initial_raw_map_pose": {"x": 5.51, "y": 4.0, "yaw": 3.1416128556891123},
+    "declared_transformed_fresh_odom_origin": {"x": 5.5, "y": 4.0, "yaw": 3.141592653589793},
+    "initial_region_matches_requested_map_start_pose": true,
+    "map_before_route": {
+      "width": 227,
+      "height": 226,
+      "resolution": 0.05000000074505806,
+      "origin": {"x": -2.222697386925495, "y": -2.1610523495216207, "yaw": 0.0}
+    },
+    "map_after_route": {
+      "width": 263,
+      "height": 266,
+      "resolution": 0.05000000074505806,
+      "origin": {"x": -2.222697386925495, "y": -4.133217332097259, "yaw": 0.0}
+    },
+    "initialization_in_persisted_map_region": "CONFIRMED",
+    "dynamic_global_accuracy": "MEASURED_NO_SUCCESS_THRESHOLD_DECLARED",
+    "reason": "Raw SLAM map pose starts within about 0.01 m and 0.00002 rad of the declared fixed T_map_odom fresh-odom origin. The emitted runtime raster nevertheless expands southward during the route; it is retained as Slam Toolbox localization-runtime map evidence and is not corrected or hidden by trajectory fitting."
+  },
+  "slam_absolute_localization_metrics": {
+    "sample_count": 1756,
+    "position_rmse": 0.3434204528768785,
+    "yaw_rmse": 0.17883424054057726,
+    "max_position_error": 3.0222944126038356,
+    "max_yaw_error": 1.6124520293959161,
+    "final_endpoint_position_error": 3.0222944126038356,
+    "final_endpoint_yaw_error": 1.6124520293959161
+  },
+  "healthy_ekf_metrics": {
+    "sample_count": 1954,
+    "position_rmse": 0.4594014256726676,
+    "yaw_rmse": 0.19051719593428765,
+    "max_position_error": 3.8791772291788607,
+    "max_yaw_error": 1.6229161095244047,
+    "final_endpoint_position_error": 3.8791772291788607,
+    "final_endpoint_yaw_error": 1.6229129509741114
+  },
+  "slam_vs_healthy_ekf": {
+    "outcome": "IMPROVED",
+    "position_rmse_delta_slam_minus_healthy_ekf": -0.11598097279578912,
+    "yaw_rmse_delta_slam_minus_healthy_ekf": -0.011682955393710392
+  }
+}

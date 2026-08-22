@@ -16,6 +16,7 @@ def generate_launch_description():
     output_path = LaunchConfiguration('output_path')
     run_label = LaunchConfiguration('run_label')
     max_samples = LaunchConfiguration('max_samples')
+    evaluation_mode = LaunchConfiguration('evaluation_mode')
     ground_truth = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             str(fusion_share / 'launch' / 'phase8_ground_truth.launch.py')
@@ -45,6 +46,10 @@ def generate_launch_description():
             'output_path': output_path,
             'run_label': run_label,
             'max_samples': max_samples,
+            'evaluation_mode': evaluation_mode,
+            'map_to_odom_x': LaunchConfiguration('map_to_odom_x'),
+            'map_to_odom_y': LaunchConfiguration('map_to_odom_y'),
+            'map_to_odom_yaw': LaunchConfiguration('map_to_odom_yaw'),
         }],
     )
     return LaunchDescription([
@@ -60,6 +65,16 @@ def generate_launch_description():
             'max_samples', default_value='12000',
             description='Bounded evaluation history size for long mapping runs.',
         ),
+        DeclareLaunchArgument(
+            'evaluation_mode', default_value='mapping',
+            description=(
+                'mapping uses per-run best-fit ATE; persisted_map_localization '
+                'uses only the declared fresh-odom to persisted-map transform.'
+            ),
+        ),
+        DeclareLaunchArgument('map_to_odom_x', default_value='0.0'),
+        DeclareLaunchArgument('map_to_odom_y', default_value='0.0'),
+        DeclareLaunchArgument('map_to_odom_yaw', default_value='0.0'),
         ground_truth,
         slam_pose_adapter,
         slam_map_adapter,

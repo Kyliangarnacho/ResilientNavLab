@@ -2,11 +2,20 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-21 Phase 9 close-out
+
+- Borrow：固定尺度 2D Kabsch/Umeyama SVD alignment（时间关联后求一个 SE(2)）和 TUM ATE 的 timestamp association；Adapt：mapping 使用该 fixed-scale best-fit ATE，但 persisted map 的 `map` 已是固定 global frame，C1/C2/C3 使用实验前声明的固定 `T_map_odom`，把 fresh-odom GT/EKF 直接转到 `map`，不能由当前测试轨迹反拟合；Reject：完整 evo/SE(3)/RPE runtime suite。首帧/origin alignment、world/benchmark 中间变换和 shape diagnostic 已从正式 localization 路径删除。
+- 上一份 C3 dynamic record 已作废：同次 launch 参数文件证明实际使用 `map_start_pose=(-3.5,-3.5,0)`，不是 M11 已验证的 different-start map-frame pose `(5.5,4.0,pi)`；其 raster 从约 `227x226` 扩至 `331x384` 是将 scan 放入旧图外的直接一致迹象，best-fit alignment 不得用于掩盖该错误。
+- fixed-frame 重跑 corrected C3：Gazebo spawn `(2.0,0.5,pi)`、M8 graph 和 `map_start_pose=(5.5,4.0,pi)`；raw startup map pose 约 `(5.51,4.00,pi)`，确认初始区域正确。正式 transform 直接为 `T_map_odom=(5.5,4.0,pi)`，由 M8 spawn 与不同 start 的已验证相对位姿在采样前声明。SLAM absolute RMSE `0.3434 m/0.1788 rad`、endpoint `3.022 m/1.612 rad`，Healthy EKF `0.4594 m/0.1905 rad`、endpoint `3.879 m/1.623 rad`，故 SLAM 相对 Healthy EKF 为 IMPROVED，但不以未声明阈值宣称高精度 success。旧 C3 的约 pi yaw 在 evaluator 输入前已出现：位置对满足约 `(x,y)_slam=(x,y)_odom+(5.51,4.00)`，但 yaw 仍相差约 pi；因此 position Kabsch 求得约零旋转并把同一零旋转用于 yaw，留下约 pi residual。这是 paired pose frame-semantics 不一致，不是 Kabsch/数值或 double-alignment 错误。运行 `/map` 由 M8 约 `227x226` 扩至 `263x266`、y origin `-4.1332`，说明 localization process 的 runtime raster 输出扩张；它不改写固定 transform，也不能单独证明 initialization 失败。
+- 本机 Jazzy Slam Toolbox `2.8.5` / Open Karto 源码表明：每个处理 scan 的 `AddEdges` 先添加 sequential、running-chain 和 nearby-chain edge；自动回环必须走 `FindPossibleLoopClosure -> coarse response/variance -> fine response -> LinkChainToScan -> CorrectPoses`。`graph_visualization` 将全部 mapper edges 画成同一 blue `slam_toolbox_edges`，不能区分 automatic constraint。Karto 的 `FireLoopClosure*` 只分发给 listener，当前 ROS runtime 未注册为 event/log topic。最终重叠走廊路线完整执行（5.58 m 历史段、离开、平行 return、再在历史中段重叠 5.58 m），未调用 manual service；临时开启已有 `debug_logging` 仍无 candidate/coarse/fine/link/correction log，并保留 4 条 TF timestamp/cache scan drop。因此 candidate chain、accepted match/constraint、post-loop optimization 均为 UNCONFIRMED，observable_pose_correction 为 NOT_DIRECTLY_OBSERVED；旧非相邻 edge CONFIRMED 结论已撤销，记录见 `run_c4_loop_closure_evidence.json`。
+- `manual_fault_event` runtime failure 的实际根因是测试自身 rclpy probe 在创建前未给只读环境设置 `ROS_LOG_DIR`，而非 ACTIVE/ENDED QoS/DDS race；测试现给 probe 和 subprocess 复用 pytest-owned writable log path，未变更生产节点时序或 QoS。
+- workspace 使用根 `.venv` 的 Python、其 site-packages 与既有 `/home/kylian/projects/agent-core` editable path，并以 sequential executor 运行。最新 aggregation 为 `590 tests / 0 errors / 1 failure / 1 skipped`：`test_camera_freeze_runtime` 在 source publisher 的 6 s DDS discovery 窗口内仍无 subscriber；单文件重跑复现同一 discovery failure，未修改、隐藏或跳过。普通系统 Python 的 Agent collection 缺少 Pydantic/agent-core path，不是 production 或本次 Phase 9 代码错误。
+
 ## 2026-08-21 Phase 9 healthy SLAM baseline
 
 - Jazzy Slam Toolbox 被 Borrow 为健康 2D LiDAR mapping/localization runtime；TF ownership 保持 healthy EKF 的 `odom -> base_footprint` 与 Slam Toolbox 的 `map -> odom` 分离。
 - M8 occupancy map 与 serialized pose graph 已保存、安装并在新进程重载；不同 spawn 的 map-frame 初值必须按建图时 odom 原点解释，不能把 Gazebo world 坐标直接当作 map 坐标。
-- Phase 8 Ground Truth bridge/adapter 只复用于 evaluator-only overlay；它不得反馈到 SLAM、Health/Fusion 或 Agent。公开 graph 信息不能稳定区分普通更新和 loop closure，结论保持未确认。
+- Phase 8 Ground Truth bridge/adapter 只复用于 evaluator-only overlay；它不得反馈到 SLAM、Health/Fusion 或 Agent。该初始公开 graph 结论已由同日 close-out 的实际 graph-edge capture 取代。
 
 ## 2026-08-15 — RA-1A real API final validation
 

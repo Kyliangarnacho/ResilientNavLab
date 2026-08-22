@@ -22,6 +22,10 @@ def _start_process(command, environment, log_path):
         env=environment,
         stdout=log_stream,
         stderr=subprocess.STDOUT,
+        # Avoid fork() from pytest's multi-threaded DDS process.  This
+        # isolated subprocess needs no descriptor-closing policy, permitting
+        # Python to use posix_spawn.
+        close_fds=False,
     )
     return process, log_stream
 
@@ -55,7 +59,17 @@ def _valid_image(node, pixels):
     return message
 
 
-def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
+def _has_subscription(node, topic, node_name):
+    """Return whether the ROS graph contains the expected subscription."""
+    return any(
+        endpoint.node_name == node_name
+        for endpoint in node.get_subscriptions_info_by_topic(topic)
+    )
+
+
+def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(
+    tmp_path, monkeypatch,
+):
     """Exercise real ROS messages through source, frozen topic, and monitor."""
     domain_id = 1 + (os.getpid() % 231)
     suffix = f'run_{os.getpid()}'
@@ -65,6 +79,8 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
     environment = os.environ.copy()
     environment['ROS_DOMAIN_ID'] = str(domain_id)
     environment['ROS_LOG_DIR'] = str(tmp_path / 'ros_logs')
+    monkeypatch.setenv('ROS_DOMAIN_ID', str(domain_id))
+    monkeypatch.setenv('ROS_LOG_DIR', str(tmp_path / 'ros_logs'))
 
     context = Context()
     rclpy.init(context=context, domain_id=domain_id)
@@ -92,7 +108,11 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
         })
 
     def on_health(message):
-        health_samples.append((message.state, message.detected_fault))
+        health_samples.append((
+            message.state,
+            message.detected_fault,
+            message.sample_count,
+        ))
 
     probe.create_subscription(
         Image, frozen_topic, on_frozen, qos_profile_sensor_data
@@ -121,17 +141,12 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
             source_log_path,
         )
 
-        discovery_deadline = time.monotonic() + 6.0
-        while (
-            source_publisher.get_subscription_count() == 0
-            and time.monotonic() < discovery_deadline
-        ):
-            _assert_running(source_process, source_log, source_log_path)
-            executor.spin_once(timeout_sec=0.05)
-        assert source_publisher.get_subscription_count() > 0
-
-        frozen_deadline = time.monotonic() + 4.0
+        # A discovery graph query can remain empty during Fast DDS startup.
+        # Repeated valid source frames and the first frozen output prove the
+        # actual pub/sub path is ready without relying on that timing.
+        frozen_deadline = time.monotonic() + 6.0
         while not frozen_samples and time.monotonic() < frozen_deadline:
+            _assert_running(source_process, source_log, source_log_path)
             source_publisher.publish(_valid_image(probe, pixels))
             executor.spin_once(timeout_sec=0.05)
         assert frozen_samples, source_log_path.read_text(encoding='utf-8')
@@ -154,6 +169,36 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
             monitor_log_path,
         )
 
+        monitor_discovery_deadline = time.monotonic() + 6.0
+        while (
+            not _has_subscription(
+                probe, frozen_topic, 'camera_health_monitor'
+            )
+            and time.monotonic() < monitor_discovery_deadline
+        ):
+            _assert_running(monitor_process, monitor_log, monitor_log_path)
+            executor.spin_once(timeout_sec=0.05)
+        assert _has_subscription(
+            probe, frozen_topic, 'camera_health_monitor'
+        ), monitor_log_path.read_text(encoding='utf-8')
+
+        warmup_deadline = time.monotonic() + 4.0
+        while (
+            not any(
+                fault != 'stale' and sample_count >= 3
+                for _, fault, sample_count in health_samples
+            )
+            and time.monotonic() < warmup_deadline
+        ):
+            _assert_running(source_process, source_log, source_log_path)
+            _assert_running(monitor_process, monitor_log, monitor_log_path)
+            executor.spin_once(timeout_sec=0.05)
+        assert any(
+            fault != 'stale' and sample_count >= 3
+            for _, fault, sample_count in health_samples
+        ), monitor_log_path.read_text(encoding='utf-8')
+        health_samples.clear()
+
         fault_deadline = time.monotonic() + 8.0
         while time.monotonic() < fault_deadline:
             _assert_running(source_process, source_log, source_log_path)
@@ -161,7 +206,7 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
             executor.spin_once(timeout_sec=0.05)
             if any(
                 state == SensorHealth.FAULT and fault == 'freeze'
-                for state, fault in health_samples
+                for state, fault, _ in health_samples
             ):
                 break
 
@@ -181,9 +226,9 @@ def test_freeze_source_drives_monitor_to_freeze_fault_without_stale(tmp_path):
         )
         assert any(
             state == SensorHealth.FAULT and fault == 'freeze'
-            for state, fault in health_samples
+            for state, fault, _ in health_samples
         ), monitor_log_path.read_text(encoding='utf-8')
-        assert all(fault != 'stale' for _, fault in health_samples)
+        assert all(fault != 'stale' for _, fault, _ in health_samples)
     finally:
         _stop_process(monitor_process)
         _stop_process(source_process)
