@@ -1,0 +1,20 @@
+# Task 2.4 profiles and directional acceptance rules are frozen before runtime.
+profiles:
+  baseline:
+    inflation_radius: 0.55
+    cost_scaling_factor: 3.0
+  wider:
+    inflation_radius: 0.75
+    cost_scaling_factor: 3.0
+  steeper:
+    inflation_radius: 0.55
+    cost_scaling_factor: 8.0
+
+acceptance:
+  lethal_cost_threshold: 99
+  changed_cost_tolerance: 1
+  clearing_ratio_min: 0.95
+  wider_min_extent_increase_m: 0.15
+  same_radius_max_extent_difference_m: 0.10
+  annulus_min_distance_m: 0.25
+  annulus_max_distance_m: 0.45

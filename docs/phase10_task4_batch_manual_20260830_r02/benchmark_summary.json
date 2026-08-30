@@ -1,0 +1,177 @@
+{
+  "benchmark": "phase10_healthy_navigation",
+  "manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/manifest.json",
+  "scenario_summaries": {
+    "multi_turn_healthy": {
+      "actual_gt_travel_distance_m": {
+        "max": 7.567076372960795,
+        "mean": 7.533318493068762,
+        "median": 7.533318493068762,
+        "min": 7.499560613176729
+      },
+      "attempt_count": 3,
+      "final_gt_position_error_m": {
+        "max": 0.05546677262814995,
+        "mean": 0.04897381876769626,
+        "median": 0.04897381876769626,
+        "min": 0.04248086490724257
+      },
+      "final_gt_yaw_error_rad": {
+        "max": 0.09645682304885916,
+        "mean": 0.07939891202536753,
+        "median": 0.07939891202536753,
+        "min": 0.062341001001875895
+      },
+      "geometric_directness": {
+        "max": 0.9445599102064338,
+        "mean": 0.9403460846246653,
+        "median": 0.9403460846246653,
+        "min": 0.9361322590428968
+      },
+      "navigation_time_sec": {
+        "max": 45.123999999999995,
+        "mean": 44.0355,
+        "median": 44.0355,
+        "min": 42.947
+      },
+      "pass_count": 2,
+      "replanning_count": {
+        "max": 47.0,
+        "mean": 46.0,
+        "median": 46.0,
+        "min": 45.0
+      },
+      "route_execution_efficiency": {
+        "max": 1.0047163522349205,
+        "mean": 1.0002341596056108,
+        "median": 1.0002341596056108,
+        "min": 0.9957519669763012
+      },
+      "success_rate": 0.6666666666666666
+    },
+    "simple_reachable": {
+      "actual_gt_travel_distance_m": {
+        "max": 0.8742545271631832,
+        "mean": 0.8708587939458562,
+        "median": 0.873050533750267,
+        "min": 0.8652713209241185
+      },
+      "attempt_count": 3,
+      "final_gt_position_error_m": {
+        "max": 0.138897177812937,
+        "mean": 0.1366090252402665,
+        "median": 0.1384863606004606,
+        "min": 0.1324435373074019
+      },
+      "final_gt_yaw_error_rad": {
+        "max": 0.1398250951866228,
+        "mean": 0.12289075692214495,
+        "median": 0.12135429043597157,
+        "min": 0.10749288514384048
+      },
+      "geometric_directness": {
+        "max": 1.1557068584359929,
+        "mean": 1.1483158601455643,
+        "median": 1.1454090700848494,
+        "min": 1.143831651915851
+      },
+      "navigation_time_sec": {
+        "max": 7.515999999999998,
+        "mean": 7.433999999999999,
+        "median": 7.4289999999999985,
+        "min": 7.357000000000001
+      },
+      "pass_count": 3,
+      "replanning_count": {
+        "max": 8.0,
+        "mean": 8.0,
+        "median": 8.0,
+        "min": 8.0
+      },
+      "route_execution_efficiency": {
+        "max": 1.1510331200222113,
+        "mean": 1.143672011311804,
+        "median": 1.140776976460698,
+        "min": 1.1392059374525023
+      },
+      "success_rate": 1.0
+    },
+    "static_obstacle_detour": {
+      "actual_gt_travel_distance_m": {
+        "max": 5.966752216414834,
+        "mean": 5.959241416039124,
+        "median": 5.965857507951946,
+        "min": 5.945114523750592
+      },
+      "attempt_count": 3,
+      "final_gt_position_error_m": {
+        "max": 0.09984698115259154,
+        "mean": 0.09193400793750649,
+        "median": 0.09951946175088193,
+        "min": 0.076435580909046
+      },
+      "final_gt_yaw_error_rad": {
+        "max": 0.0741314978032841,
+        "mean": 0.060036290363249735,
+        "median": 0.05457816536310352,
+        "min": 0.051399207923361584
+      },
+      "geometric_directness": {
+        "max": 0.9515130830353836,
+        "mean": 0.9492601137447239,
+        "median": 0.9482047202690124,
+        "min": 0.9480625379297757
+      },
+      "navigation_time_sec": {
+        "max": 36.559,
+        "mean": 35.479,
+        "median": 34.958,
+        "min": 34.92
+      },
+      "pass_count": 3,
+      "replanning_count": {
+        "max": 41.0,
+        "mean": 40.0,
+        "median": 40.0,
+        "min": 39.0
+      },
+      "route_execution_efficiency": {
+        "max": 1.0159456745348068,
+        "mean": 1.013540143337691,
+        "median": 1.0124132829132804,
+        "min": 1.0122614725649854
+      },
+      "success_rate": 1.0
+    }
+  },
+  "status": "FAIL",
+  "stopped_early": {
+    "action_timeout_sec": 180.0,
+    "error": "navigation runner did not pass: readiness/localization_tf: Lookup would require extrapolation into the past.  Requested time 0.300000 but the earliest data is at time 47.333000, when looking up transform from frame [base_footprint] to frame [map]",
+    "failure_kind": "infrastructure_localization_tf",
+    "infrastructure_attempt": 1,
+    "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/multi_turn_healthy-r03/launch.log",
+    "logical_run_id": "multi_turn_healthy-r03",
+    "process_cleanup": {
+      "complete": true,
+      "evidence_flushed": true,
+      "gz_partition": "resilient_nav_phase10_task4_multi_turn_healthy-r03",
+      "process_group_id": 59252,
+      "remaining_group_processes": [],
+      "remaining_partition_processes": [],
+      "signaled_group_pids": [
+        59259
+      ],
+      "signaled_partition_pids": [
+        59259,
+        59432,
+        59438
+      ]
+    },
+    "run_id": "multi_turn_healthy-r03",
+    "scenario": "multi_turn_healthy",
+    "status": "FAIL",
+    "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/multi_turn_healthy-r03/trial_manifest.json",
+    "trial_timeout_wall_sec": 323.0
+  }
+}

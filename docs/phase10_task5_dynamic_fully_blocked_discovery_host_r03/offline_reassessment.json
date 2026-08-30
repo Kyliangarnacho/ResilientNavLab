@@ -1,0 +1,85 @@
+{
+  "acceptance_scope": "task5_fully_blocked_safe_failure",
+  "benchmark": "phase10_healthy_navigation",
+  "failures": [],
+  "ground_truth_evidence_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r03/ground_truth.json",
+  "metrics": {
+    "barrier_crossing_evidence": {
+      "barrier_axis": "local_y",
+      "full_footprint_barrier_crossing": false,
+      "initial_barrier_side": "negative",
+      "minimum_padded_footprint_clearance_m": 0.5523186164747201,
+      "sample_count": 2022
+    },
+    "collision_evidence": {
+      "first_collision_sample": null,
+      "full_footprint_collision_with_spawned_obstacle": false,
+      "sample_count": 1882
+    },
+    "controller_zero_evidence": {
+      "controller_zero_before_final_stop": true,
+      "first_controller_zero_sim_time": 44.846,
+      "zero_sample_count": 1
+    },
+    "evaluation_mode": "acceptance",
+    "event_identity": {
+      "entity_name": "phase10_task5_blocking_wall",
+      "scenario": "dynamic_fully_blocked",
+      "scenario_sha256": "aaaaa4ce6025c0535304f80f753c1be4f313017c5cd09f6a215076bde1eba21b",
+      "task5_kind": "fully_blocked"
+    },
+    "event_times_sim_sec": {
+      "first_global_costmap_detection_sim_time": 8.406,
+      "first_local_costmap_detection_sim_time": 7.356,
+      "initial_path_sim_time": 5.386,
+      "motion_gate_sim_time": 6.905,
+      "spawn_ack_sim_time": 6.91,
+      "spawn_request_sim_time": 6.905
+    },
+    "failure_branch_observation": {
+      "classification": "planner_first",
+      "first_compute_path_failure_sim_time": null,
+      "first_follow_path_failure_sim_time": null,
+      "source": "terminal_navfn_no_valid_path"
+    },
+    "global_detection_latency_sec": 1.4960000000000004,
+    "ground_truth_terminal_evidence": {
+      "action_result_pose_map": {
+        "stamp_sec": 44.54,
+        "x": 6.952560748456647,
+        "y": 0.20994717743805943,
+        "yaw": 0.2325048425449773
+      },
+      "final_stop_pose_map": {
+        "stamp_sec": 47.36,
+        "x": 6.952560748456647,
+        "y": 0.20994717743805943,
+        "yaw": 0.2325048425449773
+      },
+      "ground_truth_translation_m": 0.0,
+      "ground_truth_yaw_rad": 0.0,
+      "invalid_sample_count": 0,
+      "result_alignment_delta_sec": 0.009000000000000341,
+      "settle_alignment_delta_sec": 0.009000000000000341,
+      "stop_alignment_delta_sec": 0.009000000000000341
+    },
+    "initial_path_impact": {
+      "initial_path_intersects_spawned_obstacle": true,
+      "initial_path_length_m": 6.039913385018471
+    },
+    "local_detection_latency_sec": 0.44599999999999973,
+    "maximum_number_of_recoveries": 0,
+    "navigation_success": false,
+    "no_recovery": true,
+    "post_detection_observation_warning_sec": 12.0,
+    "safe_stop": true,
+    "terminal_action_status": 6,
+    "terminal_after_global_detection_sec": 36.143,
+    "terminal_error_code": 208,
+    "terminal_error_message": ""
+  },
+  "navigation_evidence_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r03/navigation.json",
+  "obstacle_event_evidence_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r03/obstacle_event.json",
+  "scenario": "dynamic_fully_blocked",
+  "status": "PASS"
+}

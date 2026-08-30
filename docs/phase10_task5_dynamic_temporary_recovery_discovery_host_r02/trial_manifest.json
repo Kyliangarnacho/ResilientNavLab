@@ -1,0 +1,36 @@
+{
+  "additional_evidence_paths": {
+    "obstacle_event": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/obstacle_event.json"
+  },
+  "command": [
+    "ros2",
+    "launch",
+    "resilient_nav_navigation",
+    "phase10_navigation_robustness_trial.launch.py",
+    "scenario:=dynamic_temporary_blocked_recovery",
+    "navigation_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/navigation.json",
+    "ground_truth_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/ground_truth.json",
+    "diagnostics_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/diagnostics",
+    "initial_pose_result:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/initial_pose.json",
+    "record_diagnostics:=false",
+    "use_rviz:=false",
+    "gz_partition:=resilient_nav_phase10_task5_phase10_task5_dynamic_temporary_recovery_discovery_host_r02",
+    "ros_domain_id:=210",
+    "readiness_timeout_sec:=120.0",
+    "event_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/obstacle_event.json",
+    "scenarios_file:=/home/kylian/projects/resilient_nav_lab/ros2_ws/install/resilient_nav_navigation/share/resilient_nav_navigation/config/navigation_robustness_scenarios.yaml",
+    "use_recovery:=true",
+    "use_rviz:=true"
+  ],
+  "ground_truth_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/ground_truth.json",
+  "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_temporary_recovery_discovery_host_r02",
+  "initial_pose_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/initial_pose.json",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/launch.log",
+  "navigation_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/navigation.json",
+  "readiness_timeout_wall_sec": 120.0,
+  "record_diagnostics": false,
+  "ros_domain_id": 210,
+  "ros_launch_log_dir": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/ros_launch_logs",
+  "scenario": "dynamic_temporary_blocked_recovery",
+  "trial_timeout_wall_sec": 263.0
+}

@@ -1,0 +1,45 @@
+{
+  "action_timeout_sec": 120.0,
+  "benchmark": "phase10_task5_dynamic_environment",
+  "created_utc": "2026-08-30T09:18:03.666300+00:00",
+  "infrastructure_start_attempts": 1,
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_obstacle_detour_host_r01/launch.log",
+  "obstacle_event_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_obstacle_detour_host_r01/obstacle_event.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_obstacle_detour_host_r01",
+    "process_group_id": 98596,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      98616
+    ],
+    "signaled_partition_pids": [
+      98616,
+      98936,
+      98937
+    ]
+  },
+  "readiness_timeout_wall_sec": 120.0,
+  "record_diagnostics": false,
+  "result_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_obstacle_detour_host_r01/result.json",
+  "ros_domain_id": 205,
+  "scenario": "dynamic_obstacle_detour",
+  "posthoc_evaluator_reassessment": {
+    "acceptance_scope": "task5_dynamic_obstacle_engineering",
+    "inherited_healthy_baseline_warning": {
+      "id": "final_gt_position_error_m",
+      "threshold": 0.25,
+      "value": 0.3094117861395129
+    },
+    "original_evaluator_status": "FAIL",
+    "reason": "The original evaluator treated the inherited Task 4 endpoint localization metric as a Task 5 dynamic-obstacle hard failure. The revised Task 5 evaluator retains it as a warning while validating the independent dynamic contract.",
+    "reassessed_result_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_obstacle_detour_host_r01/result.json",
+    "status": "PASS"
+  },
+  "status": "PASS",
+  "supervisor_pid": 98589,
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_obstacle_detour_host_r01/trial_manifest.json",
+  "trial_timeout_wall_sec": 263.0
+}

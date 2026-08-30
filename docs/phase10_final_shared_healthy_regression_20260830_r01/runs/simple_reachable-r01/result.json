@@ -1,0 +1,23 @@
+{
+  "action_timeout_sec": 45.0,
+  "error": "trial did not produce required evidence: navigation, ground_truth",
+  "failure_kind": "infrastructure_gazebo_clock",
+  "infrastructure_attempt": 1,
+  "logical_run_id": "simple_reachable-r01",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task4_simple_reachable-r01",
+    "process_group_id": 28,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [],
+    "signaled_partition_pids": []
+  },
+  "return_code": 0,
+  "run_id": "simple_reachable-r01",
+  "scenario": "simple_reachable",
+  "status": "FAIL",
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_final_shared_healthy_regression_20260830_r01/runs/simple_reachable-r01/trial_manifest.json",
+  "trial_timeout_wall_sec": 188.0
+}

@@ -1,0 +1,71 @@
+{
+  "acceptance_scope": "task5_goal_cancel",
+  "benchmark": "phase10_healthy_navigation",
+  "failures": [],
+  "ground_truth_evidence_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_goal_cancel_acceptance_host_r01/ground_truth.json",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_goal_cancel_acceptance_host_r01/launch.log",
+  "metrics": {
+    "actual_gt_travel_before_cancel_m": 0.20079614169535642,
+    "cancel_ack_latency_sec": 1.7439999999999962,
+    "cancel_gt_pose_map": {
+      "stamp_sec": 31.86,
+      "x": 0.2002014749129981,
+      "y": 0.03852657007118825,
+      "yaw": 0.3293832905146075
+    },
+    "cancel_to_terminal_sec": 1.7439999999999962,
+    "controller_stop_evidence": {
+      "first_zero_after_cancel_sim_time": 35.308,
+      "last_nonzero_before_cancel_sim_time": 31.852
+    },
+    "final_gt_pose_map": {
+      "stamp_sec": 38.02,
+      "x": 0.5193798426407621,
+      "y": 0.1807149404234351,
+      "yaw": 0.444757573395606
+    },
+    "final_stop": {
+      "action_result_to_final_stop_gt_translation_m": 0.001600000002567179,
+      "controller_zero_observed": true,
+      "ground_truth_alignment_delta_sec": 0.006000000000000227,
+      "ground_truth_translation_m": 0.0,
+      "ground_truth_yaw_rad": 0.0,
+      "latest_odom_angular_z": -0.00011076438234405687,
+      "latest_odom_linear_x": -2.57557468408276e-10,
+      "odometry_settled": true,
+      "post_goal_settle_sim_sec": 2.0
+    },
+    "gt_event_alignment_delta_sec": {
+      "action_result": 0.0040000000000048885,
+      "cancel_requested": 0.007999999999999119,
+      "final_stop": 0.006000000000000227,
+      "goal_accepted": 0.007999999999999119
+    },
+    "initial_global_path_length_m": 6.039913385018471,
+    "motion_gate_odom_travel_m": 0.49730033830846065,
+    "navigation_canceled": true,
+    "navigation_time_to_cancel_sec": 1.5,
+    "path_count": 4,
+    "recovery_count": 0
+  },
+  "navigation_evidence_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_goal_cancel_acceptance_host_r01/navigation.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_goal_cancel_acceptance_host_r01",
+    "process_group_id": 213766,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      213784
+    ],
+    "signaled_partition_pids": [
+      213784,
+      214086,
+      214087
+    ]
+  },
+  "scenario": "goal_cancel",
+  "status": "PASS",
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_goal_cancel_acceptance_host_r01/trial_manifest.json"
+}

@@ -1,0 +1,30 @@
+{
+  "benchmark": "phase10_healthy_navigation",
+  "error": "readiness/localization_tf: Lookup would require extrapolation into the past.  Requested time 0.300000 but the earliest data is at time 47.333000, when looking up transform from frame [base_footprint] to frame [map]",
+  "readiness": {
+    "stages": [
+      {
+        "detail": {
+          "first_sec": 0.002,
+          "last_sec": 0.27,
+          "publisher_namespace": "/",
+          "publisher_node": "clock_bridge",
+          "sample_count": 269
+        },
+        "elapsed_wall_sec": 2.151752192999993,
+        "name": "clock",
+        "status": "PASS"
+      },
+      {
+        "elapsed_wall_sec": 118.43208732099993,
+        "last_error": "Lookup would require extrapolation into the past.  Requested time 0.300000 but the earliest data is at time 47.333000, when looking up transform from frame [base_footprint] to frame [map]",
+        "name": "localization_tf",
+        "status": "TIMEOUT"
+      }
+    ],
+    "timeout_wall_sec": 120.0
+  },
+  "scenario": "multi_turn_healthy",
+  "status": "FAIL",
+  "zero_stop_messages": 5
+}

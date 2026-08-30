@@ -36,8 +36,11 @@
   <xacro:property name="imu_angular_velocity_noise_stddev" value="0.0002"/>
   <xacro:property name="imu_linear_acceleration_noise_stddev" value="0.01"/>
   <xacro:property name="lidar_update_rate" value="15"/>
-  <xacro:property name="lidar_horizontal_samples" value="640"/>
-  <xacro:property name="lidar_min_angle" value="${-3.0 * pi / 4.0}"/>
+  <!-- Repeated /scan evidence identifies the inclusive -135 degree source
+       beam as anomalous.  Exclude only that source ray while preserving the
+       verified angular increment of every retained beam. -->
+  <xacro:property name="lidar_horizontal_samples" value="639"/>
+  <xacro:property name="lidar_min_angle" value="${-3.0 * pi / 4.0 + pi / 426.0}"/>
   <xacro:property name="lidar_max_angle" value="${3.0 * pi / 4.0}"/>
   <xacro:property name="lidar_min_range" value="0.08"/>
   <xacro:property name="lidar_max_range" value="12.0"/>

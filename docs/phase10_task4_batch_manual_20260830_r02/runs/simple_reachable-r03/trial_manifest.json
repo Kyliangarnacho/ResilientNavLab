@@ -1,0 +1,28 @@
+{
+  "command": [
+    "ros2",
+    "launch",
+    "resilient_nav_navigation",
+    "phase10_navigation_benchmark_trial.launch.py",
+    "scenario:=simple_reachable",
+    "navigation_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/navigation.json",
+    "ground_truth_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/ground_truth.json",
+    "diagnostics_output:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/diagnostics",
+    "initial_pose_result:=/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/initial_pose.json",
+    "record_diagnostics:=false",
+    "use_rviz:=false",
+    "gz_partition:=resilient_nav_phase10_task4_simple_reachable-r03",
+    "ros_domain_id:=107",
+    "readiness_timeout_sec:=120.0"
+  ],
+  "ground_truth_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/ground_truth.json",
+  "gz_partition": "resilient_nav_phase10_task4_simple_reachable-r03",
+  "initial_pose_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/initial_pose.json",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/launch.log",
+  "navigation_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task4_batch_manual_20260830_r02/runs/simple_reachable-r03/navigation.json",
+  "readiness_timeout_wall_sec": 120.0,
+  "record_diagnostics": false,
+  "ros_domain_id": 107,
+  "scenario": "simple_reachable",
+  "trial_timeout_wall_sec": 188.0
+}

@@ -1,12 +1,12 @@
 # 开发环境基线
 
-> 2026-08-21 更新：本机已核验 Jazzy Slam Toolbox 2.8.5；当前工作空间有 11 个 ROS package，含 `resilient_nav_slam`。健康 2D SLAM、M8 posegraph reload、evaluator-only Ground Truth overlay 和不同 spawn 的动态 localization benchmark 已完成。该版本实际发布 `/slam_toolbox/graph_visualization`，不发布自动 closure event topic；闭环路线已观察到非相邻 graph constraints。Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 对比仍未实现。
+> 2026-08-30 更新：本机已核验 Jazzy Slam Toolbox 2.8.5 与官方 Nav2 1.3.12 binary；当前工作空间有 12 个 ROS package，含 `resilient_nav_navigation` 的 localization、Global/Local Costmap、Planner Server、Controller Server、BT Navigator、Task 4 benchmark 和 Task 5 overlay。Phase 10 已 CLOSED — engineering accepted with known limitations：Task 4 8/8 valid PASS，Task 5.1 detour、5.2 safe failure、5.3 Recovery engineering acceptance、5.4 Goal Cancel 均已收口。完整证据索引见 `PHASE10_EVIDENCE_INDEX.md`。fault-aware SLAM 和 Adaptive EKF+SLAM 对比尚未验收。
 
 ## 核验信息
 
-- 最近核验日期：2026-08-21
+- 最近核验日期：2026-08-28
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 9 已完成；RA-1A Offline Robot Diagnosis 闭环已完成
+- 当前阶段：阶段 0 至阶段 9 已完成；Phase 10 已 CLOSED — engineering accepted with known limitations；RA-1A Offline Robot Diagnosis 闭环已完成
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -28,7 +28,7 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | 11 个包，含 `resilient_nav_slam` | 11 包可构建并可由 ROS 2 发现；最新 sequential regression 为 590 tests、0 errors、1 failure、1 skipped（根 `.venv` + agent-core path）；failure 是既有 `test_camera_freeze_runtime` DDS discovery 未在 6 s 内建立，未隐藏或跳过。 |
+| 项目 ROS 2 包 | 12 个包，含 `resilient_nav_slam`、`resilient_nav_navigation` | `resilient_nav_navigation` 已随相关包构建；Task 2 静态资源测试为 24 passed。`resilient_nav_description` + `resilient_nav_navigation` colcon 回归为 615 tests、0 errors、0 failures、1 skipped。此前全工作空间 sequential regression 为 590 tests、0 errors、1 failure、1 skipped（根 `.venv` + agent-core path）；failure 是既有 `test_camera_freeze_runtime` DDS discovery 未在 6 s 内建立，未隐藏或跳过。 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
@@ -40,6 +40,7 @@
 | Robot Agent 包 | `resilient_nav_agent`（`ament_python`） | Offline Case、3 个只读 Tools、strict Runtime、Scorer/Batch 与 8-case Fake pipeline 通过；package 88 tests；无 Live ROS 节点 |
 | Robot Agent Python 环境 | 仓库根 `.venv`（Git ignored，`--system-site-packages`） | Python 3.12.3；agent-core 0.1.0 editable import；Pydantic 2.13.4 |
 | `robot_localization` | `3.8.3`，前缀 `/opt/ros/jazzy` | `ekf_node` 可发现；阶段 4 动态闭环验证通过 |
+| Nav2 | official Jazzy binary，核心包 `1.3.12`，前缀 `/opt/ros/jazzy` | `nav2_bringup`、`nav2_map_server`、`nav2_amcl`、`nav2_lifecycle_manager`、`nav2_costmap_2d`、`nav2_planner`、`nav2_controller`、RPP、`nav2_bt_navigator` 与 `nav2_behaviors` 已核验。Map Server/AMCL、Costmap、Navfn/RPP、无 Recovery NavigateToPose 与 Task 5.1–5.4 都有 retained host evidence；Task 5.3 为 engineering acceptance，保留有限观测的 all-wall-clear limitation。 |
 | Gazebo | Gazebo Harmonic；Gazebo Sim `8.11.0` | `gz` 可用，官方和项目世界均已验证 |
 | ROS 2—Gazebo 集成 | `ros-jazzy-ros-gz` `1.0.22` | `/clock` 与阶段 3 基础运动话题的定向 bridge 已验证 |
 | 仿真时钟链路 | Gazebo `/clock` → ROS 2 `/clock` | 单向桥接、暂停/恢复和 `use_sim_time` 联动验证通过 |
@@ -200,7 +201,7 @@ Gazebo Transport 和 ROS 2 Topic 是彼此独立的通信域。`gz topic -l` 看
 
 ## 阶段 4 多传感器与 EKF 当前基线
 
-- Xacro 已增加 100 Hz IMU、15 Hz 单层二维 GPU Lidar 和 640×480、30 Hz、水平 FOV 1.047 rad 的 RGB-D camera；消息分别使用 `imu_link`、`lidar_link` 和 `camera_optical_frame`。
+- Xacro 已增加 100 Hz IMU、15 Hz 单层二维 GPU Lidar（270°、639 beams，旧 `-135°` 边界 ray 已排除）和 640×480、30 Hz、水平 FOV 1.047 rad 的 RGB-D camera；消息分别使用 `imu_link`、`lidar_link` 和 `camera_optical_frame`。
 - ROS 2 稳定接口包含 `/imu/data`、`/scan`、`/camera/color/image_raw`、`/camera/color/camera_info`、`/camera/depth/image_raw` 和 `/camera/depth/camera_info`。没有 PointCloud2 bridge。
 - `phase4_sensors.rviz` 以 `odom` 为 Fixed Frame，预配置 RobotModel、TF、Best Effort LaserScan、彩色图和 filtered odometry；浮点深度图与原始 wheel odometry 默认关闭。
 - 当前可通过 `/opt/ros/jazzy` 发现 `robot_localization` 3.8.3 及 `ekf_node`。`resilient_nav_localization` 包提供 `config/ekf.yaml` 和完整入口 `phase4_ekf_demo.launch.py`。
@@ -447,4 +448,4 @@ ros2 launch resilient_nav_simulation phase3_spawn.launch.py \
 
 ## 当前边界
 
-阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价；阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 rosbag 回放；RA-1A 已完成离线只读 Diagnosis/Benchmark 闭环。完整运动性能、PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航仍未实现。
+阶段 2 已完成静态世界、Gazebo—ROS 2 `/clock` 桥和已有心跳节点的仿真时间联动。阶段 3 已完成基础机器人描述、独立关节状态、运行时 TF、独立和 Gazebo 联合 RViz 显示、Gazebo 水平落地、原生差速/关节状态插件、ROS 基础运动 bridge、ROS 侧 odom TF、运动测试工具，以及直行/旋转/圆弧/停车同步基线。阶段 4 已完成 IMU、二维 Lidar、RGB-D 和 wheel odometry + IMU EKF 基线。阶段 5 已完成可复现故障注入闭环；阶段 6 已完成健康评估与真值评价；阶段 7.1 已完成 C920 独立采集、CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 rosbag 回放；阶段 8 自适应融合和阶段 9 健康二维 LiDAR SLAM 已完成。Phase 10 已动态验收 Map Server/AMCL、Costmap、Navfn/RPP、无 Recovery BT、Task 5.1 和 Task 5.2 baseline；Task 5.3 Recovery profile 已代码/静态验证，等待人工动态验收。RA-1A 已完成离线只读 Diagnosis/Benchmark 闭环。完整运动性能、PointCloud2、`ros2_control`、Live Robot Agent 和容错导航仍未实现。

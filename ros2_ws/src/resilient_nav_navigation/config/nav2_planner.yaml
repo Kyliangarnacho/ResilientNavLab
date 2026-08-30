@@ -1,0 +1,20 @@
+# Phase 10 Task 3.1 Planner Server only.  The shared Global Costmap remains
+# in nav2_costmaps.yaml so Task 2 standalone regressions and Planner Server
+# use the same footprint, layers, ranges, and inflation contract.
+planner_server:
+  ros__parameters:
+    # This is Nav2's slow-planning warning expectation, not a benchmark
+    # threshold or a periodic planning loop.
+    expected_planner_frequency: 20.0
+    costmap_update_timeout: 1.0
+    planner_plugins: ["GridBased"]
+
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      # A Task 3.1 occupied-goal smoke must fail for that exact goal rather
+      # than silently returning a nearby substitute pose.
+      tolerance: 0.0
+      use_astar: false
+      # The Phase 9 saved map intentionally retains unknown cells.  A global
+      # plan must not enter them in this first safety-oriented baseline.
+      allow_unknown: false

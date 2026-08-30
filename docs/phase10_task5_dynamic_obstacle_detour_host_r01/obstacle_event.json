@@ -1,0 +1,33 @@
+{
+  "base_scenario": "static_obstacle_detour",
+  "benchmark": "phase10_task5_dynamic_environment",
+  "entity_name": "phase10_task5_unmapped_box",
+  "first_global_costmap_detection_sim_time": 34.218,
+  "first_local_costmap_detection_sim_time": 33.502,
+  "gazebo_pose": {
+    "x": -1.95,
+    "y": -2.65,
+    "yaw": 0.0,
+    "z": 0.5
+  },
+  "initial_path_sim_time": 31.368,
+  "map_box": {
+    "center_x": 1.55,
+    "center_y": 0.85,
+    "size_x": 0.5,
+    "size_y": 0.5,
+    "yaw": 0.0
+  },
+  "minimum_odom_travel_m": 0.2,
+  "model_sdf": "/home/kylian/projects/resilient_nav_lab/ros2_ws/install/resilient_nav_navigation/share/resilient_nav_navigation/models/phase10_task5_unmapped_box/model.sdf",
+  "motion_gate_odom_travel_m": 0.20204131974198822,
+  "motion_gate_sim_time": 32.902,
+  "scenario": "dynamic_obstacle_detour",
+  "scenario_sha256": "e151089d9b449b30616104ed151be133ecd9558adf8ddf2a12a37f287e6422f6",
+  "scenarios_file": "/home/kylian/projects/resilient_nav_lab/ros2_ws/install/resilient_nav_navigation/share/resilient_nav_navigation/config/navigation_robustness_scenarios.yaml",
+  "spawn_ack_sim_time": 32.906,
+  "spawn_request_sim_time": 32.902,
+  "spawn_service": "/world/resilient_lab/create",
+  "status": "PASS",
+  "task5_kind": "unmapped_obstacle"
+}

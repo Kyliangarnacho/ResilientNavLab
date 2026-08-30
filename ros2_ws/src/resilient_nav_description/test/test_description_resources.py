@@ -442,14 +442,18 @@ def test_lidar_sensor_is_single_layer_with_range_noise():
     assert sensor.findtext('visualize') == 'false'
 
     assert horizontal is not None
-    assert int(horizontal.findtext('samples')) == 640
+    assert int(horizontal.findtext('samples')) == 639
     assert float(horizontal.findtext('resolution')) == pytest.approx(1.0)
     assert float(horizontal.findtext('min_angle')) == pytest.approx(
-        -3.0 * math.pi / 4.0
+        -3.0 * math.pi / 4.0 + math.pi / 426.0
     )
     assert float(horizontal.findtext('max_angle')) == pytest.approx(
         3.0 * math.pi / 4.0
     )
+    assert (
+        (float(horizontal.findtext('max_angle')) - float(horizontal.findtext('min_angle')))
+        / (int(horizontal.findtext('samples')) - 1)
+    ) == pytest.approx(math.pi / 426.0)
     assert vertical is not None
     assert int(vertical.findtext('samples')) == 1
     assert float(vertical.findtext('min_angle')) == pytest.approx(0.0)

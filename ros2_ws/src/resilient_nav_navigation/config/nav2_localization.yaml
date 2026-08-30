@@ -1,0 +1,18 @@
+map_server:
+  ros__parameters:
+    frame_id: map
+    topic_name: /map
+
+amcl:
+  ros__parameters:
+    always_reset_initial_pose: true
+    base_frame_id: base_footprint
+    global_frame_id: map
+    laser_model_type: likelihood_field
+    map_topic: /map
+    odom_frame_id: odom
+    robot_model_type: nav2_amcl::DifferentialMotionModel
+    save_pose_rate: -1.0
+    scan_topic: /scan
+    set_initial_pose: false
+    tf_broadcast: true

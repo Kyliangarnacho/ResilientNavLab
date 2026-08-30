@@ -1,0 +1,10 @@
+{
+  "outcome": "PASS",
+  "pose": {
+    "frame_id": "map",
+    "x": 0.0,
+    "y": 0.0,
+    "yaw": 0.0
+  },
+  "published_after_amcl_active": true
+}

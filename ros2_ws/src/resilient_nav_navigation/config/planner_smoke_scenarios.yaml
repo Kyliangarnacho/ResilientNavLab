@@ -1,0 +1,52 @@
+# Fixed map-frame scenarios for Phase 10 Task 3.1.  The default AMCL start is
+# (0, 0, 0); no scenario publishes motion or changes the robot pose.
+scenarios:
+  simple_reachable:
+    goal: {x: 1.0, y: 0.0, yaw: 0.0}
+    expected: success
+    controller:
+      action_timeout_sec: 30.0
+      max_cross_track_error_m: 0.15
+    navigate_to_pose:
+      action_timeout_sec: 45.0
+      min_plan_updates: 2
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+
+  static_obstacle_detour:
+    # The direct segment from the default start crosses the frozen small
+    # asymmetric block near map (2.1, 2.25).  The returned plan must detour.
+    goal: {x: 4.0, y: 4.0, yaw: 0.0}
+    expected: success
+    require_direct_line_lethal: true
+    controller:
+      action_timeout_sec: 105.0
+      max_cross_track_error_m: 0.25
+    navigate_to_pose:
+      action_timeout_sec: 120.0
+      min_plan_updates: 3
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+
+  multi_turn_healthy:
+    # Frozen after Task 4 discovery: the initial Navfn path measured 7.535 m,
+    # had two >=20-degree RDP turns, and passed the full-footprint sweep.
+    # The 7.0 m minimum leaves measurement margin while remaining longer than
+    # the 6.040 m static_obstacle_detour baseline.
+    goal: {x: 4.7, y: 5.3, yaw: 1.57079632679}
+    expected: success
+    navigate_to_pose:
+      action_timeout_sec: 180.0
+      min_plan_updates: 4
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+    benchmark:
+      min_initial_path_length_m: 7.0
+      min_initial_path_turn_count: 2
+
+  occupied_goal:
+    # Map-frame left edge of the frozen central rectangular obstacle.  The
+    # occupancy map records collision-facing surfaces, not an object's fill.
+    goal: {x: 5.05, y: 2.15, yaw: 0.0}
+    expected: failure
+    expected_error_code: GOAL_OCCUPIED

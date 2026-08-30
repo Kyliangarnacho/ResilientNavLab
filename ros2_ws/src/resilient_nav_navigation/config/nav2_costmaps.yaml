@@ -1,0 +1,104 @@
+# Phase 10 Task 2 Costmaps only. Planning, control, BT navigation, and
+# autonomous execution remain deliberately outside this file.
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      global_frame: map
+      robot_base_frame: base_footprint
+      rolling_window: false
+      resolution: 0.05
+      track_unknown_space: true
+      # Task 2 baseline.  A later navigation-loop milestone may revisit this
+      # budget with measured runtime requirements.
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      transform_tolerance: 0.3
+
+      # The physical convex hull of base_link, both drive wheels, and the
+      # caster in base_footprint coordinates.  It is intentionally asymmetric
+      # in x because base_footprint is located at the drive-wheel axle.
+      footprint: "[[-0.35, -0.175], [-0.10, -0.215], [0.10, -0.215], [0.15, -0.175], [0.15, 0.175], [0.10, 0.215], [-0.10, 0.215], [-0.35, 0.175]]"
+      footprint_padding: 0.01
+
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /map
+        map_subscribe_transient_local: true
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+          max_obstacle_height: 2.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          # The healthy 15 Hz lidar should be observed at least every 0.2 s.
+          # This affects Costmap currentness/readiness, never obstacle data.
+          expected_update_rate: 0.2
+          sensor_frame: lidar_link
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.55
+        cost_scaling_factor: 3.0
+
+      # The frozen map is small; full messages make the smoke observable and
+      # deterministic without adding a custom map-merging implementation.
+      always_send_full_costmap: true
+
+# Local runtime world model: it intentionally consumes only live scan data in
+# odom. The saved map belongs to the Global Costmap; adding StaticLayer here
+# would couple this rolling window to AMCL and obscure scan marking/clearing.
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      global_frame: odom
+      robot_base_frame: base_footprint
+      rolling_window: true
+      width: 6
+      height: 6
+      resolution: 0.05
+      track_unknown_space: false
+      # Task 2 baseline.  Local responsiveness is kept separate from the
+      # slower Global-map publication budget.
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      transform_tolerance: 0.3
+
+      footprint: "[[-0.35, -0.175], [-0.10, -0.215], [0.10, -0.215], [0.15, -0.175], [0.15, 0.175], [0.10, 0.215], [-0.10, 0.215], [-0.35, 0.175]]"
+      footprint_padding: 0.01
+
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          data_type: "LaserScan"
+          marking: true
+          clearing: true
+          max_obstacle_height: 2.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          expected_update_rate: 0.2
+          sensor_frame: lidar_link
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        inflation_radius: 0.55
+        cost_scaling_factor: 3.0
+
+      always_send_full_costmap: true

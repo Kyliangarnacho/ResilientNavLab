@@ -1,0 +1,108 @@
+{
+  "benchmark": "phase10_healthy_navigation",
+  "bt_navigator_parameters": {
+    "bt_loop_duration": 10,
+    "default_nav_to_pose_bt_xml": "/opt/ros/jazzy/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml",
+    "global_frame": "map",
+    "navigate_to_pose.plugin": "nav2_bt_navigator::NavigateToPoseNavigator",
+    "navigators": [
+      "navigate_to_pose"
+    ],
+    "odom_topic": "/odometry/filtered",
+    "robot_base_frame": "base_footprint"
+  },
+  "clock": {
+    "first_sec": 0.002,
+    "last_sec": 28.454,
+    "publisher_namespace": "/",
+    "publisher_node": "clock_bridge",
+    "sample_count": 547
+  },
+  "error": "dynamic_temporary_blocked_recovery NavigateToPose failed: status=6, error=103, message=",
+  "expected_default_nav_to_pose_bt_xml": "navigate_to_pose_w_replanning_and_recovery.xml",
+  "goal": {
+    "x": 4.0,
+    "y": 4.0,
+    "yaw": 0.0
+  },
+  "initial_pose_map": {
+    "x": 0.023067525186995848,
+    "y": 0.039123861662021274,
+    "yaw": -0.005144032016774404
+  },
+  "navigation_profile": "recovery",
+  "phase9_asset_hashes": {
+    "occupancy/phase9_map.pgm": "548a37d56084ca7a804c96341ef2784f45d22ec4772f5819ea4cd981fa8c3161",
+    "occupancy/phase9_map.yaml": "21499e0fcd079f11a276832ec4622bb1c69a0889dfa9cf7820c08b8c93e45161",
+    "posegraph/phase9_posegraph.data": "586c28fa47cc5def621eeaecd66e564861e10e6faad1b69c5368b1d60e018872",
+    "posegraph/phase9_posegraph.posegraph": "ee7152d9973ed87c26df2dd767fea495173941a9787a70c2cbb70dc6d74b6f20"
+  },
+  "readiness": {
+    "stages": [
+      {
+        "detail": {
+          "first_sec": 0.002,
+          "last_sec": 0.539,
+          "publisher_namespace": "/",
+          "publisher_node": "clock_bridge",
+          "sample_count": 536
+        },
+        "elapsed_wall_sec": 2.1986289499982377,
+        "name": "clock",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "map_to_base_footprint": {
+            "x": 0.023067525186995848,
+            "y": 0.039123861662021274,
+            "yaw": -0.005144032016774404
+          }
+        },
+        "elapsed_wall_sec": 30.629139878998103,
+        "name": "localization_tf",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "lifecycle_manager_navigation": {
+            "active": true,
+            "message": "",
+            "response_received": true,
+            "service_ready": true
+          }
+        },
+        "elapsed_wall_sec": 0.0006461969969677739,
+        "name": "nav2_lifecycle",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "action": "navigate_to_pose"
+        },
+        "elapsed_wall_sec": 6.365800072671846e-05,
+        "name": "navigate_to_pose",
+        "status": "PASS"
+      },
+      {
+        "detail": {
+          "global_size": [
+            227,
+            226
+          ],
+          "local_size": [
+            120,
+            120
+          ]
+        },
+        "elapsed_wall_sec": 1.28860046970658e-05,
+        "name": "costmaps",
+        "status": "PASS"
+      }
+    ],
+    "timeout_wall_sec": 120.0
+  },
+  "scenario": "dynamic_temporary_blocked_recovery",
+  "status": "FAIL",
+  "zero_stop_messages": 5
+}

@@ -1,0 +1,110 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Costmap
+        - /Computed Path
+        - /Robot Footprint
+      Splitter Ratio: 0.5
+    Tree Height: 540
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_default_plugins/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Name: Grid
+      Plane: XY
+      Plane Cell Count: 20
+      Reference Frame: <Fixed Frame>
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Saved Map
+      Topic:
+        Value: /map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/LaserScan
+      Color: 255; 0; 0
+      Enabled: true
+      Name: Scan
+      Size (m): 0.02
+      Style: Points
+      Topic:
+        Value: /scan
+        Reliability Policy: Best Effort
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Enabled: true
+      Name: Global Costmap
+      Topic:
+        Value: /global_costmap/costmap
+        Reliability Policy: Reliable
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 0; 170; 255
+      Enabled: true
+      Head Diameter: 0.08
+      Head Length: 0.06
+      Length: 0.3
+      Line Style: Lines
+      Line Width: 0.04
+      Name: Computed Path
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.03
+      Shaft Diameter: 0.03
+      Shaft Length: 0.1
+      Topic:
+        Value: /plan
+        Reliability Policy: Reliable
+    - Alpha: 1
+      Class: rviz_default_plugins/Polygon
+      Color: 0; 255; 0
+      Enabled: true
+      Name: Robot Footprint
+      Topic:
+        Value: /global_costmap/published_footprint
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Enabled: true
+      Name: RobotModel
+      Robot Description: robot_description
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 0.3
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 14
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.785
+      Yaw: 0.785
+Window Geometry:
+  Height: 860
+  Width: 1360

@@ -52,7 +52,16 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 
 当前已完成：
 
-- **阶段 9：健康 2D LiDAR SLAM（已完成）。** 已完成 Slam Toolbox mapping、M8 occupancy/serialized pose graph 持久化、全新进程 localization reload、不同初始 pose、evaluator-only Ground Truth 评价和最小 rosbag 证据。健康 EKF 保持唯一 `odom -> base_footprint` owner，Slam Toolbox 保持唯一 `map -> odom`/`/map` owner。loop closure 未确认；Nav2、fault-aware SLAM 与 Adaptive EKF+SLAM 正式比较仍不在范围内。
+- **阶段 9：健康 2D LiDAR SLAM（已完成）。** 已完成 Slam Toolbox mapping、M8 occupancy/serialized pose graph 持久化、全新进程 localization reload、不同初始 pose、evaluator-only Ground Truth 评价和最小 rosbag 证据。健康 EKF 保持唯一 `odom -> base_footprint` owner，Slam Toolbox 保持唯一 `map -> odom`/`/map` owner。automatic loop closure 已 PASS，并保留上游直接因果证据 `TryCloseLoop accepted → LinkChainToScan → CorrectPoses`；Nav2 fault-aware SLAM 与 Adaptive EKF+SLAM 正式比较仍不在范围内。
+
+- **阶段 10 Task 1：健康 Nav2 saved-map localization（已完成）。** 已验证 Nav2 Jazzy 1.3.12 Map Server、AMCL 和 Lifecycle Manager；唯一 Phase 9 occupancy map 在 source/install 中保持冻结身份。Map-Server-only 与 fresh-process AMCL smoke 均通过，明确 TF ownership 为 AMCL `map -> odom`、healthy EKF `odom -> base_footprint`。
+
+- **阶段 10 Task 2：footprint、Global/Local Costmap 与参数验收（已完成）。** `resilient_nav_navigation` 以 URDF collision-derived `base_footprint` polygon 和 `0.01 m` padding 复用官方 `nav2_costmap_2d` 插件。冻结 `/map`、healthy `/scan`、AMCL/EKF TF 链在 `map` frame Global Costmap（Static/Obstacle/Inflation）中通过；`odom` frame Local Costmap 以 rolling Obstacle/Inflation window 通过 marking、clearing 与滚动验证；radius/scaling 的三组参数实验有机器可读方向性结果。planning、controller、behavior tree、recovery 和自主导航仍不在此范围。
+
+- **阶段 10 Task 3：健康静态 Nav2 导航闭环（已完成）。** 官方 Jazzy `planner_server` 使用唯一正式 Global Costmap 与 `nav2_navfn_planner::NavfnPlanner` 计算全局 Path；成功 Path 必须先通过 raw Costmap 的完整非对称 footprint sweep。`controller_server` 使用唯一正式 Local Costmap 与官方 RPP 执行固定 `FollowPath` 直线/静态绕障健康场景。`bt_navigator` 再以官方无 Recovery XML 的 1 Hz 周期重规划编排 `NavigateToPose -> ComputePathToPose -> FollowPath`；action、feedback、`/cmd_vel`、Gazebo robot、终点容差、RPP collision arc、运行期/Path footprint safety 与 fresh restart 均动态通过。动态障碍、Behavior Server、Recovery、benchmark、fault-aware/Agent navigation 与通用自主导航仍不在范围。
+
+- **阶段 10 Task 4：healthy navigation benchmark（已关闭）。** engineering accepted with a known infrastructure limitation：8/8 valid navigation trials PASS（simple 3/3、detour 3/3、multi-turn 2/2 valid），另一个 multi-turn 在发 goal 前为 infrastructure-invalid；严格 automated 9/9 因而未达成且不再追加动态验证。Task 1–3/Nav2 参数不为此改变。
+- **阶段 10 Task 5（已收口）。** 5.1 可绕行动态障碍 engineering PASS；5.2 r03 的 current offline reassessment PASS，冻结 Planner-first `NO_VALID_PATH/208 → BT ABORT → Controller stop` 无 Recovery safe-failure；5.3 官方 Recovery engineering PASS（独立 45 s Spawn/DeleteEntity 后最终 SUCCESS），全长墙 Global Costmap clear 是有限 LiDAR/遮挡 evidence limitation；5.4 Goal Cancel host r01 PASS（native CANCELED、0 Recovery、Controller/odom/GT stop）。全程不写 Costmap、不读 GT 控制、不改目标或 Task 1–3/Nav2 参数。Phase 10 因此 CLOSED — engineering accepted with known limitations。详见 `docs/PHASE10_SUMMARY.md`。
 
 - **阶段 0：初始化。** 明确项目目标和初始范围，记录环境基线，建立仓库协作约束、学习日志和忽略规则。
 - **阶段 1：ROS 2 基础设施。** 安装 ROS 2 Jazzy，验证官方 talker/listener 通信，创建 `ros2_ws` 工作空间和 `resilient_nav_monitor` 包，实现并验证 `system_heartbeat` 节点。
@@ -70,7 +79,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **RA-1A Step 1：Robot Agent Bootstrap（已完成）。** 新增离线 `resilient_nav_agent` 包，以 Pydantic v2 定义 Agent-facing 合同，通过 fail-closed Sanitizer 隔离 FaultStatus/实验真值，构造最小 Incident/Evidence，并通过 Fake completion 使用独立 `Kyliangarnacho/agent-core`；不含 Live ROS、真实 LLM、Tool、Planner 或 Recovery。
 - **RA-1A Offline Diagnosis（已完成）。** 在 Step 1 合同上接入 agent-core Tool Runtime，完成三个 sanitized-context-only 只读 Tool、strict DiagnosisResult service、OfflineDiagnosisRun、deterministic Scorer 与 Batch Report；不含 Live ROS、真实模型结论、Planner 或 Recovery。
 
-当前工作空间已有十个 ROS 2 软件包：
+当前工作空间已有十二个 ROS 2 软件包：
 
 - `resilient_nav_monitor`：包含 `system_heartbeat` 和 `odom_tf_broadcaster` 节点。
 - `resilient_nav_simulation`：包含阶段 2 的 Gazebo 世界、仅声明 `/clock` 的静态 bridge 配置，以及阶段 3 在 Launch 中动态建立的机器人基础运动 bridge、模型生成、Gazebo/RViz Demo、`motion_test` 工具和静态/单元测试。
@@ -82,13 +91,15 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - `resilient_nav_camera`：包含 C920 的 `usb_cam` 基线配置、正式 CameraInfo YAML、阶段 7.1 C920 Launch、probe/去畸变/旧 K/D 验证，以及阶段 7.2 只组合现有节点的 camera health 联合 Launch。
 - `resilient_nav_fusion`：阶段 8 的纯 Python `FusionPolicy`、`measurement_adapter` ROS Node、adaptive EKF YAML、最小 Launch 与单元测试；没有 TF 或控制接口。
 - `resilient_nav_agent`：包含 RA-1A 的纯 Python Schema、Sanitizer、Incident/Evidence builder、Robot DomainExtension、只读 Tools、Offline Runtime、Benchmark/Batch 和外部 agent-core Fake integration；当前没有 ROS Adapter 或在线节点入口。
+- `resilient_nav_slam`：包含 Phase 9 Slam Toolbox launch、冻结 occupancy/posegraph assets、mapping/localization probes 与 evaluator-only persisted-map 评价工具。
+- `resilient_nav_navigation`：包含 Phase 10 healthy Nav2 localization wrapper、Map-Server-only 与 Gazebo/AMCL smoke、明确 initial-pose helper、只读 readiness probe、Global/Local Costmap 参数与 probes、Navfn/RPP/无 Recovery baseline BT、Task 4 benchmark，以及 Task 5 官方 Gazebo SpawnEntity/DeleteEntity overlay、opt-in 官方 Behavior Server/Recovery BT profile 和离线安全 evaluator；不含 fault-aware autonomous navigation。
 
 当前明确未完成：
 
 - ROS 2 `/cmd_vel`、`/odom` 和 `/joint_states` 已连接 Gazebo，短时直行、原地旋转、圆弧及停车已验证；尚未系统验收速度精度、长距离累计误差、轨迹跟踪或控制限制。
 - Gazebo 原生 TF/位姿输出没有桥接；ROS TF 由 `odom_tf_broadcaster` 只根据桥接后的 `/odom` 单独发布，避免重复来源。
 - IMU、二维 Lidar 和 RGB-D 基础接口已建立；IMU/wheel/Lidar 首批故障模型已完成；PointCloud2 bridge、RGB-D 故障模型和长期性能验收尚未完成。
-- wheel odometry + IMU 的 odom-frame EKF 基线已建立；Nav2、SLAM、map-frame 全局定位和真实硬件定位尚未开始。
+- wheel odometry + IMU 的 odom-frame EKF 基线已建立；健康 saved-map AMCL 全局定位、Global/Local Costmap、Navfn path、受限 RPP FollowPath 与固定健康目标的 BT `NavigateToPose` 已完成；真实硬件定位、动态障碍与通用自主导航尚未开始。
 - 可复现故障注入与健康评估闭环已完成；健康感知 policy、ROS measurement adapter 与独立 adaptive EKF 已实现并已有受控 benchmark；容错导航尚未开发。
 - 阶段 7.1 已完成 C920 的正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 image_raw / camera_info / image_rect 的 rosbag 无相机回放；真实机器人部署、相机再标定、TF、修改真实数据的相机故障模型和真实硬件定位尚未开始。阶段 7.2 的 freeze 专项源仅生成隔离测试输入，manual event 仅生成真值标签。
 - 阶段 7.2 已完成保守的 stale/freeze/underexposed/overexposed/blurred/low-information v1、人工 `FaultStatus` 时间窗、camera evaluator 和恢复评价接口；冻结 config 只适用于本阶段评价，不构成通用生产阈值。
@@ -97,7 +108,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 ## 5. 当前不在范围内
 
 - 阶段 3 已按当前基础运动边界收尾；完整运动性能、传感器和导航能力必须在后续任务中单独授权。
-- 当前不安装或集成 Nav2、SLAM 及其他尚未授权的软件依赖。
+- Nav2 Jazzy binary、Slam Toolbox 与 `nav2_costmap_2d` 已按已授权阶段安装并仅在已记录范围使用；其他软件依赖仍须单独授权。
 - 阶段 7.2 已收尾；后续视觉故障规则或容错导航必须在单独任务中授权。
 - RA-1A Offline Diagnosis 已收尾；任何 Live ROS 读取、写 Tool、真实模型产品化、Planner 或 Recovery 必须在后续任务中单独授权。
 - 在仿真链路稳定并形成安全方案前，不开展真实机器人部署。

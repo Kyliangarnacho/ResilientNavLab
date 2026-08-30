@@ -1,0 +1,62 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Map
+      Name: Saved Map
+      Topic: {Value: /map, Durability Policy: Transient Local, Reliability Policy: Reliable}
+    - Class: rviz_default_plugins/LaserScan
+      Name: Scan
+      Topic: {Value: /scan, Reliability Policy: Best Effort}
+      Style: Points
+      Size (m): 0.02
+    - Class: rviz_default_plugins/Map
+      Name: Global Costmap
+      Topic: {Value: /global_costmap/costmap, Reliability Policy: Reliable}
+      Alpha: 0.55
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Map
+      Name: Local Costmap
+      Topic: {Value: /local_costmap/costmap, Reliability Policy: Reliable}
+      Alpha: 0.65
+      Color Scheme: costmap
+    - Class: rviz_default_plugins/Path
+      Name: Planned Path
+      Topic: {Value: /plan, Reliability Policy: Reliable}
+      Line Style: Lines
+      Line Width: 0.04
+      Color: 0; 170; 255
+    - Class: rviz_default_plugins/Path
+      Name: Controller Path
+      Topic: {Value: /received_global_plan, Reliability Policy: Reliable}
+      Line Style: Lines
+      Line Width: 0.03
+      Color: 255; 170; 0
+    - Class: rviz_default_plugins/Path
+      Name: RPP Collision Arc
+      Topic: {Value: /lookahead_collision_arc, Reliability Policy: Reliable}
+      Line Style: Lines
+      Line Width: 0.03
+      Color: 255; 0; 0
+    - Class: rviz_default_plugins/Polygon
+      Name: Local Footprint
+      Topic: {Value: /local_costmap/published_footprint, Reliability Policy: Reliable}
+      Color: 0; 255; 0
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Description Source: Topic
+      Robot Description: robot_description
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Show Names: true
+  Enabled: true
+  Global Options:
+    Fixed Frame: map
+    Background Color: 48; 48; 48
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: nav2_rviz_plugins/GoalTool
+  Views:
+    Current: {Class: rviz_default_plugins/Orbit, Distance: 14, Pitch: 0.785, Yaw: 0.785}

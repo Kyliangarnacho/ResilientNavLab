@@ -1,0 +1,25 @@
+{
+  "error": "navigation runner did not pass: dynamic_temporary_blocked_recovery NavigateToPose failed: status=6, error=103, message=",
+  "failure_kind": "navigation_runtime",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r01/launch.log",
+  "obstacle_event_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r01/obstacle_event.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_temporary_recovery_discovery_host_r01",
+    "process_group_id": 183364,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      183380
+    ],
+    "signaled_partition_pids": [
+      183380,
+      183605,
+      183606
+    ]
+  },
+  "scenario": "dynamic_temporary_blocked_recovery",
+  "status": "FAIL",
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r01/trial_manifest.json"
+}

@@ -1,0 +1,25 @@
+{
+  "error": "navigation runner did not pass: dynamic_fully_blocked NavigateToPose exceeded its predeclared timeout",
+  "failure_kind": "navigation_runtime",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r02/launch.log",
+  "obstacle_event_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r02/obstacle_event.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_fully_blocked_discovery_host_r02",
+    "process_group_id": 118553,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      118572
+    ],
+    "signaled_partition_pids": [
+      118572,
+      118871,
+      118872
+    ]
+  },
+  "scenario": "dynamic_fully_blocked",
+  "status": "FAIL",
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r02/trial_manifest.json"
+}

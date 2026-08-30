@@ -1,0 +1,25 @@
+{
+  "error": "Task 5 obstacle event did not pass: INCOMPLETE",
+  "failure_kind": "evaluation_contract",
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/launch.log",
+  "obstacle_event_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/obstacle_event.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_temporary_recovery_discovery_host_r02",
+    "process_group_id": 194825,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      194844
+    ],
+    "signaled_partition_pids": [
+      194844,
+      195187,
+      195189
+    ]
+  },
+  "scenario": "dynamic_temporary_blocked_recovery",
+  "status": "FAIL",
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_temporary_recovery_discovery_host_r02/trial_manifest.json"
+}

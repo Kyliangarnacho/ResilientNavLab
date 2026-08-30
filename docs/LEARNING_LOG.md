@@ -2,6 +2,90 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-08-30 — Phase 10 Task 5.3 engineering acceptance and Task 5.4 Goal Cancel implementation
+
+- Task 5.3 r02 建立了核心 Recovery 因果链：官方 Recovery 实际触发（`recovery_count=1`）、临时 wall 由独立的 45 s sim-time 规则删除、`NavigateToPose SUCCESS/error=0`、Controller 恢复运动并自然停车。删墙后 Global Costmap 无法证明对原 11.32 m 长墙全段 clear；有限 LiDAR range、遮挡与长墙几何使它不能作为核心 Recovery 硬门槛。经用户批准，Task 5.3 以 engineering accepted 收口；不重跑、不改场景或 evaluator。
+- Task 5.4 复用唯一 NavigateToPose ActionClient：initial Path 和 `0.20 m` filtered odom motion 后，对同一 goal handle 调官方 native cancel；记录 cancel request/ACK、CANCELED terminal、Controller 在 Runner teardown safety-zero 之前的停机命令与 GT/odom settle。它不创建第二套 Runner、不读 GT 控制、不启动 obstacle entity bridge，也不改 Task 1–3/Nav2 参数。静态单测、resource tests、包 build/test 通过；下一步仅是一条人工 host acceptance。
+
+## 2026-08-30 — Phase 10 final closure
+
+- Task 5.4 host acceptance PASS：`NavigateToPose=CANCELED`、`recovery_count=0`、Controller post-cancel zero、odom/GT settle、`failures=[]`、cleanup/evidence flush 完整。
+- Task 5.2 r03 用当前 evaluator 离线重评为 PASS；旧 result 的 observation-window failure 保留为历史，不再作为能力否定。
+- 全 workspace 在仓库 `.venv` + ROS Jazzy 环境完成 build/test，最终 `675 tests, 0 errors, 0 failures, 1 skipped`。普通 Codex sandbox 的 DDS socket 限制不代表项目失败。
+- Phase 10 CLOSED — engineering accepted with known limitations；冻结能力、证据和 Phase 11 边界见 `PHASE10_SUMMARY.md` 与 `PHASE10_EVIDENCE_INDEX.md`。
+
+## 2026-08-30 — Phase 10 Task 5.3 official Recovery implementation
+
+- Task 5.2 r03 已作为 no-Recovery 对照冻结：真实 wall 经 `/scan → ObstacleLayer → Costmap` 后，最终记录 Planner-first Navfn `NO_VALID_PATH/208 → BT ABORT → FollowPath cancel → Controller stop`。原 `12 s` post-detection observation window 与这条因果/安全链无直接等价关系，现仅保留为 timing warning，不再要求重跑。
+- Task 5.3 只 opt-in 使用本机 Nav2 Jazzy `1.3.12` 官方 `navigate_to_pose_w_replanning_and_recovery.xml` 和正式 `behavior_server`；baseline Task 1–5.2 仍使用无 Recovery XML，Planner、Controller、Costmap、AMCL、BT 参数均未改变。
+- 行为服务器仅加载官方 Spin、BackUp、Wait；官方 ClearEntireCostmap 仍由 BT 调既有 Costmap service。生命周期 manager 在 recovery profile 下按 `planner_server → controller_server → behavior_server → bt_navigator` 管理，Runner 继续只观察 official manager aggregate active，不增加 per-node lifecycle polling。
+- 现有 Gazebo injector 薄扩展为 `SpawnEntity → detection → frozen /clock deadline → DeleteEntity → global Costmap clear`；删除时刻从 Spawn ACK 加固定 `45.0 s` 推导，不订阅 GT、BT、recovery count 或 Planner/Controller，不直接改 Costmap。该 lifetime 是首次人工 discovery 前冻结的环境规则，若 evidence 表明删墙早于真实 Recovery，可在保存 evidence 后只重新冻结一次，不能 runtime 自适应。
+- Task 5.3 evaluator 要求 delete 前 Planner/Controller failure、official clear、至少一个 Behavior Server action RUNNING 和 `recovery_count>0`，删除后 Global Costmap clear、安全 replan、Controller 重获 path 后运动、NavigateToPose SUCCESS、无 footprint collision/crossing、final stop 与 durable evidence。继承 localization/scan-TF 偏差仍只作 warning，除非直接破坏感知或安全合同。
+- 本轮仅运行 Python/resource 单元测试、`colcon build/test --packages-select resilient_nav_navigation` 和 launch `--show-args`；没有启动 Gazebo、没有运行 Task 5.3 E2E，也没有 commit/push。下一步是一次人工 bounded Task 5.3 discovery。
+
+## 2026-08-30 — Phase 10 Task 5.1 engineering acceptance、Task 5.2 discovery boundary
+
+- `dynamic_obstacle_detour` 的 host fresh record 完整证明了动态环境链：initial Path 后 robot 先行进 `0.2020 m`，官方 SpawnEntity ACK，再由真实 `/scan` 进入 Local/Global ObstacleLayer；Global detection 后首条新 Path 延迟 `0.394 s`，共记录 40 条 safe post-obstacle Path，最后 NavigateToPose SUCCESS、0 Recovery、GT padded footprint 无新增 box 碰撞、Controller/odom/GT final-stop 和 process cleanup 都完整。
+- 同一 record 的 `final_gt_position_error_m=0.309411786 m` 高于 inherited Task 4 healthy endpoint 阈值 `0.25 m`。这是 localization estimate 与 evaluator-only GT 的既有偏差观察，不是动态 obstacle 感知、replan、控制或安全失败。Task 5 evaluator 现在保留完整 inherited healthy metrics 和结构化 warning，但动态 Task 5.1 contract 不再把这个 endpoint warning 当成硬失败；没有为此修改 AMCL、Planner、Controller、Costmap、BT 或 Task 3 参数。
+- Task 5.2 仍保持 no-Recovery baseline。首条 host run 的 evaluator mode 固定为 `discovery`：要求完整 Spawn/Costmap/GT/cmd_vel/BT evidence，并输出 `MEASURED` 的 Planner-first、Controller-first 或 unclassified 分支；它不接受 candidate code list，也不产生 PASS。只有人工审查 discovery 后，才把一个真实 `frozen_error_code` 写入后续独立 acceptance contract。
+
+## 2026-08-28 — Phase 10 Task 3.3 BT Navigator + NavigateToPose 收口
+
+- 官方 Jazzy `bt_navigator` 使用上游 `navigate_w_replanning_time.xml` 编排唯一的 Planner-owned Global Costmap 与 Controller-owned Local Costmap；BT 中没有 Recovery、Behavior Server 或第二张 Costmap。`RateController=1 Hz` 是周期重规划频率，`bt_loop_duration=10 ms` 和 Planner 的 `expected_planner_frequency=20 Hz` 不是同一合同。
+- 初版 probe 在运行期用自身短历史 TF buffer 取 map pose；accelerated Gazebo 下这会触发 past extrapolation，probe 错误 cancel 了健康 `NavigateToPose`。修复后 path sweep 以已验证的 action feedback `current_pose` 为主证据，Plan 与 feedback 必须在冻结 0.50 s 关联窗口内对应（1.0 s 后仍缺失即 FAIL），不再静默漏验；TF 只保留 readiness 与 action 后最终交叉检查，并把历史扩至 60 s。
+- fresh detour 与 fresh-restart simple 均 PASS：前者 17 次、后者 9 次 `ComputePathToPose` SUCCESS，均 0 recovery、每条 Path full-footprint sweep zero lethal/unknown、终点与 TF/feedback cross-check 合格并有 Controller 零速证据。独立 Planner 全场景与 Controller simple/detour 回归也通过。
+- fresh-process 前必须检查无残留 `gz sim`/`clock_bridge`，并在 probe 发 goal 前证明确有且仅有一个单调 `/clock` publisher。一次 Gazebo server 虽存活但不发布 `/clock`，使 TF/生命周期永远不能 ready；这是环境启动失活而非 Nav2 行为失败，准确清理该实例后重跑通过。
+
+## 2026-08-28 — Phase 10 Task 3.1 Planner Server + ComputePathToPose
+
+- Task 3.1 复用 Task 2 的 Global Costmap 参数，但由官方 `planner_server` 内嵌拥有，不再启动第二个 standalone Global Costmap。这样 standalone Costmap smoke 仍是独立回归，而正式 planner 数据面只有一个 `/global_costmap/global_costmap` owner。
+- 首版固定唯一 `GridBased=nav2_navfn_planner::NavfnPlanner`，并显式取 `tolerance=0.0`、`allow_unknown=false`：目的仅是让 exact occupied-goal contract 可判定，不构成算法或性能比较。
+- 只读 probe 对成功 Path 同时检查 action、`/plan`、`/is_path_valid` 与 0.025 m 加密 Costmap 采样；绕障的直接线为 37 lethal samples、返回 Path 为零 lethal，避免只凭 RViz 判断。占用目标应选 frozen map 已观测到的障碍**表面** `(5.05, 2.15)`：collision object 的几何中心未必是 map 中 lethal cell。
+- 两次 fresh-process run 均通过可达、绕障、`GOAL_OCCUPIED=206` 三场景，robot pose translation 均为 0。没有启动 Controller、BT Navigator、NavigateToPose、recovery 或 `/cmd_vel`，下一步若要让 Path 变成运动必须单独授权和验收。
+
+## 2026-08-28 — Phase 10 Costmap rotation ghost 根因关闭与架构收口
+
+- startup gate、提高 Costmap 频率和 scan/TF 诊断均未能解释“只在转动约四分之一圈、固定角度出现”的孤立短距点，故这些假设不作为正式修复保留。它们帮助缩小范围，但不是根因结论。
+- 正反转 fresh-process endpoint 证据均将异常锁定为 `/scan` 的 `beam_index=0`：旧 `angle_min=-135°`、640 beams，短距约 `2.19–2.48 m`，相邻 beam 为正常远距返回。CW 663 个 scan 有 28 个候选、CCW 673 个 scan 有 27 个候选，均为该唯一边界 beam。
+- 最小 source 修复将 GPU LiDAR horizontal samples `640→639`，并将 `min_angle` 向内移动旧 increment `pi/426`；`max_angle` 与其余 638 个间隔保持。它不创建 filter、不会把异常 hit 伪装成 clearing，也不修改 frozen map、EKF、AMCL 或 Nav2。
+- 修复后 CW 669 与 CCW 645 个 scan 均为 639 beams，marking range 内的孤立短距候选均为 0；用户确认 Global/Local persistent ghost 消失。最终回归保留 Xacro FOV source contract；一次性 gate、rotation diagnostic/contract、专用 launch 和 tests 全部删除。
+- 正式 Task 2 回到标准 Lifecycle Manager `autostart=true`，Global `1/1 Hz`、Local `5/2 Hz`。`sensor_frame=lidar_link`、`expected_update_rate=0.2` 与 Global probe 的 `scan.header.stamp` TF 查询保留；`observation_persistence=0.0` 是 Jazzy 默认行为，不再显式配置。
+- 剩余边界：异常 ray 由 GPU renderer、Gazebo bridge 还是二者交互产生尚未唯一归因；standalone Costmap Ctrl-C teardown 偶发 `-11` 仍须独立最小复现，且本次结论不自动推广至其他 world/FOV 配置。
+
+## 2026-08-27 — Phase 10 Task 2.3–2.4 Local Rolling Costmap、参数实验与联合验收
+
+- Local Costmap 的职责是 `odom` 下、scan-only 的实时 rolling world model，故只采用官方 `ObstacleLayer` 与 `InflationLayer`，明确不加载 StaticLayer。冻结 `/map` 与 AMCL 的修正属于 `map` frame Global Costmap；混入 Local 会破坏二者分工并使局部窗口依赖定位修正。
+- 固定 Local contract 为 `6x6 m`、`0.05 m`、`120x120`、`5/2 Hz`、`track_unknown_space=false`、`/scan` obstacle/raytrace range `2.5/3.0 m`，并复用 Task 2.1 的 8 点 collision-derived footprint 和 `0.01 m` padding。standalone `nav2_costmap_2d` 在本机接受 integer `width/height=6`；浮点 `6.0` 使该 executable 以 `-6` 退出，因此 YAML 以 integer 固定并由静态/运行时 probe 核验。
+- rolling probe 不可按 standalone Costmap 的 OccupancyGrid header timestamp 查 TF：该时间戳可滞后窗口更新。probe 改在每个收到的 grid 时以最新 `odom -> base_footprint` 配对，并记录 header stamp 仅供审计。两次有界运动分别得到 `0.4171 m` / `0.2400 m` robot translation，origin-delta error `0.0171 m` / `0.0201 m`。`0.125 m` 固定 tolerance 由发布延迟、受限 smoke 速度及 cell quantization 的上界推导，不从结果反推。
+- `ros_gz_sim create` 的命令行 pose 会覆盖 SDF model pose。受控 box 必须显式传 `-x -2.0 -y -3.5 -z 0.5`；若仅依赖文件内部 pose，模型会放在原点，导致错误的“未 marking”观察。显式 pose 下 Local watch cell `0 -> 99 -> 0`，直接证明 marking/clearing。
+- parameter experiment 在三个 isolated fresh process 中以 launch-time overrides 完成，未使用 `ros2 param set`。冻结 evaluator 显示 wider `0.75 m` 相对 baseline `0.55 m` 的 extent 增加 `0.2021 m`、area 增加 `0.9500 m²`；同半径 steeper scaling `8` 相对 `3` 将 annulus median cost 从 `38` 降至 `8`，且 extent 不变。因而 range 与 cost falloff 都有机器可读证据，而不是只观察 RViz。
+- joint launch 与 complete restart 均确认 Global/Local lifecycle active，Global 保持 frozen map metadata，Local 保持 odom rolling contract，TF ownership 仍唯一为 `AMCL map -> odom -> healthy EKF odom -> base_footprint`。没有启动 planner、controller、BT、recovery 或自主执行链。
+
+## 2026-08-27 — Phase 10 Task 2.1–2.2 Footprint 与 Global Costmap 验收
+
+- 当前 Xacro collision 几何在 `base_footprint` 地面投影的最小可审计 polygon 为 8 点：车体定义 `x=-0.35..0.15 m`、`y=±0.175 m`，驱动轮给出 `y=±0.215 m` 外缘；Costmap 使用该 polygon 和 `0.01 m` padding，而不以 `robot_radius` 近似或修改 URDF。
+- `phase10_global_costmap_smoke.launch.py` 受作用域 Include 已有 localization smoke，并在独立 `/global_costmap` namespace 运行官方 `nav2_costmap_2d`、StaticLayer、ObstacleLayer、InflationLayer 和 Lifecycle Manager。Costmap global frame 是 `map`，robot base frame 是 `base_footprint`；不启动 local costmap、planner、controller、recovery 或 `/cmd_vel`。
+- fresh-process 动态 probe 确认 Costmap lifecycle active，frozen Phase 9 map 的 metadata 与 costmap 一致，且 38 个 finite scan endpoint 的 static-map residual 为 median `0.014594 m`、P90 `0.026839 m`。这只是一项双墙/整体错位 sanity check，不是定位精度指标。
+- 临时、可删除的 Gazebo box 在原先 free cell 使 Costmap lethal 值从 `0` 变为 `99`、相邻 inflation 值从 `0` 变为 `35`；删除模型后两值均回到 `0`。由此直接验证 scan marking、inflation 与 clearing，未写入 Phase 9 map 或 world 资产。
+- 独立 `nav2_costmap_2d` executable 在本机不建立 Lifecycle Manager 的 managed-node bond，故 `bond_timeout=0.0`，并坚持以 get-state `active` 而非 manager process 存在作为 readiness 证据。Ctrl-C 时它曾 `-11` 退出；这是 upstream standalone teardown 边界，后续长期运行前应单独最小复现，不能把 active-state evidence 伪称为干净 teardown。
+
+## 2026-08-27 — Phase 10 Task 1.3–1.5 Map Server、AMCL 与 fresh-process 定位验收
+
+- Map-Server-only smoke 直接运行上游 `nav2_map_server` 与只管理 `map_server` 的上游 Lifecycle Manager；动态 probe 已确认 `active`、`/map` frame/size/resolution/origin 与安装态四个 Phase 9 资产 SHA-256 一致。因此 Phase 10 不复制 Map Server，也不让 AMCL 参与静态地图验收。
+- 完整 smoke 复用 Phase 4 healthy sensor bridge、Phase 9 world 和既有 healthy EKF；Slam Toolbox 与旧 `odom_tf_broadcaster` 均不启动。TF ownership 的运行期直接 `/tf` evidence 为 AMCL `map -> odom` 271 次、healthy EKF `odom -> base_footprint` 358 次，组合为唯一 `map -> odom -> base_footprint` 链。
+- `phase10_initial_pose_helper` 必须容忍 launch_ros 追加的 ROS arguments，不能重复声明 Jazzy 内建 `use_sim_time`，并应等 AMCL active、`/initialpose` subscriber 和仿真时钟开始后再发一条 map-frame pose。该 helper 实际完成显式 `(0,0,0)` 初始化并观察到 map-frame `/amcl_pose`。
+- 动态 motion probe 在有界 3 秒弧线期间 PASS：两 lifecycle node active，scan frame `lidar_link`，particle cloud 4 条，AMCL covariance diagonal `0.02186149/0.03976580/0.01485930`。particle cloud 是 volatile 运动时证据，因此 probe 必须在运动前启动；不能在运动结束后订阅却把未收到旧消息误诊为 AMCL 失败。
+- `resilient_nav_monitor/system_heartbeat` 仍在 Ctrl-C teardown 后重复调用 `rclpy.shutdown()` 并退出 1。这是既有 Phase 4 teardown 技术债，不改变 active lifecycle 或 localization dynamic evidence，且本轮没有修改无关 monitor 代码。
+
+## 2026-08-27 — Phase 10 Task 1.1–1.2 Nav2 接口冻结与最小定位骨架
+
+- 用户已安装官方 `ros-jazzy-navigation2` 与 `ros-jazzy-nav2-bringup` binary。本机实际核验 `nav2_bringup`、`nav2_map_server`、`nav2_amcl`、`nav2_lifecycle_manager` 均为 Jazzy `1.3.12`，位于 `/opt/ros/jazzy`；Map Server、AMCL 和 Lifecycle Manager 的 executable 均可发现。
+- 已直接核验 installed `nav2_bringup/launch/localization_launch.py`：其参数为 `namespace`、`map`、`use_sim_time`、`params_file`、`autostart`、`use_composition`、`container_name`、`use_respawn`、`log_level`。非 composition 模式由上游统一启动 Map Server、AMCL 和 `lifecycle_manager_localization`，且 lifecycle 顺序为 `map_server`、`amcl`；项目 wrapper 必须 Include 该 launch，不复制内部实现。
+- 新建 `resilient_nav_navigation`（ament_python）只安装参数、launch、RViz 和静态测试。`phase10_localization.launch.py` 默认消费已安装的 Phase 9 `phase9_map.yaml`，透传全部上游定位参数；默认 `use_sim_time=true`、`autostart=true`、`use_composition=False`（遵从上游 PythonExpression boolean contract）、`use_respawn=false`，不启动 Slam Toolbox/Gazebo/costmap/planner/controller/recovery，不提供导航目标或 `/cmd_vel`。
+- Phase 9 资产 identity 已用 occupancy PGM/YAML 与 posegraph 四个 SHA-256 固定。Phase 9 最终总结是 automatic loop closure 的权威依据：最终无 manual-service run 有 `TryCloseLoop accepted → LinkChainToScan → CorrectPoses` 直接链，结论为 PASS。下方 2026-08-21 close-out 的 raw-evidence UNCONFIRMED 记述保留为当时观察记录，但与最终总结冲突；不得再把它当作当前结论，后续应单独整理该历史档案。
+- 目标静态验证：package pytest 6 passed；`colcon build --symlink-install --packages-up-to resilient_nav_navigation` 完成 10 个相关包；package-level `colcon test` 为 6 tests、0 errors、0 failures、0 skipped；sourced install 的 wrapper `--show-args` 成功。受限环境默认 `~/.ros/log` 不可写，核验时设置 `ROS_LOG_DIR=/tmp/resilient_nav_phase10_ros_logs`；不是 Nav2 runtime 故障。
+- 本轮未动态启动 Map Server/AMCL 或仿真，未验证 TF、scan QoS、lifecycle、`/initialpose` 或定位精度；更没有规划、控制或自主导航结论。
+
 ## 2026-08-21 Phase 9 close-out
 
 - Borrow：固定尺度 2D Kabsch/Umeyama SVD alignment（时间关联后求一个 SE(2)）和 TUM ATE 的 timestamp association；Adapt：mapping 使用该 fixed-scale best-fit ATE，但 persisted map 的 `map` 已是固定 global frame，C1/C2/C3 使用实验前声明的固定 `T_map_odom`，把 fresh-odom GT/EKF 直接转到 `map`，不能由当前测试轨迹反拟合；Reject：完整 evo/SE(3)/RPE runtime suite。首帧/origin alignment、world/benchmark 中间变换和 shape diagnostic 已从正式 localization 路径删除。
@@ -788,3 +872,27 @@
 ### 操作声明
 
 本次仅执行只读环境检查并修改项目文档；未安装任何软件，未执行 `sudo apt install`，未创建 ROS 2 工作空间或包，也未修改系统配置。
+## 2026-08-28 — Phase 10 Task 3.2 Controller Server + FollowPath
+
+- Navfn path 只保证 robot origin 走过 free cell，不能代表当前非对称 collision footprint 在转弯和终端朝向也安全。因此把 full-footprint sweep 放在 Planner 输出与 FollowPath 之间：用 raw `nav2_msgs/Costmap` 的 `254/255`，而不是 published `OccupancyGrid` 的 99/100 简化值；半 cell 平移和按外顶点半 cell 位移的旋转离散避免在 cell 间跳过碰撞。
+- 这项 sweep 是项目侧可复用验收 gate，不替换 Navfn/RPP。fresh Planner-only simple/detour 分别完成 85/810 个 sweep pose，均为 zero lethal/unknown；合成单测验证 centerline false-safe、非对称终端转向、unknown 和越界拒绝。
+- Controller 的正式 Local Costmap 必须由 `controller_server` 内嵌拥有，不能复用 standalone Task 2 executable 或再起第二张。RPP 复用 Task 2 scan-only odom rolling contract，且显式 `enable_stamped_cmd_vel=false` 匹配 Gazebo `Twist` bridge、`publish_zero_velocity=true`、`allow_reversing=false`、collision detection=true。
+- two fresh-process FollowPath actions 均 PASS：simple/detour 最大 cross-track 为 `0.0154/0.0532 m`，最大线速度均 `0.20 m/s`，角速度 `0.376/0.600 rad/s`，全路径及运行期 footprint 均无 raw lethal/unknown，RPP collision arc 也无 lethal/unknown。Probe 只接受两条 YAML 固定场景，速度越界或 safety failure 即 cancel，并在 finally 只写 5 条零 Twist。
+- 此结论只覆盖健康固定路径闭环，不外推到 BT、NavigateToPose、周期重规划、动态障碍、recovery、长距离性能、fault-aware navigation 或 Agent control。
+## 2026-08-29 — Phase 10 Task 4 benchmark startup contract 收口（动态验证待执行）
+
+- 审查确认 `planner_server/get_state async_send_request failed` 的发出者可以是官方 `lifecycle_manager_navigation`，不是 Runner 的只读 GetState observer；至少一类失败在 Planner configure 已完成且进程仍存活时发生，另一类则由 Gazebo create service/`/clock` 缺失、EKF 等待时钟和 `map -> base_footprint` 缺失引起，shutdown 后的 lifecycle 报错不能反推为初始根因。
+- Task 4 移除固定 12 s navigation start delay；官方 Navigation Lifecycle Manager 继续独占 Planner/Controller/BT 的 configure/activate 顺序。Runner 的最小 readiness 顺序改为 `/clock`、定位 TF、只读 lifecycle、NavigateToPose action、raw Costmaps，并把阶段与最后错误写入 navigation evidence。
+- batch 从 3 次 infrastructure retry 与 8 s unconditional settle 改为每个 logical run 一次尝试、首个失败 fail-fast。wall timeout 按 readiness + 冻结 action timeout + 明确 post-goal/result grace 推导；每个 run 保存独立 `GZ_PARTITION`、DDS domain、initial-pose result、trial manifest 和 launch log。
+- multi-turn 继续冻结为 `(4.7, 5.3, pi/2)`、初始路径至少 `7.0 m`、两次有效转向；没有为名称或一次 startup failure 继续调场景。Task 4 尚未 PASS，下一步仅应运行一次 fresh multi-turn 验证；成功后才可运行正式 3×3。
+
+### 动态执行结果
+
+- 宿主 fresh `multi_turn_healthy` PASS：官方 navigation lifecycle manager 正常 active，initial path `7.5349 m`、2 turns、GT travel `7.4847 m`、final GT `0.0689 m/0.1162 rad`、navigation `42.094 s`、0 recovery、43 replan、final stop PASS。受限 sandbox 的先前尝试因 DDS UDP/getifaddrs 被系统拒绝而在 readiness 前退出，不作为 benchmark failure。
+- 正式 3×3 已按新 fail-fast 合同运行：`simple_reachable-r01` PASS；`static_obstacle_detour-r01` 中 map-server configure 后出现 `failed to send response to /map_server/change_state`，Localization Lifecycle Manager 未能继续到 AMCL active，initial pose helper 因此失败，随后 Planner 等待缺失的 map TF。原始 result 保留 Runner 的下游 `infrastructure_localization_tf` 分类；随后补充的 batch classifier regression 会在未来 run 保留原始 evidence 的同时提升为 `infrastructure_nav2_lifecycle_service`。batch 没有重试、没有继续第三场景。
+## 2026-08-30 — Phase 10 Task 5.1–5.2 dynamic-obstacle overlay
+
+- 复用 Task 4 fresh-process trial、GT recorder、Runner 和 offline evaluator；没有新增 benchmark 框架、readiness gate、sleep/retry 或任何 Task 1–3/Nav2 参数修改。
+- 运行时障碍只经官方 `ros_gz_bridge` 的 Gazebo `SpawnEntity` 服务创建；注入器等待 initial `/plan` 与普通 filtered odometry `0.20 m`，不读 GT、不直接写 Costmap、不改变 goal/BT action、也不发布速度。
+- 5.1/5.2 都以 Task 4 detour 为基线；5.1 的绕行箱和 5.2 的横贯墙来自一次性离线 saved-map/footprint 连通性推导。5.2 明确测量无 Recovery baseline 的 ABORT，而不把外部 timeout/cancel 伪装成失败语义。
+- 首次动态运行揭示 injector callback 内嵌套 executor 的实现错误，已改为一次异步 service future；后续 event 链已观测到 Path → motion gate → Spawn ACK → two Costmap detections，但前台执行环境在导航终态文件写出前中止 launch。故 Task 5 尚未 PASS，下一步只应完成一项完整 5.1 fresh trial + offline evaluator，再考虑单次 5.2。

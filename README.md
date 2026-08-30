@@ -8,7 +8,7 @@ ResilientNavLab 是一个面向移动机器人的 ROS 2 实验与学习项目，
 
 Phase 8 里程碑 1–4 已冻结四条实验链与真值隔离，并新增 `resilient_nav_fusion`：纯 Python `FusionPolicy` 可基于 wheel/IMU 健康状态给出测量接纳、显式协方差倍率、wheel yaw fallback 与恢复滞回；`measurement_adapter` 只发布匿名化 `/fusion/input/*` 和 `/fusion/status`；独立 adaptive EKF 只订阅这些输入，固定发布 `/odometry/adaptive` 且不发布 TF。没有控制或容错导航实现。
 
-Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 本机 Jazzy Slam Toolbox，healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 和 `/map`。Occupancy Map 与 Serialized Pose Graph 已保存并能在全新 process localization reload；Ground Truth 仅在独立 evaluation overlay 中用于事后评价。Mapping 的正式 SLAM RMSE 使用 timestamp-associated fixed-scale 2D best-fit SE(2)（SVD/Kabsch）；persisted-map localization 则只使用实验前声明的固定 `T_map_odom`，把该次 fresh-odom 的 GT/EKF 直接变换到保存的 M8 `map` frame，绝不从本次轨迹拟合。corrected dynamic different-start run 的 `T_map_odom=(5.5,4.0,pi)`、初始化区域及 fixed-frame SLAM/Healthy EKF RMSE 为 `0.3434 m/0.1788 rad` 与 `0.4594 m/0.1905 rad`；SLAM 相对 Healthy EKF 改善，但 endpoint error 仍分别为 `3.022 m/1.612 rad`，未设成功阈值，不美化为高精度定位。运行中 `/map` raster 会扩展，保留为 localization-runtime 观察。automatic loop closure 为 UNCONFIRMED。Nav2、fault-aware SLAM 和 Adaptive EKF+SLAM 比较不在 Phase 9 范围。
+Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 本机 Jazzy Slam Toolbox，healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 和 `/map`。Occupancy Map 与 Serialized Pose Graph 已保存并能在全新 process localization reload；Ground Truth 仅在独立 evaluation overlay 中用于事后评价。Mapping 的正式 SLAM RMSE 使用 timestamp-associated fixed-scale 2D best-fit SE(2)（SVD/Kabsch）；persisted-map localization 则只使用实验前声明的固定 `T_map_odom`，把该次 fresh-odom 的 GT/EKF 直接变换到保存的 M8 `map` frame，绝不从本次轨迹拟合。corrected dynamic different-start run 的 `T_map_odom=(5.5,4.0,pi)`、初始化区域及 fixed-frame SLAM/Healthy EKF RMSE 为 `0.3434 m/0.1788 rad` 与 `0.4594 m/0.1905 rad`；SLAM 相对 Healthy EKF 改善，但 endpoint error 仍分别为 `3.022 m/1.612 rad`，未设成功阈值，不美化为高精度定位。运行中 `/map` raster 会扩展，保留为 localization-runtime 观察。automatic loop closure 已 PASS：最终无 manual service 的 run 保留了上游直接证据 `TryCloseLoop accepted → LinkChainToScan → CorrectPoses`，证明候选接受、约束链接与位姿校正依次发生。Nav2、fault-aware SLAM 和 Adaptive EKF+SLAM 比较不在 Phase 9 范围。
 
 - ROS 2 Jazzy、`ros2_ws`、`resilient_nav_monitor` 和 `system_heartbeat` 的阶段 1 基线保持可用。
 - 已通过 `ros-jazzy-ros-gz` 安装 Gazebo Harmonic；Gazebo Sim 版本为 8.11.0。
@@ -47,7 +47,7 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 - evaluator 侧以独立 `BenchmarkTruth` 对 `OfflineDiagnosisRun` 判卷并生成 `BenchmarkCaseResult` / `BenchmarkReport`；会检测 component/fault/top-k、Evidence 引用、最小 Evidence 类型、可确定 unsupported claim、Tool/model 使用、leakage 与 healthy false diagnosis。
 - Robot Agent 仍不订阅 Live ROS，不接收 evaluator truth，不提供 RAG、Planner、Recovery、参数写入或控制输出。`ra1a_real_benchmark` 已完成 DashScope/Qwen `qwen3.7-flash` 的真实四 Case smoke 和八 Case baseline；具体结果与模型失败边界见 Final Audit。
 
-阶段 3 已完成机器人描述、独立关节状态发布、运行时 TF、独立与 Gazebo 联合 RViz 显示、物理落地、Gazebo 原生差速插件、ROS 2 基础速度/里程计/仿真关节状态链路、ROS 侧 odom TF、运动测试工具，以及直行、原地旋转、圆弧和停车同步基线。阶段 4 已完成多传感器接口和 wheel odometry + IMU 的固定字段 EKF 基线；阶段 5 已完成可复现故障注入和真值闭环；阶段 6 已完成在线健康监测和基于真值的评价；RA-1A 已完成可重复、可判卷的 Offline Robot Diagnosis 闭环。Gazebo 原生 TF 未桥接，PointCloud2、`ros2_control`、Nav2、SLAM、自适应融合、Live Robot Agent 和容错导航均未实现。
+阶段 3 至 9 的既有基线保持完成。**Phase 10 CLOSED — engineering accepted with known limitations**：healthy saved-map 定位、Global/Local Costmap、Navfn、RPP、无 Recovery BT 1 Hz 重规划、GT-isolated benchmark、动态 detour、fully blocked safe failure、官方 Recovery 和 Goal Cancel 均已收口；Task 1–3/Nav2 参数未修改。严格 Task 4 9/9 未达成（8/8 valid PASS）、定位/scan-TF 偏差、长墙终止/clear 观测限制均透明保留。详见 `docs/PHASE10_SUMMARY.md`。fault-aware navigation 与 Agent navigation 尚未实现；RA-1A 仍为离线只读诊断。
 
 ## 核心方向
 
@@ -77,7 +77,7 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | 共 11 包；`resilient_nav_slam` 是第 11 个 ROS package |
+| 项目 ROS 2 包 | 共 12 包；`resilient_nav_navigation` 是第 12 个 ROS package |
 | 项目 ROS 2 节点 | `system_heartbeat` 发布存活消息；`odom_tf_broadcaster` 从 `/odom` 发布 `odom -> base_footprint` |
 | Gazebo | Gazebo Harmonic / Gazebo Sim 8.11.0，可用 |
 | ROS 2—Gazebo 集成 | `/clock`、`/cmd_vel`、`/odom` 和 `/joint_states` 的阶段内定向桥接已验证 |
@@ -90,6 +90,8 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 | 阶段 6 健康评估 | IMU/wheel/scan 健康监测、`health_evaluator`、统一 Launch、JSON 评价与运行级参数服务测试已验证 |
 | 阶段 7.1 C920 相机集成 | WSL/USBIP + `usb_cam`、正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和相机 rosbag 无硬件回放已验证；仍有 WSL USB/IP 闪帧、帧率波动和偏暗技术债 |
 | 阶段 7.2 相机健康 | 已完成真实 C920 健康监测、真值/评价、runtime 验证和 evaluation config 冻结；339 tests passed / 0 failures |
+| Phase 10 Nav2 基线 | **CLOSED — engineering accepted with known limitations**。官方 Jazzy Nav2 1.3.12 binary；Task 1–3、Task 4（8/8 valid PASS）与 Task 5.1–5.4 已收口。5.2 冻结 Planner-first `NO_VALID_PATH/208` safe failure，5.3 engineering acceptance 保留有限观测 limitation，5.4 native Goal Cancel PASS；未修改 Task 1–3 参数。详见 `docs/PHASE10_SUMMARY.md`。 |
+| Phase 10 Task 4 benchmark | **CLOSED — engineering accepted with a known infrastructure limitation**。GT-free `NavigateToPose` runner、evaluator-only GT recorder、offline evaluator、fresh-process isolation 与 teardown barrier 已实现。最终证据为 8/8 valid navigation PASS（simple 3/3、detour 3/3、multi-turn 2/2 valid）；multi-turn-r03 为 pre-goal infrastructure-invalid，严格 9/9 automated contract 未满足，不再追加动态验证。 |
 | RA-1A Robot Agent | 3 个只读 Tools、strict Runtime、Scorer/Batch 和 8-case Fake pipeline 已完成；Agent package 88 tests，九包 491 tests / 0 failures / 1 skipped |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
@@ -100,6 +102,18 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 - [开发环境基线](docs/ENVIRONMENT.md)
 - [学习与决策记录](docs/LEARNING_LOG.md)
 - [当前状态](docs/CURRENT_STATE.md)
+- [Phase 10 Nav2 Jazzy 接口与定位骨架](docs/PHASE10_NAV2_JAZZY_INTERFACE.md)
+- [Phase 10 开源项目基线](docs/PHASE10_OPEN_SOURCE_BASELINES.md)
+- [Phase 10 Task 1 动态定位证据](docs/PHASE10_TASK1_LOCALIZATION_SMOKE.md)
+- [Phase 10 Task 2 Footprint、Global/Local Costmap 与参数证据](docs/PHASE10_TASK2_COSTMAP_SMOKE.md)
+- [Phase 10 Task 3.1 Planner Server smoke](docs/PHASE10_TASK3_PLANNER_SMOKE.md)
+- [Phase 10 Task 3.2 Controller Server smoke](docs/PHASE10_TASK3_CONTROLLER_SMOKE.md)
+- [Phase 10 Task 3.3 BT Navigator smoke](docs/PHASE10_TASK3_BT_NAVIGATION.md)
+- [Phase 10 Task 4 Healthy Navigation Benchmark](docs/PHASE10_TASK4_HEALTHY_NAVIGATION_BENCHMARK.md)
+- [Phase 10 Task 5 Dynamic Obstacles](docs/PHASE10_TASK5_DYNAMIC_OBSTACLES.md)
+- [Phase 10 Final Summary](docs/PHASE10_SUMMARY.md)
+- [Phase 10 Evidence Index](docs/PHASE10_EVIDENCE_INDEX.md)
+- [Phase 10 Task 4 multi-turn fresh evidence](docs/PHASE10_TASK4_MULTI_TURN_20260829_HOST.md)
 - [阶段 2 收尾总结](docs/PHASE2_SUMMARY.md)
 - [阶段 3 收尾总结](docs/PHASE3_SUMMARY.md)
 - [阶段 3 本机参考](docs/PHASE3_LOCAL_REFERENCE.md)
@@ -121,4 +135,4 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 
 ## 近期里程碑
 
-阶段 2 至 7.2 的已授权基线保持完成。阶段 7.2 已在真实 C920 输入上提供 timing/stale/freeze、underexposed/overexposed/blurred/low-information、FaultStatus 真值和 `health_evaluator` 链路。RA-1A 已完成离线、只读 Diagnosis pipeline 和 Fake 判卷基础设施；Fake 分数不代表真实 Robot Agent 智力，且当前没有 Live ROS Agent、真实模型结果、Planner、Recovery、全部视觉退化、通用生产阈值、真实硬件定位、Nav2、SLAM、自适应融合或容错导航。WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。
+阶段 2 至 9 的已授权基线保持完成。Phase 10 已 CLOSED — engineering accepted with known limitations；Task 1–5.4 与 evidence boundary 均冻结，详见 `docs/PHASE10_SUMMARY.md`。fault-aware/Agent navigation 与通用自主导航仍未实现。RA-1A 已完成离线、只读 Diagnosis pipeline 和 Fake 判卷基础设施；Fake 分数不代表真实 Robot Agent 智力，且当前没有 Live ROS Agent、真实模型结果、Agent Planner、Recovery、全部视觉退化、通用生产阈值、真实硬件定位或容错导航。WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。

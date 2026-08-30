@@ -1,0 +1,55 @@
+{
+  "benchmark": "phase10_healthy_navigation",
+  "manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_final_shared_healthy_regression_20260830_r02/manifest.json",
+  "scenario_summaries": {
+    "simple_reachable": {
+      "actual_gt_travel_distance_m": {
+        "max": 0.8913592527010369,
+        "mean": 0.8913592527010369,
+        "median": 0.8913592527010369,
+        "min": 0.8913592527010369
+      },
+      "attempt_count": 1,
+      "final_gt_position_error_m": {
+        "max": 0.1180112624289824,
+        "mean": 0.1180112624289824,
+        "median": 0.1180112624289824,
+        "min": 0.1180112624289824
+      },
+      "final_gt_yaw_error_rad": {
+        "max": 0.1304850228690786,
+        "mean": 0.1304850228690786,
+        "median": 0.1304850228690786,
+        "min": 0.1304850228690786
+      },
+      "geometric_directness": {
+        "max": 1.1218821109106456,
+        "mean": 1.1218821109106456,
+        "median": 1.1218821109106456,
+        "min": 1.1218821109106456
+      },
+      "navigation_time_sec": {
+        "max": 7.609999999999999,
+        "mean": 7.609999999999999,
+        "median": 7.609999999999999,
+        "min": 7.609999999999999
+      },
+      "pass_count": 1,
+      "replanning_count": {
+        "max": 8.0,
+        "mean": 8.0,
+        "median": 8.0,
+        "min": 8.0
+      },
+      "route_execution_efficiency": {
+        "max": 1.1173451615283487,
+        "mean": 1.1173451615283487,
+        "median": 1.1173451615283487,
+        "min": 1.1173451615283487
+      },
+      "success_rate": 1.0
+    }
+  },
+  "status": "PASS",
+  "stopped_early": null
+}

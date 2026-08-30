@@ -1,0 +1,34 @@
+{
+  "action_timeout_sec": 60.0,
+  "benchmark": "phase10_task5_dynamic_environment",
+  "created_utc": "2026-08-30T09:40:26.019586+00:00",
+  "evaluation_mode": "discovery",
+  "infrastructure_start_attempts": 1,
+  "launch_log_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r01/launch.log",
+  "obstacle_event_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r01/obstacle_event.json",
+  "process_cleanup": {
+    "complete": true,
+    "evidence_flushed": true,
+    "gz_partition": "resilient_nav_phase10_task5_phase10_task5_dynamic_fully_blocked_discovery_host_r01",
+    "process_group_id": 106777,
+    "remaining_group_processes": [],
+    "remaining_partition_processes": [],
+    "signaled_group_pids": [
+      106796
+    ],
+    "signaled_partition_pids": [
+      106796,
+      107129,
+      107130
+    ]
+  },
+  "readiness_timeout_wall_sec": 120.0,
+  "record_diagnostics": false,
+  "result_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r01/result.json",
+  "ros_domain_id": 206,
+  "scenario": "dynamic_fully_blocked",
+  "status": "FAIL",
+  "supervisor_pid": 106776,
+  "trial_manifest_path": "/home/kylian/projects/resilient_nav_lab/docs/phase10_task5_dynamic_fully_blocked_discovery_host_r01/trial_manifest.json",
+  "trial_timeout_wall_sec": 203.0
+}

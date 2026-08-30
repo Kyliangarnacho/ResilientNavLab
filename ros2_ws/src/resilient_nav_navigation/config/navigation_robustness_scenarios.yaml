@@ -1,0 +1,126 @@
+# Phase 10 Task 5 frozen dynamic-environment scenarios.
+#
+# The world poses are a once-only offline conversion of map geometry using the
+# Phase 9 saved-map / Gazebo registration established by the Task 2 controlled
+# obstacle experiment: world = map + (-3.5, -3.5).  They are configuration,
+# never live Ground Truth input.
+scenarios:
+  dynamic_obstacle_detour:
+    base_scenario: static_obstacle_detour
+    goal: {x: 4.0, y: 4.0, yaw: 0.0}
+    expected: success
+    navigate_to_pose:
+      action_timeout_sec: 120.0
+      min_plan_updates: 3
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+    task5:
+      kind: unmapped_obstacle
+      # The initial 6.04 m Task 4 detour path crosses this box.  Offline
+      # connectivity over the saved map, expanded by the frozen footprint,
+      # retains a start-to-goal route around it.
+      obstacle:
+        entity_name: phase10_task5_unmapped_box
+        model_sdf: models/phase10_task5_unmapped_box/model.sdf
+        map_pose: {x: 1.55, y: 0.85, yaw: 0.0}
+        gazebo_pose: {x: -1.95, y: -2.65, z: 0.50, yaw: 0.0}
+        size_m: {x: 0.50, y: 0.50, z: 1.00}
+      trigger:
+        # The injector records an initial Path first, then starts this odom
+        # displacement budget.  It is a navigation observation, not GT.
+        minimum_odom_travel_m: 0.20
+      acceptance:
+        require_global_costmap_detection: true
+        require_local_costmap_detection: true
+        require_safe_post_obstacle_path: true
+
+  dynamic_fully_blocked:
+    base_scenario: static_obstacle_detour
+    goal: {x: 4.0, y: 4.0, yaw: 0.0}
+    expected: safe_failure
+    navigate_to_pose:
+      action_timeout_sec: 60.0
+      min_plan_updates: 1
+    task5:
+      kind: fully_blocked
+      # A horizontal wall covers the complete known-free map width.  Offline
+      # four-connected analysis over free cells expanded by the frozen robot
+      # footprint separates the default start from the fixed goal.
+      obstacle:
+        entity_name: phase10_task5_blocking_wall
+        model_sdf: models/phase10_task5_blocking_wall/model.sdf
+        map_pose: {x: 3.44, y: 1.40, yaw: 0.0}
+        gazebo_pose: {x: -0.06, y: -2.10, z: 0.50, yaw: 0.0}
+        size_m: {x: 11.32, y: 0.20, z: 1.00}
+      trigger:
+        minimum_odom_travel_m: 0.20
+      acceptance:
+        require_global_costmap_detection: true
+        require_local_costmap_detection: true
+        # r03 established the natural planner-first 208 branch, but terminal
+        # time under the long wall is an observation rather than a capability
+        # gate.  Keep the old window only as a reported comparison value.
+        post_detection_observation_warning_sec: 12.0
+        # Discovery may observe one of these current no-Recovery Nav2 codes,
+        # but it never accepts any of them.  After one bounded discovery run,
+        # replace this comment with the single observed `frozen_error_code`
+        # before the separate formal acceptance run.
+        frozen_error_code: 208
+
+  dynamic_temporary_blocked_recovery:
+    # Same map/start/goal family as Task 5.2.  The frozen wall is removed by
+    # simulation time alone, never in response to BT or recovery evidence.
+    base_scenario: static_obstacle_detour
+    navigation_profile: recovery
+    goal: {x: 4.0, y: 4.0, yaw: 0.0}
+    expected: success
+    navigate_to_pose:
+      # This bounds one human discovery/acceptance; it is not a Nav2 tuning
+      # parameter.  The existing baseline defaults remain untouched.
+      action_timeout_sec: 120.0
+      min_plan_updates: 3
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+    task5:
+      kind: temporary_blocked_recovery
+      event_mode: spawn_then_delete
+      # Reuse the Task 5.2 geometrically blocking barrier.  It is removed
+      # after a predeclared interval, allowing the official Recovery BT to
+      # replan once the environment actually becomes traversable again.
+      obstacle:
+        entity_name: phase10_task5_temporary_blocking_wall
+        model_sdf: models/phase10_task5_blocking_wall/model.sdf
+        map_pose: {x: 3.44, y: 1.40, yaw: 0.0}
+        gazebo_pose: {x: -0.06, y: -2.10, z: 0.50, yaw: 0.0}
+        size_m: {x: 11.32, y: 0.20, z: 1.00}
+      trigger:
+        minimum_odom_travel_m: 0.20
+        # r03 reached its natural no-Recovery terminal 37.6 s after spawn.
+        # 45 s is frozen before the first Recovery discovery: enough to
+        # observe recovery but independent of it.  Discovery may invalidate
+        # this scenario once; it may not retime it at runtime.
+        obstacle_lifetime_sim_sec: 45.0
+      acceptance:
+        require_global_costmap_detection: true
+        require_local_costmap_detection: true
+        require_recovery_before_delete: true
+        require_global_costmap_clear_after_delete: true
+        require_safe_post_delete_path: true
+
+  goal_cancel:
+    # A normal healthy route with no injected obstacle.  The Runner itself
+    # owns the one NavigateToPose goal and its native action cancellation.
+    base_scenario: static_obstacle_detour
+    goal: {x: 4.0, y: 4.0, yaw: 0.0}
+    expected: canceled
+    navigate_to_pose:
+      action_timeout_sec: 60.0
+      min_plan_updates: 1
+      max_final_xy_error_m: 0.12
+      max_final_yaw_error_rad: 0.17
+    task5:
+      kind: goal_cancel
+      cancel:
+        # Frozen navigation evidence gate: initial global Path, then 0.20 m
+        # filtered-odometry travel.  It deliberately does not consult GT.
+        minimum_odom_travel_m: 0.20
