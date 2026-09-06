@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <!-- Scene 2 counterpart of the verified Scene 1 constrained obstacle. -->
+  <model name="brne_pedestrian_2">
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <allow_auto_disable>false</allow_auto_disable>
+    <link name="body">
+      <inertial><mass>40.0</mass><inertia><ixx>5.1240</ixx><iyy>5.1240</iyy><izz>0.6480</izz></inertia></inertial>
+      <collision name="body_collision"><geometry><cylinder><radius>0.18</radius><length>1.20</length></cylinder></geometry><surface><friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction></surface></collision>
+      <visual name="body_visual"><geometry><cylinder><radius>0.18</radius><length>1.20</length></cylinder></geometry><material><ambient>0.22 0.38 0.85 1</ambient><diffuse>0.22 0.38 0.85 1</diffuse></material></visual>
+    </link>
+    <!-- Spawn yaw=-pi/2 maps the verified model +X joint axis to world -Y.
+         Its zero pose is world (-1.7,-2.5,0.60), giving -Y -2.5 -> -4.5. -->
+    <joint name="crossing_joint" type="prismatic">
+      <parent>world</parent><child>body</child>
+      <axis><xyz expressed_in="__model__">1 0 0</xyz><limit><lower>0.0</lower><upper>2.0</upper><effort>1000.0</effort><velocity>0.25</velocity></limit></axis>
+    </joint>
+    <plugin filename="gz-sim-joint-controller-system" name="gz::sim::systems::JointController"><joint_name>crossing_joint</joint_name><topic>/model/brne_pedestrian_2/joint/crossing_joint/cmd_vel</topic></plugin>
+    <plugin filename="gz-sim-odometry-publisher-system" name="gz::sim::systems::OdometryPublisher"><odom_frame>gazebo_world</odom_frame><robot_base_frame>brne_pedestrian_2</robot_base_frame><dimensions>3</dimensions><odom_publish_frequency>20</odom_publish_frequency><odom_topic>/model/brne_pedestrian_2/odometry</odom_topic></plugin>
+  </model>
+</sdf>

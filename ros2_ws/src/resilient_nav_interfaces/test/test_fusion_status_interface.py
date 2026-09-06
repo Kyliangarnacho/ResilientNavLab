@@ -25,10 +25,10 @@ def test_fusion_status_is_registered_for_rosidl_generation():
     root = ET.parse(PACKAGE_XML_PATH).getroot()
 
     assert '"msg/FusionStatus.msg"' in cmake_source
-    assert 'DEPENDENCIES builtin_interfaces std_msgs' in cmake_source
+    assert 'DEPENDENCIES builtin_interfaces geometry_msgs std_msgs' in cmake_source
     assert 'ament_export_dependencies(rosidl_default_runtime)' in cmake_source
     assert root.findtext('name') == 'resilient_nav_interfaces'
-    assert {'builtin_interfaces', 'std_msgs'} <= {
+    assert {'builtin_interfaces', 'geometry_msgs', 'std_msgs'} <= {
         element.text for element in root.findall('depend')
     }
     assert 'rosidl_default_generators' in {

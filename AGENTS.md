@@ -29,6 +29,18 @@ Robot Agent 的长期开发合同与 baseline 决策见：
 4. 涉及 ROS 2、Gazebo 或硬件时，先按 `docs/ENVIRONMENT.md` 复核实际环境。
 5. 未经明确授权，不安装依赖、不修改系统配置、不创建新 ROS 包或未来阶段架构。
 
+## BRNE Python 运行时约束
+
+- `resilient_nav_brne` 的 Python/Numba core 依赖仓库根 `.venv` 中的
+  `numba`；其 console scripts 必须由该解释器生成。
+- 任何会重建 `resilient_nav_brne` 的命令都必须从 `ros2_ws/` 使用
+  `../.venv/bin/python -m colcon ...`，不得使用 `/usr/bin/colcon` 或裸
+  `colcon`。仅 `source .venv/bin/activate` 不足以改变已生成 console script 的 shebang。
+- 构建后必须确认
+  `install/resilient_nav_brne/lib/resilient_nav_brne/brne_shadow_node` 首行指向
+  `.venv/bin/python`；若不是，先按上述方式重建，禁止用系统 Python 或临时 `PYTHONPATH`
+  绕过该运行时合同。
+
 ## Robot Agent 分层原则
 
 - Robot Agent 是 ResilientNavLab 的上层诊断子系统，不替代既有监测与控制链。

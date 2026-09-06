@@ -1,12 +1,12 @@
 # 开发环境基线
 
-> 2026-08-30 更新：本机已核验 Jazzy Slam Toolbox 2.8.5 与官方 Nav2 1.3.12 binary；当前工作空间有 12 个 ROS package，含 `resilient_nav_navigation` 的 localization、Global/Local Costmap、Planner Server、Controller Server、BT Navigator、Task 4 benchmark 和 Task 5 overlay。Phase 10 已 CLOSED — engineering accepted with known limitations：Task 4 8/8 valid PASS，Task 5.1 detour、5.2 safe failure、5.3 Recovery engineering acceptance、5.4 Goal Cancel 均已收口。完整证据索引见 `PHASE10_EVIDENCE_INDEX.md`。fault-aware SLAM 和 Adaptive EKF+SLAM 对比尚未验收。
+> 2026-09-06 更新：本机已核验 Jazzy Slam Toolbox 2.8.5、官方 Nav2 1.3.12 binary 与 Gazebo Harmonic；当前工作空间有 13 个 ROS package。Phase 10 与 BRNE V1 Scene 1/2/3 baseline 均已收口。BRNE 运行时使用仓库 `.venv` 中的 Numba，构建合同见下文。
 
 ## 核验信息
 
-- 最近核验日期：2026-08-28
+- 最近核验日期：2026-09-06
 - 项目目录：`/home/kylian/projects/resilient_nav_lab`
-- 当前阶段：阶段 0 至阶段 9 已完成；Phase 10 已 CLOSED — engineering accepted with known limitations；RA-1A Offline Robot Diagnosis 闭环已完成
+- 当前阶段：阶段 0 至阶段 9、Phase 10、BRNE V1 Scene 1/2/3 baseline 与 RA-1A Offline Robot Diagnosis 已完成
 
 本页记录核验时的实际环境，不代表未来项目最终采用的依赖组合。
 
@@ -28,7 +28,8 @@
 | 机器人描述工具 | `xacro`、`check_urdf` 路径均位于 `/opt/ros/jazzy/bin` | 可用；项目 Xacro 验证通过 |
 | ROS 2 基础通信 | 官方 `demo_nodes_cpp talker` 与 `demo_nodes_py listener` | 通信验证通过 |
 | ROS 2 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` | 已创建；空构建和 `colcon build --symlink-install` 均通过 |
-| 项目 ROS 2 包 | 12 个包，含 `resilient_nav_slam`、`resilient_nav_navigation` | `resilient_nav_navigation` 已随相关包构建；Task 2 静态资源测试为 24 passed。`resilient_nav_description` + `resilient_nav_navigation` colcon 回归为 615 tests、0 errors、0 failures、1 skipped。此前全工作空间 sequential regression 为 590 tests、0 errors、1 failure、1 skipped（根 `.venv` + agent-core path）；failure 是既有 `test_camera_freeze_runtime` DDS discovery 未在 6 s 内建立，未隐藏或跳过。 |
+| 项目 ROS 2 包 | 13 个包，含 `resilient_nav_slam`、`resilient_nav_navigation`、`resilient_nav_brne` | BRNE V1 使用独立 `.venv` build/runtime 合同；其最新测试与 build 结果记录在 `BRNE_CLOSED_LOOP_DEMO.md` 和 `LEARNING_LOG.md`。 |
+| BRNE V1 | pinned MurpheyLab/brne + Numba wrapper | Scene 1/2/3 共用冻结 runtime profile；正式 pedestrian input 来自 LiDAR tracker，GT adapter 仅作隔离验证。 |
 | 项目 ROS 2 节点 | `system_heartbeat`、`odom_tf_broadcaster` | 心跳发布及 `/odom` 到 `odom -> base_footprint` TF 的端到端验证通过 |
 | 仿真资源包 | `resilient_nav_simulation`（`ament_cmake`） | 构建、运动工具测试、阶段 2 世界、阶段 3 生成和 Gazebo/RViz Demo Launch 验证通过 |
 | 机器人描述包 | `resilient_nav_description`（`ament_cmake`） | Xacro、运行时 TF、RViz、Gazebo 材质、动力学支撑、DiffDrive、JointStatePublisher 和阶段 4 固定安装坐标验证通过 |
@@ -46,6 +47,42 @@
 | 仿真时钟链路 | Gazebo `/clock` → ROS 2 `/clock` | 单向桥接、暂停/恢复和 `use_sim_time` 联动验证通过 |
 
 运行 `codex --version` 时，Codex 成功返回版本号，同时提示当前受限检查环境无法创建 PATH aliases。该提示不影响本次版本识别；如后续需要诊断 Codex PATH 行为，应在对应任务中单独复核。
+
+## BRNE Python/Numba 构建运行时合同
+
+`resilient_nav_brne` 的 pinned BRNE core 导入 `.venv` 中的 `numba 0.61.2`。该包是
+ament Python package，console script 的 shebang 由**运行 colcon 的 Python 解释器**决定；激活
+`.venv` 后再调用系统 `/usr/bin/colcon` 仍会生成 `#!/usr/bin/python3`，而系统 Python 没有
+Numba。该状态会让 `brne_shadow_node` 在 import 阶段退出，并以 fail-closed 方式同时阻止 BRNE
+raw command 和 pedestrian ready gate。
+
+因此这是 BRNE 的永久环境约束：从 `ros2_ws/` 重建或测试 `resilient_nav_brne` 时，必须显式使用
+`../.venv/bin/python -m colcon`；不得使用 `/usr/bin/colcon` 或裸 `colcon`。标准修复/构建命令为：
+
+```bash
+cd /home/kylian/projects/resilient_nav_lab/ros2_ws
+set +u
+source /opt/ros/jazzy/setup.bash
+source ../.venv/bin/activate
+source install/setup.bash
+set -u
+../.venv/bin/python -m colcon build --symlink-install \
+  --packages-select resilient_nav_brne
+../.venv/bin/python -m colcon test --packages-select resilient_nav_brne
+```
+
+构建后必须复核安装后的 shebang，而不只检查 source/install 文件哈希：
+
+```bash
+head -1 install/resilient_nav_brne/lib/resilient_nav_brne/brne_shadow_node
+```
+
+预期结果是仓库根 `.venv/bin/python`。若显示 `/usr/bin/python3`，不得启动 BRNE Demo；重新执行上述
+显式 venv build。不要通过临时 `PYTHONPATH` 注入 Numba 来掩盖错误解释器。
+
+项目根 `.venv/bin/activate` 会加载 Jazzy 与当前 `ros2_ws/install` overlay，并在加载期间临时处理
+shell 的 `set -u`。因此完成上述 build 后，重新执行一次 `source .venv/bin/activate`，即可直接使用
+`ros2 launch resilient_nav_brne ...`；不需要在每次 Demo 前手工 source 两个 ROS setup 文件。
 
 ## 软件职责边界
 
