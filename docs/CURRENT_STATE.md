@@ -1,68 +1,35 @@
 # 当前状态
 
-阶段 0 至阶段 9 已完成。**RA-1A OFFLINE DIAGNOSIS COMPLETE**：既有 Robot Schema、Ground Truth Sanitizer、双通道 Offline Case、8 个 reference fixture 和独立 agent-core integration 全部保留；本阶段进一步完成三个只读 Robot Tools、strict DiagnosisResult Runtime、OfflineDiagnosisRun、deterministic Benchmark Scorer 与 Batch Runner。
+更新日期：2026-09-06。
 
-- Phase 9 已完成健康二维 LiDAR Slam Toolbox baseline：healthy EKF 独占 `odom -> base_footprint`，Slam Toolbox 独占 `map -> odom` 与 `/map`；M8 occupancy map 和 serialized pose graph 已持久化并在全新 localization process 重载。Ground Truth 仅经 evaluation overlay 进入只读 adapter/evaluator，绝不回流估计器、Health/Fusion 或 Agent。Mapping 的正式指标为 timestamp-associated 2D fixed-scale best-fit SE(2) SVD ATE；persisted-map localization 使用实验前声明的固定 `T_map_odom`，直接把 fresh-odom GT/EKF 转到保存的 M8 map frame，不从 C3 轨迹拟合，也不经过 world/benchmark 中间层。旧 C3 因错误 `map_start_pose=(-3.5,-3.5,0)` 作废。固定帧重跑 corrected C3 使用 `T_map_odom=(5.5,4.0,pi)`，raw 启动 map pose 为约 `(5.51,4.00,pi)`，确认在旧图正确区域；SLAM absolute position/yaw RMSE `0.3434 m/0.1788 rad`，Healthy EKF `0.4594 m/0.1905 rad`，SLAM 相对 baseline 为 IMPROVED，但最终 endpoint `3.022 m/1.612 rad`，未设成功阈值。`/map` raster 从 M8 约 `227x226` 扩至 `263x266`、y origin 至 `-4.1332`，是 localization runtime map 输出观察，不用于重拟合或掩盖误差。automatic loop closure 已 PASS：最终重叠走廊 run 未调用 manual service，并保留上游直接因果链 `TryCloseLoop accepted → LinkChainToScan → CorrectPoses`，因此候选/匹配被接受、约束已链接、随后执行位姿校正均有直接证据；ordinary `AddEdges` 不作为这项结论的依据。Phase 9 不包含 Nav2 planning/controller、fault-aware SLAM 或 Adaptive EKF+SLAM 正式比较；Phase 10 的 healthy Nav2 baseline 已按下文完成。
+## 阶段状态
 
-- Phase 10 Task 1.1–1.5 已完成官方 Jazzy Nav2 1.3.12 healthy saved-map localization baseline 与第 12 个 ROS package `resilient_nav_navigation`。wrapper 直接 Include `nav2_bringup/launch/localization_launch.py`，只复用上游 Map Server/AMCL/Lifecycle Manager，不复制其实现。Map-Server-only smoke 已 PASS：安装态冻结资产 hashes、`/map` 的 `map` frame、`0.05 m` resolution、`227x226` size 与 Phase 9 origin 均通过动态核验。完整 fresh-process smoke 已 PASS：healthy Gazebo/sensors/EKF、Map Server、AMCL 和显式 `/initialpose` 组成 `map -> odom -> base_footprint`；AMCL 是唯一 `map -> odom` owner，healthy EKF 是唯一 `odom -> base_footprint` owner。短有界弧线运动观察到 active lifecycle、`lidar_link` scan、AMCL particle cloud、有限 covariance 与两条动态 TF 边。
+| 阶段 | 状态 | 当前可用能力 | 主要限制 |
+| --- | --- | --- | --- |
+| 0–3 | 完成 | ROS/Gazebo 基础设施、机器人模型、差速运动、odom TF | 只验证低速平地基础运动 |
+| 4 | 完成 | IMU、二维 LiDAR、RGB-D、wheel+IMU EKF | 无 PointCloud2 和真实硬件定位 |
+| 5 | 完成 | 可复现故障注入、`FaultStatus`、faulted EKF、bag | 真值只供 evaluator，不能进入 Agent |
+| 6 | 完成 | IMU/wheel/scan 健康判定与评价 | 不执行控制或恢复 |
+| 7 | 完成 | C920、CameraInfo、去畸变、camera health v1 | WSL USB/IP 帧率和偏暗限制仍在 |
+| 8 | 完成 | 健康感知融合、adaptive EKF、GT 隔离评价 | 无独立平移冗余；adaptive 不保证总是更优 |
+| 9 | 完成 | 二维 SLAM、地图保存/重载、loop closure | endpoint 误差仍明显，不称为高精度定位 |
+| 10 | 已收口 | Nav2 localization、Costmap、Navfn、RPP、BT、Recovery、Cancel | 8/8 valid PASS；严格自动 9/9 未达到 |
+| BRNE V1 | 已收口 | sensor-input Scene 1/2/3、横穿/迎面交互、armed control | 人工 baseline；非统计 benchmark |
+| RA-1A | 完成 | Offline Diagnosis、只读 Tools、strict result、scorer | 无 Live ROS、Planner、Recovery 或控制权 |
 
-- Phase 10 Task 2.1–2.4 已在上述定位链上完成 `base_footprint` 的二维 collision-derived footprint、Global Costmap、Local Rolling Costmap 与 inflation 参数验收。Global 只加载 StaticLayer（冻结 `/map`）、ObstacleLayer（healthy `/scan` marking/clearing）和 InflationLayer，`global_frame=map`；Local 只加载 ObstacleLayer/InflationLayer，`global_frame=odom`、`rolling_window=true`、`6x6 m`、`120x120`，不消费静态图。fresh-process joint run 及 complete restart 的两个 lifecycle 都为 active，TF 仍唯一为 `map -> odom -> base_footprint`。受控临时 Gazebo obstacle 在 Local watch cell 使值从 `0` 到 lethal `99`，删除后回到 `0`；实验 evaluator 证明 radius `0.55→0.75 m` 使 extent 增加 `0.2021 m`，同半径 scaling `3→8` 使 annulus median cost `38→8`。不启动 planner、controller、recovery 或自主执行链。完整合同、复现、自动检查与已知 teardown 边界见 `docs/PHASE10_TASK2_COSTMAP_SMOKE.md`。
+## 当前关键合同
 
-- Phase 10 rotation ghost 已关闭：正反转原始 `/scan` 证据均将孤立短距返回锁定为 270° LiDAR FOV 的 `beam_index=0`（旧 `angle_min=-135°`），而非 Costmap lifecycle、频率、TF 或 inflation 参数。Xacro 仅排除该单一边界 ray（horizontal samples `640→639`、`min_angle` 向内一个保留 increment），其余角分辨率与 `angle_max` 不变；修复后 CW/CCW 分别采集 669/645 个 scan，均为 639 beams、零 marking-range 异常候选，用户已确认无 persistent ghost。正式 Costmap 恢复标准 Lifecycle Manager `autostart=true`、Global `1/1 Hz`、Local `5/2 Hz`；保留 `sensor_frame=lidar_link`、`expected_update_rate=0.2` 和 Global probe 按 `scan.header.stamp` 查询 TF。详细证据与剩余技术债见 `docs/PHASE10_COSTMAP_ROTATION_GHOST_REPAIR.md`。
+- 主定位 TF 始终保持单 owner；评价 Ground Truth 不回流估计、健康、融合、导航或 Agent。
+- Phase 10 是健康 Nav2 baseline，不为后续实验静默改写其参数。
+- BRNE Scene 1/2/3 共用 `resilient_nav_brne/config/brne_v1_runtime.yaml`。正式 pedestrian input
+  来自 LiDAR tracker；Gazebo odometry adapter 仅用于隔离验证。
+- Robot Agent 仍是离线只读 Diagnosis。LLM 不进入实时控制闭环。
+- 所有修改必须保留用户未提交变更，测试结论必须区分静态、隔离 runtime、人工验收和 benchmark。
 
-- Phase 10 Task 3 已完成 Navfn Planner、RPP Controller 与 BT Navigator 的健康静态闭环。Planner/Controller 仍各自唯一拥有 Global/Local Costmap；Task 3.3 只新增 `bt_navigator`，使用上游无 Recovery 的 `navigate_w_replanning_time.xml`，以 1 Hz `RateController` 自动编排 `ComputePathToPose → FollowPath`。probe 仅发送 `NavigateToPose`，每条 `/plan` 都必须关联合法 feedback `current_pose` 并在正式 BT 外完成 raw-Costmap full-footprint sweep；单一单调 `/clock` 是发 goal 前的合同，TF 仍为 readiness/最终交叉检查。两个独立 fresh-process 场景均 PASS：绕障为 17 次 Path/ComputePath SUCCESS、0 recovery、全部 sweep zero lethal/unknown，终点 XY/yaw `0.0647 m/0.1390 rad`、TF/feedback 差 `0.0250 m/0.0176 rad`；fresh restart 直线为 9 次 Path/ComputePath SUCCESS、0 recovery、终点 `0.0967 m/0.1435 rad`、TF/feedback 差 `0.000002 m/0.0126 rad`，均观察到停车。Task 3.1 Planner 与 Task 3.2 RPP simple/detour fresh 回归也通过。动态障碍、Recovery、Behavior Server、benchmark、fault-aware 或 Agent navigation 仍未实现。证据见 `docs/PHASE10_TASK3_BT_NAVIGATION.md`。
+## 已知问题
 
-- Phase 10 Task 4 healthy navigation benchmark 已 **CLOSED — engineering accepted with a known infrastructure limitation**。Runner 只发送 `NavigateToPose`，不读取 evaluator-only Ground Truth；GT Recorder、offline evaluator 与 fresh-process batch 保持独立，且 trial teardown 使用进程组/partition/evidence flush barrier。最终手工 fresh-process 证据集为 9 个 logical trials：8/8 valid navigation PASS（simple 3/3、static detour 3/3、multi-turn 2/2 valid）；`multi_turn_healthy-r03` 在发 goal 前因 `localization_tf` past-extrapolation 被判为 infrastructure-invalid。严格 automated 9/9 contract 因此技术上未达成，但不再追加动态验证。Task 1–3 及所有 Nav2 Planner/Controller/Costmap/BT/AMCL 算法参数均未为 Task 4 收口而修改。详见 `docs/PHASE10_TASK4_EVALUATION_SUMMARY.md`。
-
-- Phase 10 已 **CLOSED — engineering accepted with known limitations**。Task 5.1 dynamic detour engineering PASS；Task 5.2 r03 经当前 offline reassessment PASS，冻结为 Planner-first `NO_VALID_PATH/208 → BT ABORT → Controller stop` 的无 Recovery safe-failure baseline；Task 5.3 r02 engineering PASS（官方 Recovery、独立 45 s DeleteEntity、最终 SUCCESS/Controller 恢复），全长墙 Global Costmap clear 仅为有限 LiDAR 观测 limitation；Task 5.4 host r01 PASS（native `CANCELED`、0 Recovery、Controller/odom/GT stop、cleanup/evidence 完整）。Task 4 保持 8/8 valid PASS、1 pre-goal infrastructure-invalid 的 engineering closure。没有修改 Planner/Controller/Costmap/AMCL 或 Task 3 baseline 参数。详见 `docs/PHASE10_SUMMARY.md` 与 `docs/PHASE10_EVIDENCE_INDEX.md`。
-
-- BRNE V1 已 **CLOSED — unified Scene 1/2/3 baseline**。第 13 个 ROS package
-  `resilient_nav_brne` 保持 pinned MurpheyLab/brne core 与官方 `196×25` runtime algorithm profile；
-  正式 Demo 的 pedestrian state 来自 timestamped LiDAR clustering/tracking，而非 Gazebo truth。
-  interaction lifecycle、互斥 crossing/head-on event、proposal support、time-aligned safety weighting、
-  no-agent Navfn waypoint fallback 和 armed `/cmd_vel` gate 已冻结在唯一
-  `config/brne_v1_runtime.yaml`。Scene 1/2/3 的 planner/controller 参数一致，仅场景几何与行人运动不同。
-  历史 passing-side state 和 global-path/nominal freeze 实验代码已移除；GT odometry adapter 仅保留为
-  非 benchmark 的隔离验证工具。详见 `docs/BRNE_CLOSED_LOOP_DEMO.md`。
-
-- Phase 8 里程碑 1–4 已完成接口、策略、measurement adapter 与独立 adaptive EKF：`FusionStatus` 已生成；`FusionPolicy` 只接收 sanitized wheel/IMU health 与显式配置，输出测量接纳、协方差倍率、wheel yaw fallback、状态、结构化 reasons 与置信度。`measurement_adapter` 订阅 wheel/IMU 输入及 `SensorHealth`，只发布匿名化 `/fusion/input/*` 与 `/fusion/status`，并在非法协方差时 fail closed。`adaptive_ekf.yaml` 仅订阅这三个 fusion input，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；它不读取 `FaultStatus` 或 scenario，也没有 TF 或控制能力。包级 build 与 35 个 pytest 均通过。
-
-- Phase 8 补充了自终止 healthy smoke：实际证据记录 wheel 84、IMU 235、adaptive odometry 14 个有效样本和 4 次 `FusionStatus.NOMINAL`。evaluator-only Ground Truth channel 已实际确认 Gazebo `/model/resilient_nav_robot/tf` 的 `gz.msgs.Pose_V` source，单向桥接并 fail-closed 转为 `/evaluation/ground_truth_pose`；运行验收确认 `PoseStamped` 持续约 108 Hz、`frame_id=odom`、有效时间戳与合理的初始位姿。新增只读 Localization Evaluator：只对 Ground Truth、`/odometry/faulted` 和 `/odometry/adaptive` 作时间对齐，向 `/evaluation/localization_metrics` 输出 fixed/adaptive 的位置与 yaw 误差指标及 adaptive benefit；不回流进入 estimator、health 或 fusion。当前 fusion targeted pytest 为 44 项通过。
-
-- Phase 8 第一组正式动态 benchmark（IMU bias）已在独立 ROS domain/Gazebo partition 完成并自终止：复用未修改的 Phase 6 `imu_bias_ekf_comparison.yaml`（`5.0–15.0 s`），以同一 faulted wheel/IMU 数据供 fixed 与 adaptive。最终 position RMSE 为 fixed `0.2900 m`、adaptive `0.1933 m`，绝对改善 `0.0968 m`（约 `33.36%`）；yaw RMSE 为 `0.7501/0.3529 rad`。IMU 健康与 FusionStatus 均在 `7.408 s` 首次异常，并在 `15.2 s` 恢复健康/NOMINAL。原始结构化结果位于 `docs/PHASE8_IMU_BIAS_BENCHMARK.json`；该 recorder 仅是 evaluator/benchmark consumer，不回流真值。
-
-- Phase 8 fixed-delay IMU benchmark 复用现有 `imu_delay_demo.yaml`（`0.50 s` fixed delay，`5.0–15.0 s`），在独立 ROS domain/Gazebo partition 中得到 `benchmark_outcome=PASS` 与 `adaptive_improved=true`：position RMSE fixed/adaptive 为 `0.03238/0.00734 m`（改善 `0.02504 m`、`77.32%`），yaw RMSE 为 `0.07270/0.00677 rad`。Health/Fusion 首次异常为 `5.805 s`（检测/融合响应 `0.805 s`），故障于 `15.0 s` 结束，Health 于 `15.2 s`、Fusion 于 `15.4 s` 恢复。完整 fixed/adaptive 的 max/final/yaw 指标和 785 样本记录见 `docs/PHASE8_IMU_DELAY_BENCHMARK.json`。既有 `imu_dropout_demo.yaml` 是有效的 Phase 5 随机注入模型，但其 100 Hz、`p=0.30` 配置无法可靠越过 Phase 6 `0.5 s` stale 阈值，故未伪造成正式完整 benchmark。
-
-- Phase 8 wheel-freeze benchmark 复用未修改的 `wheel_freeze_ekf_comparison.yaml` 与 Phase 6 的 persistent-command/static-wheel Health 逻辑（故障 `5.0–15.0 s`），在独立 ROS domain/Gazebo partition 中得到 `benchmark_outcome=PASS`、`adaptive_improved=false`。wheel Health/Fusion 均于 `7.0 s` 首次异常（检测/融合响应 `2.0 s`），Health 于 `15.2 s`、Fusion 于 `15.4 s` 恢复。Fusion evidence 确认 `wheel_velocity` 被拒绝，`imu_yaw_rate` 仍被接纳，wheel yaw fallback 未启用。position RMSE fixed/adaptive 为 `0.01361/0.01077 m`，但 yaw RMSE 为 `0.01509/0.01651 rad`，故不得声称 Adaptive 整体改善；所有 max/final/yaw 指标和 733 样本见 `docs/PHASE8_WHEEL_FREEZE_BENCHMARK.json`。该系统不具备独立 translation redundancy，wheel translation freeze 后没有伪造替代线速度，也不宣称 adaptive 能恢复准确前进位移。
-
-- 独立 `Kyliangarnacho/agent-core` 以仓库外 sibling editable install 接入，实际版本 `0.1.0`；Pydantic 版本为 `2.13.4`。ResilientNavLab 内没有复制 `agent_core/` 源码。
-- `AgentInputSanitizer` 接受 plain Mapping，递归拒绝 FaultStatus/场景/benchmark truth；现有 `/faulted/*` source topic 只用于 component normalization，最终 Agent-facing object 不保留 transport topic。
-- IMU、wheel、scan、camera 的真实 `SensorHealth.msg` 字段形状已由 fixture 覆盖，并统一转换为 `HealthObservation`；未修改原消息或监测算法。
-- `RobotDomainExtension` 通过外部 `AgentRuntime` 和 agent-core Tool Registry/Runtime 执行；`get_incident_health_snapshot`、`compare_component_health`、`inspect_metric_window` 只读取 immutable/deep-copied `OfflineDiagnosisContext`。
-- `OfflineRobotCase` 只在 builder 层组合 `OfflineAgentInput` 与 `BenchmarkTruth`；`agent_view()`、Domain context、`OfflineDiagnosisContext` 和 Agent Trace 的 Ground Truth leakage 测试均为 0。
-- `ra1a-reference-v1` 提供 IMU bias、wheel freeze、Lidar sector blindness、camera stale/freeze/underexposed/blurred 和 healthy control；全部明确为 reference fixture，不是 recorded run。
-- Robot Diagnostic Prompt V1 要求引用 evidence ID、区分 detector hint 与 diagnosis 并允许 insufficient evidence；Analyzer 只做 route，当前 route 为 `diagnose`、`needs_more_evidence`、`blocked`，无 Incident 的 control input 由确定性 route 进入 `healthy`。
-- `run_offline_diagnosis()` 只接受 `OfflineAgentInput`，保留 Core Trace/Tool records/model requests/latency，并把 final text 严格解析为 Pydantic `DiagnosisResult`；malformed、Schema mismatch、通道不一致和受保护输出均为显式 structured failure。
-- `BenchmarkScorer` 只在执行结束后接收 `OfflineDiagnosisRun + BenchmarkTruth`，不调用模型；Batch report 汇总 component/fault/top-k、Evidence、leakage、false diagnosis、Tool/model 使用和状态分布。
-- 8-case Fake report 标记为 `PIPELINE / FAKE BENCHMARK`，结果为 8/8 passed、component/fault/top-k/evidence validity 均为 1.0、6 Tool calls、22 model requests、0 leakage、0 false diagnosis；这不是模型智能结论。
-
-- C920 已经 WSL/USBIP + `usb_cam` 接入 ROS 2：`/dev/video0` 以 MJPG、1280×720、15 FPS request、`mmap` 发布 `/camera/c920/image_raw`。
-- 旧 K/D 已复用验证；正式 `CameraInfo`、`image_proc` 去畸变至 `/camera/c920/image_rect` 与 `rectification_probe` 已通过。
-- `/camera/c920/image_raw`、`/camera/c920/camera_info`、`/camera/c920/image_rect` 已完成 rosbag 录制和无相机回放验证。
-- C920 曝光、gain、白平衡、对焦和图像控制已通过 `v4l2-ctl` 只读记录，没有修改参数。
-- `resilient_nav_health_assessment` 已增加纯 NumPy 相机特征、baseline 采集/report 和发布 `/health/camera` 的 `camera_health_monitor`；正式故障为 stale、stamp 持续前进时的 exact-fingerprint freeze、保守 underexposed/overexposed、需要近期纹理参考的 blurred，以及需要近期有信息 reference 的 low-information v1。`camera_freeze_source` 只向独立 `/test` 话题重复首张有效真实图像，`camera_health_watch` 只显示既有健康消息。
-- freeze runtime 测试已自动验证持续 frozen Image、像素一致、stamp 前进、最终 `FAULT/freeze` 且无 stale 抢占；`health_evaluator` 的 camera 订阅默认关闭，显式启用后可区分异常检出与类别精确匹配。
-- `manual_fault_event` 只向既有 FaultStatus topic 发布 SCHEDULED/ACTIVE/ENDED 人工真值窗，不修改传感器数据。
-- `phase7_2_camera_health.launch.py` 复用原 C920 Launch，默认启动 C920 + monitor，并可选启用 evaluator/watch；manual event 不自动启动。evaluator 已记录 detection、classification、TP/FP/FN/TN 和事件结束后的首次 HEALTHY recovery。
-- calibrate 的 truth 模式只给 CSV 附加 event/model/state/severity，并保存 before/fault/after 只读 controls；离线 report 使用可配置 margin 分段并输出描述统计及非阈值候选区间。
-
-## Phase 7.2 验证边界与已知限制
-
-- WSL2 USB/IP 下的 C920 偶发帧异常和 FPS 波动仍存在。
-- 当前 C920 画面整体偏暗，运行期曾观察到 `brightness=50`；为保持 baseline 一致性，本阶段没有中途调整控制值。
-- exposure v1 仅覆盖严重、明显的全局欠曝和过曝，不宣称覆盖所有轻度曝光异常。
-- `low_information` 在人工 occlusion 实验中受输入操作不稳定影响，并与 `blurred`、`underexposed` 存在分类竞争。
-- 部分最终实验的 FaultStatus 与实际物理操作没有严格硬同步，因此 detection delay、FP 和 F1 并非所有场景的精确物理性能指标。
-- 10 分钟 mixed run 含未标注白纸/低信息刺激；其 alarm fraction 不是正式 false-positive benchmark。
-
-本阶段的 evaluation config 已冻结用于可复现实验，不等同于通用生产标定。Robot Agent 已通过 DashScope/Qwen `qwen3.7-flash` 真实 API 完成四 Case smoke（2/4）和八 Case baseline（3/8）：组件 7/7 正确、fault/top-k 2/7、Evidence validity 1.0、leakage/healthy false diagnosis 均为 0。fault-label 粒度失败是模型 baseline，不修改 fixture、truth、Scorer 或 CASE prompt。为支持该模型，agent-core 的 Analyzer response-format capability 可显式关闭且仍注入 JSON schema；Robot final 同时注入 strict `DiagnosisResult` schema。Live ROS Adapter、自动 Incident listener、rosbag parser、RAG、Agent Planner、Recovery 或控制权限仍未实现。修改图像的数据故障模型、真实硬件定位、Nav2 controller/autonomous navigation 和容错导航仍未实现；Phase 8 自适应融合、Phase 9 健康二维 LiDAR SLAM 与 Phase 10 已完成 baseline 的边界以上文为准。
+- Phase 10 有一次 goal 前 TF readiness infrastructure-invalid trial；AMCL/scan 仍有有限偏差。
+- BRNE `close_stop_threshold=0.20 m` 是 point-agent 实验门限，不是 footprint 几何安全证明。
+- LiDAR dynamic-agent V1 不做人体分类、遮挡续接或长期 ID 恢复。
+- C920 在 WSL USB/IP 下仍可能出现闪帧、FPS 波动和偏暗。
+- fault-aware navigation、Live Robot Agent 和真实机器人部署尚未完成。

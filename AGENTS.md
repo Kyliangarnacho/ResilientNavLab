@@ -115,6 +115,12 @@ Robot Agent 的长期开发合同与 baseline 决策见：
 
 - `docs/ROBOT_AGENT_DEV_RULES.md` 定义长期稳定合同，本文件只保留不可跳过的入口规则。
 - `docs/OPEN_SOURCE_BASELINES.md` 记录外部参考的 Adopt / Reject-or-Defer / Reason。
-- 临时 Step 细节写入对应任务文档，不污染长期合同。
+- 默认不得为每个 Step、Task、实验或验收单独创建 `docs/` 文档；优先更新已有长期文档。
+- `docs/LEARNING_LOG.md` 只记录必要且可复用的调试结论、失败机制和设计决策，例如曾采用后又废弃的
+  commitment、nominal freeze 等；不得记录日常命令输出、每次参数试调或重复测试流水账。
+- 阶段总结只在阶段结束且用户明确要求后编写；每个阶段最多保留一份简短总结，新增内容应合并到该
+  总结，禁止并列创建 architecture、task、evidence、final audit 等重复总结。
+- 需要长期保留的原始日志、JSON 和批量实验产物统一放入 `data/phaseN/` 对应阶段子目录；临时产物
+  写入临时目录。不得把原始数据堆放在 `docs/`，也不得为每次实验另建总结文档。
 - 计划、实验结果与已实现能力必须清楚区分。
 - 当前任务无授权的生产代码、ROS 接口和消息定义一律不得修改。

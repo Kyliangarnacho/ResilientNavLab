@@ -1,57 +1,71 @@
-# Robot Agent 开源项目基线
+# 开源项目基线
 
-本文记录每个 Robot Agent 大阶段对外部高质量开源项目的取舍。外部项目只提供架构与设计参考；只有明确写入 **Adopt** 的思想才是当前实现依据，**Reject-or-Defer** 内容不得被视为隐含授权。
+本文集中记录 ResilientNavLab 对外部开源项目的取舍。外部项目只提供架构与设计参考；只有明确列为
+“采用”的内容才是当前实现依据，“暂缓”内容不构成后续实现授权。
 
-## RA-1A Step 1 Baseline Snapshot
+## 阶段 8：健康感知融合
 
-记录日期：2026-08-13
+- **参考：** `robot_localization` 与 ROS diagnostics 生态。
+- **采用：** 保留 fixed EKF 与 adaptive EKF 两条独立、可对照的链路；由确定性的健康状态控制
+  measurement adapter，不在 EKF 内部隐藏故障策略。
+- **暂缓：** 运行中随意修改 EKF 内部参数、引入大型诊断图框架。
+- **原因：** 独立链路更容易做因果对照、回归和安全回退。
 
-阶段边界：RA-1A Step 1 只建立离线、只读 Robot Domain、数据合同、Sanitizer 和外部 agent-core Fake integration。本 snapshot 不授权真实模型调用、Live ROS、Planner、Recovery、Nav2 接入或机器人状态变更。
+## 阶段 9：SLAM
 
-### pydantic/pydantic-ai
+- **参考并采用：** Slam Toolbox 的 ROS 2 Jazzy 接口、pose graph 保存和 localization mode。
+- **暂缓：** Cartographer、RTAB-Map 迁移，以及未获得场景证据的大规模 SLAM 框架替换。
+- **原因：** 当前二维 LiDAR 场景已由 Slam Toolbox 完成建图、持久化和重定位闭环。
 
-- **Reference：** [pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai)；类型与数据验证思想同时参考 [pydantic/pydantic](https://github.com/pydantic/pydantic)。
-- **Adopt：** Schema-first、strict typed boundary、依赖注入和可测试性；跨边界数据使用明确模型，测试时替换外部依赖。
-- **Reject-or-Defer：** RA-1A 不引入 Pydantic AI 框架依赖，也不把现有 agent-core 改写为其运行时。
-- **Reason：** 这些设计原则能提升诊断输入、Evidence 和输出协议的可验证性，但引入完整框架会扩大依赖面并与独立 agent-core 的职责重叠。
+## 阶段 10：Nav2
 
-### openai/openai-agents-python
+- **参考并采用：** Nav2 Jazzy 官方生命周期、Navfn、Regulated Pure Pursuit、BT Navigator、Recovery
+  和 Costmap 分层接口。
+- **暂缓：** vendoring Nav2、定制 controller plugin 或为实验表现重写标准导航栈。
+- **原因：** 官方组件已覆盖 saved-map 导航基线，项目代码只负责场景、配置和评价边界。
 
-- **Reference：** [openai/openai-agents-python](https://github.com/openai/openai-agents-python)。
-- **Adopt：** Tool 与 Agent Runtime 明确分层、Guardrail/validation boundary、Trace-first debugging，以及 Agent 不得绕过受控接口。
-- **Reject-or-Defer：** 不以该框架替换现有 agent-core，不在 RA-1A 引入新的 Agent runtime。
-- **Reason：** 其概念边界适合作为安全和审计参考，但本项目已要求 Robot Agent 依赖独立 agent-core，替换 runtime 会造成双重抽象与迁移成本。
+## BRNE V1
 
-### langchain-ai/langgraph
+- **参考并采用：** `MurpheyLab/brne` pinned commit
+  `633a5cdcb39ab27f18b596cb8cb1968644f82391` 的数学核心与官方 ROS runtime profile。
+- **采用边界：** BRNE core 保持 pinned；项目侧只实现 ROS-free wrapper、传感器 dynamic-agent 输入、
+  proposal/interaction 策略、time-aligned safety mask 和控制发布边界。
+- **暂缓：** 修改 BRNE fixed-point/core、重新设计 initial weights 或引入新的学习式感知依赖。
+- **原因：** 保持上游算法可追溯，同时把机器人、场景和跨周期工程语义留在项目层。
 
-- **Reference：** [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)。
-- **Adopt：** typed state、有限状态迁移和可观测执行；诊断流程应有显式状态与审计点。
-- **Reject-or-Defer：** RA-1A 不引入 LangGraph 依赖，不为了工作流外观提前搭建复杂图执行器。
-- **Reason：** 当前离线诊断可以先用小型、明确的领域状态模型验证边界；框架依赖应在流程复杂度和持久化需求得到证据后再评估。
+## RA-1A：Robot Diagnostic Agent
 
-### ros-navigation/navigation2
+记录日期：2026-08-13。RA-1A 只建立离线、只读 Robot Domain、数据合同、Sanitizer 和外部
+`agent-core` 集成，不授权 Live ROS、Planner、Recovery 或机器人状态变更。
 
-- **Reference：** [ros-navigation/navigation2](https://github.com/ros-navigation/navigation2)。
-- **Adopt：** 仅作为后续 Planner / Recovery 的行为编排、恢复行为和生命周期边界参考。
-- **Reject-or-Defer：** RA-1A 不接入 Nav2，不实现 Behavior Tree、恢复插件或控制接口。
-- **Reason：** Nav2 面向确定性导航执行，适合未来研究 Agent 建议如何映射到受控行为；当前阶段没有 Decision 或执行授权。
+### Pydantic / Pydantic AI
 
-### autowarefoundation/autoware_universe
+- **参考：** [pydantic/pydantic](https://github.com/pydantic/pydantic) 与
+  [pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai)。
+- **采用：** schema-first、strict typed boundary、依赖注入和可测试性。
+- **暂缓：** 引入 Pydantic AI runtime；它会与独立 `agent-core` 的职责重叠。
 
-- **Reference：** [autowarefoundation/autoware_universe](https://github.com/autowarefoundation/autoware_universe)。
-- **Adopt：** 结构化 diagnostics、component/function health 分层，以及诊断信息机器可读而非只存在日志中的思想。
-- **Reject-or-Defer：** RA-1A 暂缓 diagnostic graph / DAG 和 fault propagation graph，也不迁移 Autoware 的大型模块或依赖体系。
-- **Reason：** RA-1A Step 1 只有单 Incident Offline Diagnosis；功能依赖图有长期价值，但当前 Incident/Evidence 合同应先在更小范围稳定。
+### OpenAI Agents SDK
 
-### ros/diagnostics
+- **参考：** [openai/openai-agents-python](https://github.com/openai/openai-agents-python)。
+- **采用：** Tool 与 runtime 分层、guardrail、validation boundary 和 trace-first debugging。
+- **暂缓：** 用该框架替换现有 `agent-core`。
 
-- **Reference：** [ros/diagnostics](https://github.com/ros/diagnostics)，定位为 ROS 官方标准参考，而不是高 Star 创新 baseline。
-- **Adopt：** 关注 `DiagnosticArray`、`diagnostic_updater`、`diagnostic_aggregator` 和 self-test 的消息组织、聚合与自检思想。
-- **Reject-or-Defer：** 当前不要求把现有 `/health/*` 强行迁移到 `/diagnostics`，也不借 RA-1A 改写既有 `SensorHealth` 接口。
-- **Reason：** 与 ROS 标准诊断生态保持概念兼容有长期收益，但现有健康链已经过验证；没有迁移需求和验收证据时，强制改名或换接口只会增加回归风险。
+### LangGraph
+
+- **参考：** [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph)。
+- **采用：** typed state、有限状态迁移和可观测执行的设计思想。
+- **暂缓：** 引入 LangGraph 依赖或提前搭建复杂图执行器。
+
+### Autoware 与 ROS diagnostics
+
+- **参考：** [autowarefoundation/autoware_universe](https://github.com/autowarefoundation/autoware_universe)
+  和 [ros/diagnostics](https://github.com/ros/diagnostics)。
+- **采用：** 结构化 diagnostics、component/function health 分层、聚合和 self-test 思想。
+- **暂缓：** diagnostic DAG、Autoware 大型依赖，以及把现有 `/health/*` 强制迁移到 `/diagnostics`。
 
 ## 使用规则
 
-- 新增依赖、替换 agent-core、接入 Nav2 或引入诊断 DAG，都必须在后续阶段更新本文件并获得明确授权。
-- 设计相似不等于复制实现；应结合 ResilientNavLab 的 Ground Truth 隔离、Safety Gate 和测试合同做最小采用。
-- 若外部项目后续变化，本 snapshot 仍表示 RA-1A 当时的决策；新的采用理由应以新阶段记录补充，不静默改写历史。
+- 新增依赖、替换 `agent-core`、迁移框架或扩大 Agent 权限，必须获得单独授权。
+- 设计相似不等于复制实现；采用项必须符合 Ground Truth 隔离、Safety Gate 和测试合同。
+- 外部项目后续变化不静默改写历史决策；必要时在新阶段补充一条简洁记录。

@@ -48,4 +48,4 @@ ros2 run resilient_nav_agent ra1a_real_benchmark --all # CASE-001..008
 `AGENT_CORE_MODEL_NAME`（可选 `AGENT_CORE_MODEL_BASE_URL`、
 `AGENT_CORE_MODEL_TIMEOUT_SECONDS`）配置；不要把 secret 写入文件、fixture 或报告。
 
-完整架构、验证证据和限制见 [RA-1A final audit](../../../docs/RA1A_FINAL_AUDIT.md)。
+完整架构、验证结论和限制见 [RA-1A 阶段总结](../../../docs/RA1A_SUMMARY.md)。

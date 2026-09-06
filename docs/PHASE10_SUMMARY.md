@@ -1,63 +1,34 @@
-# Phase 10 Summary
+# 阶段 10 总结：健康 Nav2 导航
 
-## Closure
+## 收口结论
 
-**CLOSED — engineering accepted with known limitations** (2026-08-30).
+状态：**已收口，工程验收通过并保留已知限制**。
 
-Phase 10 freezes a healthy, saved-map Nav2 baseline for future resilience
-work. The formal runtime chain is:
+```text
+Saved Map -> Map Server + AMCL
+  -> Global/Local Costmap
+  -> Navfn -> RPP
+  -> BT NavigateToPose -> /cmd_vel
+```
 
-`Saved Map -> Map Server + AMCL -> Global/Local Costmaps -> Navfn -> RPP -> BT NavigateToPose -> cmd_vel`.
+## 完成内容
 
-Ground Truth is evaluator-only. The Runner sends only `NavigateToPose`; it
-does not read GT, command Planner/Controller actions, or publish nonzero
-velocity.
+- saved-map Map Server、AMCL 与唯一 `map -> odom -> base_footprint` TF 链。
+- Planner-owned Global Costmap、Controller-owned Local Costmap、polygon footprint 与
+  Static/Obstacle/Inflation layers。
+- Navfn、Regulated Pure Pursuit、官方无 Recovery BT 和 1 Hz replanning。
+- healthy benchmark：simple 3/3、detour 3/3、multi-turn 2/2 valid，合计 8/8 valid PASS；另一次
+  multi-turn 在发 goal 前因 TF readiness 判为 infrastructure-invalid，因此严格自动 9/9 未达到。
+- 动态绕障 engineering PASS。
+- fully blocked 无 Recovery 场景以 Planner-first `NO_VALID_PATH/208 -> BT ABORT -> stop` 安全失败。
+- 官方 Recovery 场景在临时墙删除后恢复并 SUCCESS。
+- 原生 Goal Cancel 得到 `CANCELED`，Controller、odom 与 GT 均停止。
 
-## Accepted capabilities
+## 已知限制
 
-- Task 1: saved map, Map Server and AMCL localization PASS.
-- Task 2: Planner-owned Global Costmap, Controller-owned Local Costmap,
-  polygon footprint, Static/Obstacle/Inflation layers PASS.
-- Task 3: Navfn, RPP, official no-Recovery BT Navigator and 1 Hz replanning
-  PASS.
-- Task 4: healthy evaluator infrastructure CLOSED; 8/8 valid trials PASS
-  (simple 3/3, detour 3/3, multi-turn 2/2 valid).
-- Task 5.1: sensor-observed, dynamically spawned detour obstacle engineering
-  PASS.
-- Task 5.2: no-Recovery fully blocked safe failure PASS: Planner-first
-  `NO_VALID_PATH/208 -> BT abort -> Controller stop`.
-- Task 5.3: official Nav2 Recovery engineering PASS: Recovery occurred,
-  independent temporary-wall deletion occurred, navigation resumed and ended
-  SUCCESS.
-- Task 5.4: native NavigateToPose Goal Cancel PASS: CANCELED terminal, zero
-  Recovery, Controller stop, odom/GT stop, durable evidence and cleanup.
+- AMCL 相对 GT 可有约 `0.3 m` endpoint deviation。
+- scan 与物理墙存在小角度偏差；长墙清除受有限量程和遮挡影响。
+- Task 4 的一个无效 trial 不计入导航成功率，也不伪装为算法失败。
+- Ground Truth 始终只在 evaluator 通道；Runner 只发送 `NavigateToPose`。
 
-## Frozen limitations
-
-- Task 4 strict automated 9/9 was not met: one multi-turn run was invalid
-  before goal dispatch due to infrastructure TF readiness. The engineering
-  verdict uses 8/8 valid PASS results.
-- AMCL/localization versus GT can show about 0.3 m endpoint deviation; Task
-  5 dynamic contracts retain it as a warning rather than tune Task 1–3.
-- Scan/physical-wall angular misalignment remains a scan/TF technical debt.
-- Fully blocked long-wall terminal latency is variable; safety and Planner
-  failure semantics, not a short observation window, are the acceptance fact.
-- Task 5.3 cannot prove clearing every cell along the former 11.32 m wall
-  using finite-range/occluded LiDAR. This is an evidence limitation, not a
-  Recovery-chain failure.
-- The final Codex-run shared healthy regression is infrastructure-invalid:
-  first sandbox DDS blocking, then foreground supervisor interruption after
-  `Goal succeeded` but before terminal evidence. It does not supersede the
-  retained Task 4 evidence.
-
-## Phase 11 handoff
-
-Phase 11 may consume the frozen saved-map Nav2 baseline, official optional
-Recovery profile, evidence schema, and known limitations. It must not rewrite
-Task 1–5 parameters to hide these observations. Sensor faults during
-navigation, Health/Fusion-to-Nav2 adaptation, fault-aware localization/SLAM,
-Robot-Agent control, and real-robot execution remain outside Phase 10.
-
-See `PHASE10_EVIDENCE_INDEX.md` for retained evidence and
-`PHASE10_TASK4_EVALUATION_SUMMARY.md` / `PHASE10_TASK5_DYNAMIC_OBSTACLES.md`
-for task-level contracts.
+原始批量运行和动态障碍证据已迁至 [`data/phase10`](../data/phase10/)，不再与总结文档混放。
