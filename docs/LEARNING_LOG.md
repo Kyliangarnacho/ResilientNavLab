@@ -2,6 +2,479 @@
 
 本日志按日期记录项目中的事实、判断、经验和后续问题。尚未实施或验证的内容应标记为计划或待办。
 
+## 2026-09-06 — BRNE V1 Scene 1/2/3 正式收口
+
+- Scene 3 人工验证后的算法与数值冻结为 Scene 1/2/3 统一 profile：pinned BRNE `196×25` core、
+  `3.20 m` interaction entry、`0.20 m + 4 outputs` separation release、互斥 crossing/head-on event、
+  crossing `10×` side bias 与 5-output initial direction mask、head-on fixed passing side、`0.25`
+  proposal support scale、time-aligned safety factors、`0.20 m` point-agent close-stop，以及 no-agent
+  deterministic Navfn waypoint fallback。三套 sensor Demo 不再各自在 launch 中暴露或复制算法参数。
+- 新增唯一 `config/brne_v1_runtime.yaml`，同时承载 shadow planner 与 LiDAR tracker 的当前冻结数值；
+  Scene 1/2/3 的两个节点都从这份文件取值。Scene launch 只保留 `arm_brne`、`use_rviz`、`log_level`
+  以及各自场景几何/编排，减少以后只改一个场景而产生参数漂移的可能。
+- 删除旧 passing-side commitment 实现、ROS diagnostics topic、参数与专用 probe；它曾用于证明
+  pinned angular sampler 在极端 path nominal 下会丢失一侧 support，但已被当前 event-owned proposal
+  protection 取代。另删除已证伪的 global-path freeze / nominal freeze 生产分支；历史实验结论保留在
+  本日志，不继续作为 runtime 兼容面。
+- 正式动态行人输入仍是 timestamped LiDAR cluster/track；Gazebo odometry adapter 和 GT closed-loop
+  launch 只保留为感知/控制隔离验证，不作为公平 benchmark。Navfn 继续只消费 tracker 输出的
+  `/brne/static_scan`，RViz 显示 Global Costmap。
+- 本条记录建立的是人工 Scene baseline，不是统计 benchmark，也不把 `0.20 m` point-agent mask
+  宣称为完整 footprint 安全证明。最终 package pytest 为 `123 passed, 1 xfailed`；colcon result 为
+  `124 tests, 0 errors, 0 failures, 1 skipped`（同一 strict xfail 在 JUnit 中记为 skipped）。根 `.venv`
+  驱动的 scoped build 成功，shadow/tracker 两个 install console script shebang 均指向根 `.venv`；
+  source/install 的统一 YAML 与三套正式 launch 逐文件一致。当前机器的 `196×25` isolated probe 为
+  cold warm-up `4752.483 ms`，随后 30 次 warm planning mean/P95/max 为
+  `11.315/12.706/15.292 ms`，低于 5 Hz 的 `200 ms` 周期。接口与 Navfn-remap 边界 targeted
+  tests 另为 `7 passed`，`resilient_nav_interfaces + resilient_nav_navigation + resilient_nav_brne`
+  三包联合构建成功。本轮未重复运行 Gazebo。
+
+## 2026-09-05 — Sensor Scene 1 interaction-time global-path retention
+
+- 为隔离 BRNE 连续周期方向变化是否由 Navfn Path 微变触发，仅在 sensor-input Scene 1 增加 `/plan`
+  出口冻结：LiDAR tracker 首次确认 dynamic track 后，periodic planner 停止发起新 Navfn request，并以
+  原 1 Hz 频率刷新 timestamp、重发最近一条成功 Path。Planner Server 的原始 plan 仅在该 overlay
+  remap 到 `/brne/navfn_plan_raw`，因此在途 action result 也不能覆盖冻结 Path；Phase 10 默认仍发布
+  `/plan`，参数与规划算法未改。
+- freeze owner 使用 sensor track ID；release 与既有 commitment 一致，采用 `min_distance_seen + 0.20 m`
+  separation gain 和最近 4 个 5 Hz 距离样本的正趋势。已完成的同一可见 track 不会在下一帧立即重新
+  acquire，track 消失后才结束其 interaction lifecycle。BRNE commitment 在该 Demo 仍为 disabled。
+- 删除上一轮实验性 angular output low-pass，control gate 再次直接发布通过 freshness、ownership、有限值
+  和速度边界校验的 BRNE raw command。本条记录只描述实现与自动测试，不把最终 armed Gazebo 行为写成
+  已验收结论。
+- 静态 `/plan` 仍不能保证 path nominal 固定：local waypoint 虽不变，robot origin 在移动，二者连线的
+  heading error 仍会变化。为做单变量验证，sensor Scene 1 在 dynamic track 出现前保存最近 angular
+  nominal，并在同一 interaction lifecycle 内把它作为 BRNE sampler proposal nominal；release 后恢复
+  实时 nominal。该实验不恢复 passing-side commitment，也不干预 BRNE weighted command 的方向。
+- 人工检查确认 global-path freeze 没有改善初始左右摆动，sensor Scene 1 随后解除该 overlay：Navfn
+  再次以原 1 Hz 直接发布 `/plan`。interaction angular nominal freeze 保留为当前唯一实验变量；通用
+  periodic planner 中默认关闭的 path-freeze 支持未影响其他入口。
+- 当前 nominal-freeze 实验最终保持原起点 odom `y=-1.0` 和 `0.25 m/s`，只将终点从
+  `y=+1.0` 延长到 `y=+2.0`；3 m crossing 为 12 s。共享 prismatic joint 的允许行程扩到
+  3 m，其他 Scene 的 driver 仍在原 2 m 目标停车。
+- 人工观察到机器人退出 all-masked stop 后，LiDAR dynamic-agent velocity arrow 出现剧烈方向波动；为做
+  最小因果对照，当前 sensor Scene 1 暂时恢复 Gazebo odometry adapter 作为
+  `/brne/pedestrians` 唯一 writer。LiDAR tracker 继续只为 Navfn 提供 `/brne/static_scan`，其 agent
+  输出隔离到 `/brne/sensor_pedestrians_unused`。BRNE core、mask、nominal freeze 和控制未改；该 GT
+  输入只用于诊断，不代表最终 benchmark 感知合同。
+- GT 对照确认后，`/brne/pedestrians` 已恢复由 LiDAR tracker 发布，Gazebo odometry adapter 再次从
+  sensor Scene 1 graph 移除。interaction nominal freeze 同时关闭；commitment 仍关闭。替代实验只在
+  单次 interaction 的前 5 个输出（约 1 s）内，以第一次明显非零 BRNE angular output 的方向为锚，
+  对超过 `0.2 rad/s` 的反向 path nominal 沿用 `0.25` 缩放；第 6 个输出恢复 raw nominal。该状态不
+  强制 command 方向，也不修改 BRNE core、weights 或 mask。
+- 当前 sensor Scene 1 crossing X 调整为 odom `0.8`（world `-2.7`），proposal protection 窗口恢复为
+  5 outputs；12 s 行程、`0.25 m/s`、真实 LiDAR 输入与 commitment disabled 均不变。
+- wrapper close-stop mask 从“完整 robot future 对冻结 pedestrian 当前中心”改为逐时刻比较
+  `robot_candidate[t]` 与 pedestrian CV mean `[x+vx*t, y+vy*t]`，继续使用原 `0.58 m` 几何阈值；
+  因而仅空间上经过行人旧位置、但相同时间步已安全分离的候选不再被误删。pinned BRNE core、随机
+  pedestrian ensemble、proposal protection 和 weighted control 均未改变。
+- LiDAR tracker 的 6 帧 common-drift-corrected 速度拟合与 dynamic promotion 判据保持不变；只在
+  已确认 track 的发布速度上按 ID 增加 `alpha=0.3` EMA：首个输出沿用拟合值，后续为
+  `0.3 * v_fit + 0.7 * v_prev`。本条只记录实现与自动回归，尚未替代 armed Gazebo 人工验收。
+- 对“`close_stop_threshold=0.01` 仍停车”的复核发现，最近六次实际 launch 生成的 shadow-node 参数
+  文件均仍为 `0.58`，没有一次进入 `0.01`；对应 shadow 进程在观察段持续完成 plan，未发生进程退出或
+  ownership revoke。为避免继续从 RViz 猜测，shadow node 现在启动时打印实际生效阈值，并只在零速原因
+  发生变化时报告 all-masked、输入 missing/stale、planning rejection、goal tolerance 或仍有 safe
+  candidates 的 weighted-zero。该诊断不修改 mask、BRNE control 或 gate 行为。
+- 一次正式未 armed、无 RViz 的 Gazebo Scene 1 参数探针确认，单行 launch override 能使 shadow node
+  实际打印 `close_stop_threshold=0.010 m`，并在 35 s 观察段持续规划且未报告 all-masked。用户侧
+  `close_stop_threshold:=0.01: command not found` 是该 token 被 shell 换行后作为独立命令执行，ROS 未收到
+  它。为让当前因果实验不再依赖尾部参数，sensor Scene 1 overlay 临时默认改为 `0.01`；通用 planner 与
+  其他 Demo 的 `0.58` 默认未改。
+- `0.01` 参数链验证完成后，sensor Scene 1 的可传 `close_stop_threshold` 默认值调整为 `0.50 m`；同一行
+  launch override 仍可选择其他值。mask 的 time-aligned CV 语义、通用 planner 的 `0.58 m` 默认值及
+  其他控制逻辑均未改变。
+- sensor Scene 1 随后将可传 mask 阈值初定为 `0.40 m`，并仅在 wrapper 的 pinned BRNE robot weights
+  之后增加近期 crossing side bias：所有状态先投影到当前 robot frame，以
+  `t_cross=-p_lateral/v_lateral` 和前向交点门控，再对行人运动反侧的 candidate future lateral
+  displacement 乘 `1.25`。默认门为 lateral speed `0.12 m/s`、现有 `2.5 s` planning horizon 和前向
+  `[0.20,1.50] m`；这些项目级参数在 sensor launch 可覆盖。commitment、proposal protection、mask、
+  BRNE core 与最终 weighted-control extraction 均未改。
+- 人工 Demo 在 `crossing_lateral_speed_threshold=0.10`、forward gate `[0.20,1.50] m`、side-bias
+  multiplier `1.5` 与 close-stop `0.30 m` 下表现良好，这组数值现成为 sensor Scene 1 overlay 默认值，
+  且仍可由 launch 覆盖。既有 finite-output proposal protection 保持默认 5 outputs，并由同名 launch
+  参数 `proposal_protection_window_outputs` 提供覆盖；窗口内部的反向判定和 `0.25` 缩放未改。
+- `brne_scene2_demo.launch.py` 已对齐上述 sensor profile：BRNE 输入来自 LiDAR tracker，Navfn 使用
+  `/brne/static_scan`，commitment 关闭，mask/crossing bias/proposal window 的默认值与 Scene 1 相同。
+  两个 prismatic pedestrian 的原几何、速度和顺序保留；因为不再存在 commitment release 事件，Ped2
+  场景门仅在 robot map `x > 0.8` 后等待原有 `0.4 s` 再启动，不改变 BRNE 控制逻辑。
+- 为观察双行人场景中的主动反侧绕行，sensor Scene 1/Scene 2 overlay 默认值调整为 crossing-side
+  multiplier `2.0`、close-stop `0.27 m`、finite proposal window `5`；窗口内反向 nominal 的保护触发
+  阈值从 `0.20` 提高到 `0.35 rad/s`。mask 与 side-bias 的 launch 覆盖保留，BRNE core 和 mask 语义未改。
+- Scene 2 极端参数诊断把 crossing `t_cross` 门从 `2.5 s` 放宽到 `4.0 s`。有效 runtime 中 Ped2 启动后
+  约 `0.74 s` 才完成 LiDAR dynamic-track 确认；确认后 `v_lateral≈-0.24`、preferred side 为 robot-left，
+  证明方向判定正确。`1000×` bias 可令目标侧最终权重占比达到约 `0.79–1.00`，但部分周期 proposal
+  中目标侧 candidate 数直接为零，此时任何倍率均无效。诊断因此保留 per-track gate、bias 前后权重占比、
+  mask 后 candidate 数、proposal support 和最终 command；没有据此修改 BRNE core 或 temporal policy。
+- crossing/interaction 语义随后收敛：LiDAR track 在 6 帧 dynamic confirmation 后再完成 3 次
+  `alpha=0.3` EMA 更新才发布；已发布 agent 进入 `2.20 m` 欧氏门后才建立 interaction。soft crossing
+  event 只评估 interaction owner，门调整为 lateral `0.08 m/s`、`t_cross<=4.0 s`、forward
+  `[0.20,2.00] m`，默认 multiplier 为 `5.0`；event 过 robot centerline 后退出，而 interaction 仍按
+  `0.20 m + 4-frame` 持续分离释放。event 最初 3 个输出清零与 pedestrian lateral velocity 同向的 angular
+  candidates，窗口可由 launch 覆盖；原 5-output proposal support 保留。低 lateral 的迎面 interaction
+  不触发硬侧向 mask，BRNE core、safety mask 与 commitment-disabled 状态未改。
+- Scene 1/2 人工调参随后冻结 overlay 默认值为 forward max `2.00 m`、crossing multiplier `10.0`、
+  crossing 初始反向窗口 `5` outputs、point-agent close-stop `0.20 m`。为避免 time-aligned mask 把
+  active crossing owner 的偏好侧候选全部消掉，仅当候选在 horizon 末端已比最近点分离超过既有
+  `0.20 m` margin 时，将其 mask factor 从 `0` 改为 `0.1`；其他 pedestrian、非偏好侧和未分离候选仍
+  硬置零。`10.0 × 0.1 = 1.0`，所以门限内候选只恢复到 BRNE core 原权重，不获得净 crossing 奖励。
+  当前 footprint 外接半径约 `0.391 m`，加 actor `0.18 m` 半径得到保守相切中心距约 `0.571 m`；
+  `0.20 m` 仅为实验 point-agent threshold，不是实体碰撞安全保证。
+- Scene 2 的第二个行人在 interaction 首次输出仍曾出现与其横向速度同向的控制，故 sensor track 发布前的
+  velocity EMA warm-up 从 `3` 次增加到 `5` 次；15 Hz 下只增加约 `0.13 s` 观察时间。dynamic promotion、
+  `alpha=0.3` EMA、interaction/event、5-output 初始反向 mask、proposal protection 和 BRNE core 均未改。
+- 同一人工现象在 5 次 EMA warm-up 下仍不足够稳定，因此冻结为 8 次；相对 5 次再增加约 `0.20 s`
+  观测。Scene 2 同时冻结 forward max `2.00 m`、crossing multiplier `10.0`、初始反向窗口 `5`
+  outputs 和 point-agent close-stop `0.20 m`，这些 runtime 行为本轮均未再调整。
+- 固定 8 次随后被统一的实际稳定判据替代，而不是继续按场景增加等待：dynamic track 最近 4 次
+  `alpha=0.3` EMA 速度必须都超过 `0.08 m/s`，且每个方向相对最新方向的夹角不超过 `0.35 rad`
+  （约 20°）才允许发布。横穿与迎面使用同一组参数；方向仍抖动时继续等待，稳定时不承担固定 8 次
+  的额外延迟。首次通过后稳定状态按 track 锁存，EMA 继续更新，避免单帧波动造成 agent 断流和
+  interaction reset。interaction/event、mask、BRNE core 与已冻结 Scene 参数不变。
+- 新增最薄 `brne_scene3_head_on_demo.launch.py`：只生成一名从 odom `(3.0,0)` 以 `0.25 m/s` 沿 `-X`
+  迎面运动的 constrained pedestrian，robot goal 与 Scene 2 同为 `(2.8,0)`，BRNE/sensor 参数完整复用
+  当前冻结 profile。既有 driver 只增加默认保持 `y` 的 `motion_axis` 选择；Scene 3 用 spawn yaw `pi`
+  把已验证的 model `+X` prismatic axis 映射到 world `-X`，Gazebo odometry 仍只用于 actuator 终点而不进入
+  BRNE。迎面低 lateral velocity 不触发 crossing side rule；最终行为留给人工 Demo 验收。
+- Scene 3 首次人工观察表明纯 BRNE 在迎面对称选择中会左右翻转并原地滞留。interaction owner 的 event
+  分类因此改为单一合速度方向分类器与互斥优先池：head-on 要求 approach speed `>=0.12 m/s` 且合速度
+  位于 robot `-forward` 的 `0.52 rad`（约 30 度）窄锥角内；其余运动仅在
+  `|v_lateral|>=0.08 m/s` 且 lateral alignment `|v_lateral|/|v|>=0.50` 时归入 crossing。纵向锥角严格
+  小于 45 度，所以 45 度斜穿优先进入 crossing；单一返回值和 active-event 锁存保证一个行人同一时刻
+  只能进入一种 event，避免高速斜向运动同时命中两套独立分量门限。完成标志只在速度仍属于同一类别
+  时防止立即重复进入；方向类别改变后允许同一 interaction 进入另一 event。该规则继续避免
+  传感器 lateral 噪声误触发既有 crossing bias、初始
+  direction mask 和 `0.1` safety softening。head-on 第一条明显非零 BRNE angular output 定侧，之后硬
+  清零另一侧即时 angular candidates，并持续保护 proposal support；机器人参考点距 entry 时冻结的
+  pedestrian CV 直线达到 footprint-derived `0.58 m` 后退出 event。既有 interaction release、crossing
+  event、BRNE core 和 Scene 参数未改。
+- Scene 3 的斜迎面定侧增加一个只作用于 head-on event entry 的方向层：合速度仍在既有约 30 度纵向
+  锥内，但 lateral 偏角超过 `0.17 rad`（约 10 度）时，机器人从第一条 BRNE 输出起固定选择 pedestrian
+  lateral 运动的反侧；死区内继续由第一条明显非零 BRNE angular output 定侧。LiDAR dynamic-agent
+  发布范围由 `2.5 m` 前移到 `3.5 m`，通用 interaction 欧氏入口由 `2.20 m` 前移到 `2.80 m` 并重命名为
+  `interaction_entry_distance`，使 15 Hz tracking 与 4-frame EMA 方向稳定发生在更充分的距离上；行人
+  和机器人速度均未改。
+- 修复 sensor-input Demo 在尚无 dynamic agent 时无法起步的问题：正确 frame 且持续由新鲜 scan 产生的
+  空 `PedestrianArray` 现在表示“观测无人”，ROS-free shadow planner 直接按 Navfn local waypoint 输出
+  确定性 no-agent unicycle fallback。它使用既有 `0.20 m/s` nominal、`0.80 rad/s` 角速度边界，按
+  `cos²(heading_error)` 对大转角降速并在临近目标时减速，不创建 BRNE candidates；agent 出现即恢复完整
+  BRNE。没有消息、stale 或 frame 错误仍然 fail closed，避免把感知链失效当作无人。
+- `/scan` 与 TF 的静态复核确认 tracker 已用 scan 自身 timestamp 查询 `lidar_link -> odom`，odom TF
+  broadcaster 也原样继承 odometry timestamp，相关 launch 统一使用 simulation time，因此本轮不改
+  TF 链。为降低转向期残余 scan/TF 漂移对行人速度的影响，EMA measurement alpha 从 `0.30` 降到
+  `0.25`；仅在 track 已通过原 4-frame 方向稳定门后，对超过 `0.70 rad`（约 40 度）的单帧 fitted
+  velocity 方向跳变拒绝更新并保留上一完整速度。初始稳定判据、tracking fit 和 BRNE 输入格式不变。
+- 为继续前移 sensor-input interaction 的可用反应时间，仅把 dynamic-agent 发布范围从 `3.5 m` 调到
+  `4.0 m`、`interaction_entry_distance` 从 `2.80 m` 调到 `3.20 m`；event 分类、速度滤波、控制参数和
+  BRNE core 均未改变。
+- 为减少 agent 发布到 interaction 的等待，EMA 方向稳定窗口从 `4` 帧降为 `3` 帧；6 帧 dynamic
+  confirmation、`0.08 m/s` 最小速度、`0.35 rad` 窗口方向一致性和稳定后的 `0.70 rad` 异常拒绝不变。
+- Scene 3 的 head-on 合速度锥从相对 robot `-forward` 的 `0.52 rad` 扩展到 `1.05 rad`（约 60 度）；
+  对当前 `0.25 m/s` 行人，60 度边界的 approach component 约 `0.125 m/s`，与既有 `0.12 m/s` 门限一致。
+  因此相对 lateral axis 的约 30--90 度斜向接近使用持续定侧的 head-on event，近 lateral 的 0--30 度
+  仍由 crossing event 处理。斜线 release 继续使用 orientation-independent frozen CV line 垂距和
+  `0.58 m` clearance。另阻止 head-on release 后在尚未结束的同一 interaction 内重新锚定有限 proposal
+  window；crossing/普通 interaction 的窗口保持不变。
+
+## 2026-09-04 — RPP Scene 1 comparison overlay（人工 Demo 待验收）
+
+- 新增 `rpp_scene1_comparison_demo.launch.py`，完整 Include 冻结的 Phase 10
+  `phase10_bt_navigation_smoke.launch.py` 无 Recovery profile，故运行时仍是既有 Navfn、1 Hz official
+  BT replan、Controller Server 和 RPP；没有修改任何 Nav2 YAML、没有新增 benchmark，也没有启动任何
+  BRNE planner/shadow/gate。正式 `/cmd_vel` 仅应由 `controller_server` 发布。
+- overlay 复用当前 world-constrained prismatic pedestrian SDF、JointController `Float64 -> gz.msgs.Double`
+  bridge 和未修改的 crossing driver；robot/goal 与 BRNE Scene 1 均为 Phase 10 start/map `(0,0,0)` 到
+  `(1,0,0)`，actor 仍从 world `(-3,-4.5,0.6,yaw=pi/2)` 以 `+0.25 m/s` 穿过到 Y `-2.5`。driver 改由
+  `/rpp/ready`、`/rpp/pedestrian/odometry` 和 `/rpp/pedestrian/joint_velocity` 参数化，不使用任何
+  `/brne/*` 控制 topic。
+- 新的薄 coordinator 只读查询 Nav2 aggregate lifecycle active，随后发送一次 `NavigateToPose`；goal
+  accepted 后以 transient-local `/rpp/ready=true` 解锁既有 driver。driver 仍独立要求真实 non-empty
+  `/plan`、fresh odometry 和 `0.1 s` delay，故没有 launch sleep、伪造 plan、速度发布或第二套 pedestrian
+  state machine。RPP 从 scan-derived Global/Local Costmap 获得行人占用；它不读取 pedestrian odometry、
+  不预测速度，也不实现 BRNE passing-side logic。
+- scoped build 以根 `.venv/bin/python -m colcon` 完成；实际 `resilient_nav_brne` package test 为
+  `59 passed, 1 xfailed`，xfail 仍仅为 pinned scalar `traj_sim()` 缺少 `dt`。安装后的 coordinator 和
+  shadow script shebang 均指向根 `.venv/bin/python`，`ros2 launch ... --show-args` 已成功解析 overlay。
+  本轮没有运行 Gazebo/RViz 最终人工 RPP Demo；dynamic crossing behavior 留给用户验收。
+
+## 2026-09-04 — BRNE console-script interpreter contract fixed
+
+- 两次正式 Closed-loop launch 中，`brne_shadow_node` 都在启动不足一秒后 exit 1；`brne_control_gate`
+  已 armed、`Float64 -> gz.msgs.Double` pedestrian bridge 已连通、planner 已可刷新 `/plan`，所以共同上游
+  不是 actuator、ownership 或 path freshness。实际安装的 BRNE console scripts 的 shebang 是
+  `/usr/bin/python3`，而系统 Python 没有 `numba`；pinned `brne.py` 在 import 时依赖它。shadow process
+  因此无法发布 `/brne/ready=true` 或 raw command，driver/gate 的既有 fail-closed 合同正确地让两个实体
+  保持零速。
+- 根 `.venv` 具有 `numba 0.61.2`，但“激活 venv + 调用 `/usr/bin/colcon`”不会改变 colcon 的
+  `sys.executable`，故 ament Python `develop --no-deps` 生成的 console scripts 仍固定为系统解释器。
+  永久环境规则现写入 root `AGENTS.md`、`docs/ENVIRONMENT.md` 与 BRNE Demo 手册：任何
+  `resilient_nav_brne` build/test 必须从 `ros2_ws/` 显式使用
+  `../.venv/bin/python -m colcon`，禁止裸/系统 `colcon`；build 后必须检查 shadow executable 的 shebang。
+- 已按该规则重建实际 `ros2_ws/install`。`brne_shadow_node`、control gate 和 pedestrian driver 的
+  shebang 都指向根 `.venv/bin/python`，source 后 entry points 与当前 build source 一致且可导入 Numba。
+  `resilient_nav_brne` package test 为 `55 passed, 1 xfailed`，汇总 `56 tests, 0 errors, 0 failures,
+  1 skipped`；xfail 仍仅是 pinned scalar `traj_sim()` 的既有缺少 `dt` 问题。未运行 Gazebo 或最终
+  Closed-loop Demo。
+
+## 2026-09-04 — BRNE V1 / Scene 1 final closeout（pedestrian constraint verified）
+
+- 保持人工 Closed-loop Demo 已验证的 `commitment_opposite_scale=0.25`，正式定义为 BRNE V1
+  Scene 1 的项目级 temporal/proposal parameter，而非 BRNE 理论常数。没有更改
+  `shadow_planner.py` 的 proposal-side commitment runtime 行为，也没有引入 support projection、动态
+  gain、滤波、RNG、weight prior、safety mask 或其他 planner 机制。回归将 196 samples 的
+  `28 linear × 7 angular` 网格冻结在最坏 committed raw nominal `±0.8 rad/s`：scale 后的
+  `±0.2 rad/s` proposal 保留至少两个严格 committed-side angular bins 与一个 zero bin。
+- crossing pedestrian 不再是会积分 roll/pitch 的自由刚体或 model-level `VelocityControl` actor。
+  `brne_crossing_pedestrian.sdf` 现在以 `world -> crossing_joint (prismatic) -> body` 的结构只允许
+  一条 DOF；joint zero 是 launch 的 spawn pose，limits 为相对零位 `0..2 m`。Gazebo Harmonic 在该
+  dynamic model 的 local frame graph 中不能把 joint axis `expressed_in` 直接写成 `world`；最终采用
+  `expressed_in="__model__"` 的 model `+X` axis，并以 spawn yaw `pi/2` 在 runtime 映射成 world `+Y`。
+  这是 runtime 验证后的 frame/topology 选择，不是静态 SDF 名称推断。
+- driver 只将原 model `Twist` actuator 替换为 `Float64` joint velocity，经
+  `ros_gz_bridge` 转为 `gz.msgs.Double` 送入 `JointController`。既有 BRNE-ready、fresh odometry、fresh
+  plan、timeout/fail-closed 与 crossing start/stop 状态机未重写；`OdometryPublisher` 保留，改为
+  `dimensions=3` 以使 verifier 能观测真正的 Z/roll/pitch。既有 pedestrian odometry adapter 与
+  `pedestrian_state.py` 未改。
+- 实际 standalone Gazebo 验证只启动 world、pedestrian、bridge、probe（无 robot/Nav2/BRNE），以
+  `+0.25 m/s` 完成 Y `-4.5 -> -2.50025 m`：start/end world pose 为
+  `(-3.0,-4.5,0.6)` / `(-3.0,-2.50025,0.6)`，完成于 `8.05 s`，测得 `0.248416 m/s`。真实
+  odometry 观察完整 `60.0 s`，X/Z drift、max |roll|、max |pitch|、max yaw drift 均为 `0`，运行中
+  child-frame `twist.x` 峰值 `0.250000 m/s`、Y/Z 近零，最终 velocity 为零。`gazebo_world ->
+  brne_pedestrian` 的 frame、child frame 与非零 timestamp 全程有效，collision geometry 未删除；因此
+  满足结构性 upright 和原 adapter 输入合同。
+- focused pytest 为 `30 passed`；隔离 scoped `resilient_nav_brne` build 成功。完整 package test 在
+  同一隔离链（含其 `resilient_nav_interfaces` 依赖）为 `55 passed, 1 xfailed`，test-result 为
+  `56 tests, 0 errors, 0 failures, 1 skipped`；strict xfail 继续仅对应 pinned upstream scalar
+  `traj_sim()` 的已知缺少 `dt` 问题。本轮按授权未重新运行 robot + BRNE 最终 Closed-loop Demo；它保留给
+  用户做最终人工验收。
+
+## 2026-09-04 — BRNE passing-side proposal support restoration（Closed-loop Demo 未运行）
+
+- 针对人工 crossing 中“先左避、local waypoint 回正后短暂右修、再左避”的已确认 proposal
+  collapse 根因，shadow planner 仅为**单行人**保留短生命周期的 passing-side commitment。entry 从
+  当前 BRNE mixed predicted trajectory 相对 pedestrian CV mean 的最小接近点空间侧向分离建立，
+  不以 `angular.z` 建立；同时将 entry 时的 forward/left 单位轴固定在 odom frame，后续 local
+  waypoint 改变不重新定义左右。多行人输入自动释放/禁用该单行人状态。
+- commitment 不重写 BRNE command、weight、cost、safety mask 或行人随机采样；它只在 path nominal
+  强烈朝 committed passing side 的反向转动、会令 pinned `get_ulist_essemble()` 丢失对侧 support 时，
+  用项目参数 `commitment_opposite_scale=0.25` 缩小该 proposal nominal。因此最终 raw command
+  仍是当前 weighted control sequence 的第一步，opposite-side candidates 仍被保留。
+- release/reset 覆盖 fixed forward axis 后方通过、当前距离与 CV mean predicted minimum distance
+  连续 clear、pedestrian stale/disappearance、goal、planner lifecycle 与 duration timeout；warm-up 的
+  synthetic state 在返回前显式清空。每周期 debug diagnostics 提供 path/proposal nominal、angular
+  support、safe candidate count、fixed axes、side 与 entry/release reason。
+- 完整 `196×25` 数值 probe：left commitment 且 raw path nominal `-0.8 rad/s` 时 proposal 为
+  `-0.2 rad/s`，pinned angular candidates 的 min/max 为 `-0.8/+0.4 rad/s`，同时存在正/负候选，
+  直接证明 support collapse 已解除。BRNE package colcon test 为 `54 tests, 0 errors, 0 failures,
+  1 skipped`（skip 仍为 pinned scalar `traj_sim()` strict xfail）；fresh process cold warm-up
+  `5086.665 ms`，50 次 warm planner call mean/P50/P95/max 为 `12.507/11.780/16.865/19.697 ms`，
+  P95 小于 5 Hz 的 `200 ms`。未运行 Gazebo 或最终人工 Closed-loop Demo，是否消除 left→right→left
+  行为仍待人工验收。
+
+## 2026-09-04 — BRNE mixed-strategy control extraction correction（Closed-loop Demo 未运行）
+
+- 修复 wrapper 将 `(plan_steps, num_samples, 2)` control ensemble 的 time 与 sample 维一起求和
+  的输出语义错误。现在只沿 robot sample 维对每个 time step 求 weighted mean，当前 raw command
+  为该 sequence 的第一项，仍由既有 `0.30 m/s`、`0.80 rad/s` 有限边界约束。
+- `/brne/optimal_path` 不再是最大 robot weight 的单条 candidate；它从当前 robot state 以完整
+  weighted control sequence 调用 pinned `traj_sim_essemble()` 单 sample 重模拟，故红色预测线的
+  第一 control 与 raw command 一致。没有调用或修改已知缺少 `dt` 的 pinned scalar `traj_sim()`。
+- 新增回归覆盖 sample-axis-only mixing、plan length 不会放大第一 control、即时 command 与 sequence
+  首项相等，以及预测 path 与混合 sequence 相等且不同于 argmax candidate。direct pytest 为 `10 passed`；
+  package colcon test 为 `43 tests, 0 errors, 0 failures, 1 skipped`，skip 保持 pinned scalar
+  `traj_sim()` strict xfail。
+- 固定 `seed=1` 的 response probe 在修复后给出 left/right static steering
+  `-0.721035918261/+0.721035918261 rad/s`；横穿/远离的 forward speed 分别为
+  `0.131082938252/0.179345448824 m/s`，故合同改为横穿不得比同位置远离者更快，而非旧的饱和 steering
+  比较。没有改动 BRNE 随机 pedestrian prediction 或输出滤波。
+- 以完整 2-agent、`196×25` profile fresh process 测得 cold warm-up `5046.470 ms`；随后 50 次
+  planner call mean / P50 / P95 / max 为 `12.655 / 11.981 / 16.657 / 18.386 ms`，P95 低于
+  5 Hz 的 `200 ms` 周期。按授权没有运行 Gazebo 或完整人工 Closed-loop Demo。
+
+## 2026-09-04 — BRNE pinned runtime algorithm profile restoration（Closed-loop Demo 未运行）
+
+- `resilient_nav_brne` 的 wrapper runtime profile 已以 MurpheyLab/brne pinned revision
+  `633a5cdcb39ab27f18b596cb8cb1968644f82391` 的
+  `brne_nav/crowd_nav/config/brne.yaml` 为唯一算法基准：`maximum_agents=5`、
+  `num_samples=196`、`dt=0.1`、`plan_steps=25`、`kernel_a1/kernel_a2=0.2/0.2`、
+  `cost_a1/cost_a2/cost_a3=15/3/20`、`ped_sample_scale=0.1`。速度上限、nominal
+  speed、corridor、geometry-derived close stop、goal tolerance 与 5 Hz replan 保持本项目值。
+- ROS shadow node 现在显式声明并传入全部上述算法参数；其启动期 `warm_up()` 继续使用最终
+  `ShadowPlannerConfig`，没有另建缩小 sample/horizon 的 warm-up profile。pinned Python core
+  仍未使用 `ped_sample_scale` 入参，本轮只保持其官方配置和可观测性，未改数学核心。
+- 以独立 fresh Python process、Demo 相同的一 robot + 一 crossing pedestrian、完整
+  `196×25` profile 测得 cold warm-up `5060.636 ms`；随后 50 次完整 planner call 的 mean /
+  P50 / P95 / max 为 `12.087 / 11.331 / 17.710 / 19.309 ms`。P95 与 max 均低于现有
+  5 Hz（`200 ms`）控制周期；cold warm-up 仍只属于 `/brne/ready` 前的启动预算。
+- BRNE package targeted pytest 和 package colcon test 为 `40 tests, 0 errors, 0 failures,
+  1 skipped`；该 skip 仍是已记录的 pinned upstream scalar `traj_sim()` 缺少 `dt` 的 strict
+  xfail。官方 cost profile 使 crossing/away steering 都可达到 `0.8 rad/s` 上限，故 causal
+  probe 保留“crossing 不弱于 away”而不再要求未饱和时的固定差值；没有改 BRNE 输出。
+- BRNE Demo RViz 只新增现有 `/global_costmap/published_footprint` 的绿色 `Robot Footprint`
+  Polygon。没有运行最终完整人工 Closed-loop Demo，也没有添加 RNG 固定、滤波、hysteresis、
+  跨周期平滑或其他算法补丁。
+
+## 2026-09-03 — BRNE Closed-loop Demo 稳定性与启动顺序修复（人工 E2E 待执行）
+
+- 首次人工运行显示原 `0.16 m × 1.70 m` 自由圆柱在 VelocityControl 水平接触下会倾倒；倒地后
+  collision 几何不再匹配 BRNE point-agent 近距模型，且实际 pose 基本停止，不能作为有效 crossing
+  demo。修复为半径 `0.18 m`、高度 `1.20 m`、`40 kg` inertia 的 kinematic、collision-visible
+  actor，使其受接触时保持直立的规定平面运动；这不是 crowd dynamics 或真实人体模型。
+- BRNE Shadow Node 在创建 subscriptions/timer 前同步调用一次固定 `warm_up()`，并以 transient-local
+  `/brne/ready` 发布成功状态。crossing driver 现在同时等待 fresh Gazebo odometry、real `/plan` 和
+  ready=true，才发 pedestrian command；warm-up 失败则 actor 不会起步，BRNE 也只发零 raw command。
+- 既有单独 Transport 实测已经证明当前 Gazebo raw twist 为 child/body frame，故删除运行期
+  `TwistFrameVerifier`、验证参数、延迟和相应测试。adapter 直接执行固定 child → world → odom 的
+  SE(2) 转换，保留 finite/frame/stamp freshness fail-closed。
+- 将 actor 初点从 robot odom `(0.5,-0.8)` 后移至 `(0.5,-1.0)`，目标为 `(0.5,1.0)`，减少起步时
+  机器人 footprint 与 actor 物理半径的近距干扰。wrapper close-stop threshold 从 `0.35` 改为显式
+  `0.58 m`（footprint 外接半径约 `0.391` + actor 半径 `0.18` + `0.01` padding）；mask 仍只检查
+  每条 robot candidate 相对**当前** pedestrian center，未添加逐时刻行人预测或第二套避障逻辑，预测
+  仍由上游 BRNE trajectory/weight 负责。
+- 新增 BRNE package 自有 RViz 配置，复用 `/brne/optimal_path` 显示红色 `BRNE Selected Prediction`，
+  不增加 topic，也不修改冻结的 Phase 10 RViz 配置。修复后 direct BRNE pytest 为 `37 passed, 1
+  xfailed`，`resilient_nav_interfaces` + `resilient_nav_brne` symlink build 成功，colcon BRNE
+  package test 同为 `37 passed, 1 xfailed`；xfail 仍是 pinned upstream scalar `traj_sim()` 的已知
+  缺陷。独立进程的 runtime prewarm 为 cold `4958.195 ms`，后续 20 次 mean `1.257 ms`、P95
+  `1.419 ms`。按用户约束不自动重启完整 Gazebo 图做最终 closed-loop 验收。
+
+## 2026-09-03 — BRNE Closed-loop Demo 最小主链实现（人工 E2E 待执行）
+
+- 在现有 `resilient_nav_brne` 内实现独立 closed-loop launch：只 Include 冻结的 Phase 10
+  planner-only 链，以 1 Hz `ComputePathToPose(use_start=false, GridBased)` 刷新真实
+  `/plan`；没有启动 `controller_server`、BT Navigator、selector 或 Recovery，也没有
+  修改 Phase 10 navigation/localization/simulation/description 文件。
+- `brne_control_gate` 只接受 `/brne/cmd_vel_raw`，默认 `armed=false` 且不创建正式速度
+  publisher。显式 armed 后先检查 `/cmd_vel` endpoint，再作为唯一 owner 发布；raw stale、
+  任意非有限值、倒车/非差速轴、速度越界均输出零，发现外部 publisher 时先零速再销毁自身
+  publisher 并锁定 failure。
+- 初版新增带 collision/inertial 的单圆柱 Gazebo pedestrian，只使用本机 Gazebo Harmonic 的
+  `VelocityControl` 和 `OdometryPublisher`。其自由高圆柱实现及运行期 twist semantic verifier 已在
+  同日“稳定性与启动顺序修复”条目中替换，不应作为当前能力描述。
+- 一次独立 pedestrian-only Gazebo Transport 验证（没有启动 Phase 10、机器人或正式
+  `/cmd_vel`）采集 20 条实际 odometry、19 对运动差分：pose-delta 速度约
+  `(0.0, 0.238950) m/s`，raw twist 约 `(0.238606, 0.0) m/s`，按约 `pi/2` yaw 旋转后为
+  `(0.000029, 0.238606) m/s`；world/child mean error 分别为 `0.340772/0.000340 m/s`，
+  因而当前插件真实语义明确为 child frame。该数值来自实际消息，不是名称推断。
+- 新增主链 focused tests 16 项全部通过；包含 Task 1 回归的 BRNE pytest 为
+  `36 passed, 1 strict xfailed`，package build 成功，colcon package test 同为
+  `36 passed, 1 xfailed`。xfail 仍是 pinned upstream scalar `traj_sim()` 已知缺陷。
+- 完整 Phase 10 + BRNE Gazebo closed-loop 按用户要求没有自动执行。唯一人工启动命令、
+  ownership/topic/TF/frame/速度/终点零速与清理证据清单见
+  `docs/BRNE_CLOSED_LOOP_DEMO.md`；当前不得把组件级结果写成 Closed-loop Demo PASS。
+
+## 2026-09-03 — BRNE integration side track Task 1 final closeout
+
+- Task 1 保持 shadow-only：BRNE 只发布 `/brne/cmd_vel_raw` 和
+  `/brne/optimal_path`，没有 selector、真实 pedestrian tracking、RPP 对比或正式
+  `/cmd_vel` 控制接管。新增的 closeout observer 只读订阅真实输入和 `/brne/*` 输出，
+  在一次 fresh Phase 10 `simple_reachable` 行动前启动，并将观测结果写为 JSON。
+- 固定 `seed=1` 的纯数值 pedestrian probe 记录了可重复的相对运动因果合同：左/右侧
+  静态行人分别产生 `-0.8/+0.8 rad/s` steering，左侧横穿为 `-0.8 rad/s`，强于同位置
+  远离时的 `-0.648313 rad/s`；`0.35 m` 正前方行人得到精确零 command。它说明本 wrapper
+  的 BRNE 数值结果会随输入行人位置/速度变化，不是性能或真实感知结论。
+- 当前机器 2 agents × 16 samples × 12 steps core probe 的 cold JIT 为 `5372.318 ms`；
+  随后 20 次 warm 为 mean `0.982 ms`、P50 `0.969 ms`、P95 `1.134 ms`。isolated ROS
+  smoke 在停止三种输入后 `970.479 ms` 收到明确零 raw command，并确认停止后未再收到 Path；
+  它覆盖长 JIT/输入 stale 时的 fail-closed 合同。
+- timestamped-TF 修复后的 fresh Phase 10 run 中，导航 probe PASS（11 次 Path 更新，
+  `NavigateToPose SUCCESS`、Controller 最大 `0.20 m/s` / `0.5251 rad/s`）。预启动
+  observer 实际看到 `/odometry/filtered` 403、`/plan` 11、`/brne/odom` 91、
+  `/brne/goal_pose` 91、pedestrian 202、BRNE optimal Path 11；frame 均为 `odom`
+  （source Path 为 `map`）。一条 goal 以其 odom stamp 查询 `odom <- map` TF 后重算的
+  waypoint 与发布 goal 的残差为 `0.0 m`，并且同 stamp `/brne/odom` 与源 odom 的
+  `(x,y)` 完全一致。运行时 BRNE 计算为 `0.047--0.987 ms`（进程已预热）。
+- 同一 fresh run 的 graph endpoint 显示 `/brne/cmd_vel_raw` publisher 为
+  `brne_shadow_node`，正式 `/cmd_vel` publisher 为 `controller_server`，没有 BRNE
+  endpoint。该 synthetic pedestrian 在真实路线下使安全 mask 全程选择零 raw command；
+  这不是 BRNE/Phase 10 failure，而是保守输出。初版 observer 因错误地要求先有非零 raw
+  才记录 stale-zero 而把该 JSON 标为 FAIL；已修正为 goal 静默后任何明确零 raw 都可作为
+  stale 证据，但遵守“只做一次 fresh E2E”未为该观测器修正再跑导航。隔离 smoke 的 stale
+  evidence 是本 Task 的最终动态 fail-closed 证据。
+- Task 1 已验证 Python/Numba core、隔离 ROS wrapper、真实 Phase 10 odom/Path/TF
+  输入映射、输出 bounds/frame 及 `/cmd_vel` 隔离；尚未验证真实行人状态估计、在真实
+  人群中的安全/舒适性、RPP 对比、长期性能或任何机器人控制效果。pinned 上游 scalar
+  `traj_sim()` 的 strict xfail 仍保留，未篡改上游数学。
+
+## 2026-09-03 — BRNE integration side track Task 1.3 real-navigation shadow input
+
+- `resilient_nav_brne` 新增独立 `brne_shadow_input_adapter`：只读订阅真实
+  `/odometry/filtered` 和 `/plan`，要求 Phase 10 的 `odom` / `base_footprint` 与
+  `map` frame 合同、有限数值、非零 stamp、ROS stamp age 和本地 receipt age 都有效。
+  它以当前采用 odom 的 header stamp 查询同一时刻 `odom <- map` TF（不可用即拒绝，
+  不回退 latest），把最近的 map-frame Path 按弧长选取 `0.8 m` 局部
+  waypoint，才一起发布隔离的 `/brne/odom` 与 `/brne/goal_pose`。它不发布 Twist，
+  不启动或修改 Phase 10 的任何 launch/参数。
+- 空/非法/过期 Path、odom stale、Path 离当前 odom 超过 `0.75 m`、TF 缺失或异常时，
+  adapter 停止转发；overlay 将 BRNE input timeout 固定为 `0.5 s`。因此旧 Path 不会
+  继续驱动 shadow 输出。新增 pedestrian-only source 只发布 `/brne/pedestrians`，
+  保留 Task 1 的确定性运动行人，不再伪造 odom 或 goal。
+- Shadow Node 在计算前复制一致输入 generation，并在计算后再次检查 generation 与
+  `time.monotonic()` freshness。新增慢计算回归确认超过 watchdog 的 JIT-like 计算只
+  发布零 raw Twist 且不发布 Path，避免使用过期快照发出非零命令。
+- focused pytest 为 `14 passed, 1 xfailed`；接口与 BRNE 的 package build/test 均
+  通过（interfaces 4 个 pytest、BRNE 14 passed/1 upstream strict xfail）。xfail 仍是
+  pinned 上游 scalar `traj_sim()` 漏传 `dt`，未修改上游算法核心。
+- 在隔离 `ROS_DOMAIN_ID=72` / `GZ_PARTITION=resilient_nav_brne_task13_final` 中，未改动的
+  Phase 10 `simple_reachable` probe PASS：`/plan` 9 次更新、导航成功、正式 Controller
+  最大 `0.20 m/s` / `0.5069 rad/s`。同一运行的 BRNE Shadow 日志记录 20 次真实输入
+  计算（首个**已预热进程内**观测 `1.620 ms`，其后 `0.064--0.196 ms`）；该轮不是
+  cold-JIT 基准。运行时 `tf2_echo odom map` 得到有限 `odom <- map` 平移约
+  `(-0.074,-0.064)`、yaw `0.007 rad`。`/brne/cmd_vel_raw` 唯一 publisher 是
+  `brne_shadow_node`；正式 `/cmd_vel` 唯一 publisher 是既有 `controller_server`，BRNE
+  不在其 endpoint 中。
+- 动作完成后 adapter 按 stale Path 合同停止转发，观察到 `/brne/cmd_vel_raw` 显式零
+  Twist。动作期间的 shadow 计算由日志直接证明；由于事后 observer 才完成 discovery，
+  未保留一条同时间的 wire-level waypoint/非零 raw 消息。一次重复 probe 在已有运行图
+  上因 `base_footprint -> map` past extrapolation 失败，未把它记为 BRNE 或导航失败；若
+  需逐消息审计，应在下次 fresh process 的 action 前预启 observer。
+
+## 2026-09-03 — BRNE integration side track Task 1.2 shadow node
+
+- `resilient_nav_brne` 新增 `brne_shadow_node`，仅订阅 `/brne/odom`
+  (`nav_msgs/Odometry`)、`/brne/goal_pose` (`geometry_msgs/PoseStamped`) 和
+  `/brne/pedestrians` (`resilient_nav_interfaces/PedestrianArray`)；只发布
+  `/brne/cmd_vel_raw` (`geometry_msgs/Twist`) 与 `/brne/optimal_path`
+  (`nav_msgs/Path`)。未订阅 `/plan`，未发布或订阅正式 `/cmd_vel`，未启动
+  Nav2/Gazebo，也没有 selector、TF adapter 或控制接管。
+- 现有 `resilient_nav_interfaces` 最小扩展 `Pedestrian` (`Header`, `id`, `Pose`,
+  `Twist`) 和 `PedestrianArray` (`Header`, `Pedestrian[]`)，字段固定匹配
+  MurpheyLab/brne `633a5cd` 的接口合同；未引入 `crowd_nav_interfaces`。
+- ROS wrapper 只借鉴上游采样/权重装配，数值 BRNE 核心保持原样；删除 Unitree
+  `angular.z -= 0.040` 漂移补偿，所有 shadow Path 统一为 `odom` frame。三类输入
+  缺失、空行人、非 `odom` frame、非有限数值或超时均 fail safe 发布零 raw Twist。
+- synthetic runtime smoke 不启动 Gazebo/Nav2，先观察到缺输入零 raw Twist，再发布
+  固定 odom、局部 goal 和一名运动行人。实际证据为三个输入均已收到、三次 BRNE
+  compute、Path `odom`/12 poses、`linear.x=0.300000`、`angular.z=-0.621114`，均在
+  `0.30 m/s` 与 `0.80 rad/s` 上限内。首次 JIT 为 `5001.182 ms`，第三次 warm
+  compute 为 `1.872 ms`，只作为当前机器 shadow baseline。
+- `ros2 topic info /brne/cmd_vel_raw -v` 显示唯一 publisher 为
+  `brne_shadow_node`；同一隔离运行中 `/cmd_vel` 为 unknown topic，证明该 node
+  不是正式控制 publisher。相关 package build/test 为 interfaces `6/0/0/0`、BRNE
+  `10/0/0/1 skipped`；唯一 skipped 是 Task 1.1 已记录的 pinned upstream
+  `traj_sim()` strict xfail。
+
+## 2026-09-02 — BRNE integration side track Task 1.1 algorithm core
+
+- 新增最小 `resilient_nav_brne` ament_python 包，仅保留 MurpheyLab/brne
+  `633a5cd` 的 Python/Numba `brne.py` 数值核心；上游来源、路径、revision 和
+  root GPL-3.0 许可证记录在包内 `UPSTREAM.md`。没有引入上游 ROS node、消息、
+  launch、Unitree/ZED 或硬件逻辑。
+- 根现有 `.venv` 安装 `numba 0.61.2` 与 `llvmlite 0.44.0`；复用系统站点
+  `numpy 1.26.4`，没有使用 sudo、apt 或新虚拟环境。
+- 确定性数值测试覆盖 covariance/Cholesky、ensemble trajectory、pairwise cost、
+  BRNE weights 的 shape、finite、归一化和无 in-bounds robot candidate 的 `None`
+  sentinel。直接 pytest 为 4 passed、1 strict xfailed；package colcon 为 5 tests、
+  0 errors、0 failures、1 skipped（该 xfail）。
+- 固定 2 agents × 16 samples × 12 steps probe 中，首次进程内 JIT 调用为
+  `5170.887 ms`，随后 20 次平均为 `0.802 ms`；输出 shape 为 `[2, 16]`、finite，
+  两个 agent 的 weight mean 均为 `1.0`。这是当前机器的开发基线，不代表 ROS
+  runtime latency。
+- 上游标量 `traj_sim()` 调用 `dyn_step()` 时漏传 `dt`，在 pinned source 中会抛出
+  `TypeError`。本任务保留上游核心原样，并用 strict xfail 透明记录；可用的
+  `traj_sim_essemble()` 已通过轨迹数值合同。没有 ROS 接口、Pedestrian.msg、Path
+  adapter、Gazebo/Nav2、`/cmd_vel` 或 Phase 10 参数变更。
+
 ## 2026-08-30 — Phase 10 Task 5.3 engineering acceptance and Task 5.4 Goal Cancel implementation
 
 - Task 5.3 r02 建立了核心 Recovery 因果链：官方 Recovery 实际触发（`recovery_count=1`）、临时 wall 由独立的 45 s sim-time 规则删除、`NavigateToPose SUCCESS/error=0`、Controller 恢复运动并自然停车。删墙后 Global Costmap 无法证明对原 11.32 m 长墙全段 clear；有限 LiDAR range、遮挡与长墙几何使它不能作为核心 Recovery 硬门槛。经用户批准，Task 5.3 以 engineering accepted 收口；不重跑、不改场景或 evaluator。
@@ -896,3 +1369,47 @@
 - 运行时障碍只经官方 `ros_gz_bridge` 的 Gazebo `SpawnEntity` 服务创建；注入器等待 initial `/plan` 与普通 filtered odometry `0.20 m`，不读 GT、不直接写 Costmap、不改变 goal/BT action、也不发布速度。
 - 5.1/5.2 都以 Task 4 detour 为基线；5.1 的绕行箱和 5.2 的横贯墙来自一次性离线 saved-map/footprint 连通性推导。5.2 明确测量无 Recovery baseline 的 ABORT，而不把外部 timeout/cancel 伪装成失败语义。
 - 首次动态运行揭示 injector callback 内嵌套 executor 的实现错误，已改为一次异步 service future；后续 event 链已观测到 Path → motion gate → Spawn ACK → two Costmap detections，但前台执行环境在导航终态文件写出前中止 launch。故 Task 5 尚未 PASS，下一步只应完成一项完整 5.1 fresh trial + offline evaluator，再考虑单次 5.2。
+## 2026-09-04 — BRNE Scene 2 sequential two-pedestrian implementation（人工 Closed-loop 待验收）
+
+- 新增顺序双行人 Scene 2：robot goal 为 map `(2.8, 0)`；Ped1 保持 Scene 1 crossing，Ped2 位于 odom `x=1.8` 并反向 crossing。Ped2 只在 Ped1 的正常 separation release、robot map `x > 0.8` 和 `0.4 s` 场景延迟后启动；stale 或其他非正常 reset 不会解锁 Ped2。
+- passing-side commitment 从 single-pedestrian global side 升级为 owner-ID state，仍只在 ROS-free wrapper proposal 层工作。回归定位到旧 protection 同时依赖 `0.05 m` lateral displacement，导致 commitment 已建立但前几轮 raw nominal 已反向时 proposal 尚未受保护；现在 opposite-turn nominal 超过 `0.2 rad/s` 即按冻结的 `commitment_opposite_scale=0.25` 缩放，不再复用 acquisition deadband 作为 protection 门。owner、side、frozen axes 和四个 5 Hz distance samples 保持；Scene 2 release 使用当前欧氏距离超过 `1.0 m` 且距离窗口持续增大，不使用 CV predicted minimum distance、clear-cycle 或 elapsed-plan timeout。acquire 与 BRNE weighted command 均未改。
+- Gazebo adapter 由 singleton relay 扩展为一个 ID-stable aggregate `PedestrianArray` writer，Scene 1 默认 scalar 参数未变。Scene 2 two sources 映射为 IDs 1/2；Ped2 使用独立 model/topic/frame，保持 world-parent prismatic topology。
+- 定向资源/纯逻辑测试为 `38 passed`；实际 venv `colcon` package 回归为 `64 passed, 1 xfailed`，xfail 仍仅是 pinned scalar `traj_sim()` 的既有缺 dt 问题。install console script shebang 已验证为根 `.venv/bin/python`，Scene 2 launch `--show-args` 成功。fresh process 的默认 `196×25` warm-up 为 `5098.239 ms`，随后双行人 50 次 planning mean/P95/max 为 `31.392/40.083/45.579 ms`，仍低于 `200 ms` 5 Hz 周期。按范围未自动运行最终 Gazebo Closed-loop Demo，人工验收待执行。
+## 2026-09-04 — BRNE Scene 2 pedestrian aggregation startup repair
+
+- 真实 Scene 2 runtime 定位到“行人会动、global Path 可见，但 BRNE red prediction 与 robot control 均缺失”的直接原因：双 source adapter 的空 Python list 参数被 Jazzy rclpy 推断为 `BYTE_ARRAY`，而 launch 覆盖为 string/integer arrays；adapter 因 `InvalidParameterTypeException` 在启动时退出，故 `/brne/pedestrians` 从未发布，shadow node 正确地 fail-closed。
+- 最小修复将 Scene 2 source lists 改为显式 CSV scalar parameters，adapter 解析为 validated source tuple；Scene 1 的原 scalar input contract 不变。没有修改 BRNE core、proposal commitment、mask、control gate 或 5 Hz policy。
+- venv package test 为 `65 passed, 1 xfailed`（xfail 仍为 pinned scalar `traj_sim()`）。在隔离 `arm_brne=false` 的 35 s Gazebo probe 中 adapter 保持存活，shadow node 连续发布至少 79 个双行人 plan，单次 `43–111 ms`，低于 `200 ms`；该 probe 没有创建正式 `/cmd_vel` publisher，未运行最终人工 Closed-loop Demo。
+
+## 2026-09-04 — BRNE Scene 2 relative-separation release
+
+- Scene 2 人工观察确认冻结的 `commitment_opposite_scale=0.25` 已能稳定保持 passing side，但以 `1.0 m` 或 `1.5 m` 固定绝对距离释放会让回归 global path 过晚。release 因而改为 owner-ID commitment 内记录 `min_distance_seen`，并只在当前欧氏距离相对该次交互最近点增加超过 `0.20 m`、且最近四次 5 Hz plan 的距离窗口呈分离趋势时正常释放。
+- `0.20 m` 来自当前 `196×25`、5 Hz Scene 2 ROS-free rollout：候选 `0.15/0.20/0.25 m` 分别约在最近点后 `0.6/0.8/1.0 s` 触发；最终实现回放在最小距离约 `0.592 m`、当前距离约 `0.802 m` 时释放，高于 `0.58 m` close-stop 几何阈值，并比原 `1.0 m` 绝对阈值约提前 `0.8 s`。该离线结果不冒充 Gazebo 人工验收。
+- 未加入 predicted-clear、timeout、cooldown、behind 或 counterfactual 条件；BRNE core、per-ID owner、0.25 proposal protection、weighted control、RNG 与 safety mask 均保持不变。
+- 根 `.venv` 驱动的 scoped build 成功；包回归为 `68 passed, 1 xfailed`，xfail 仍仅是 pinned scalar `traj_sim()` 缺 dt 的既有合同。正式 install 的 `brne_shadow_node` shebang 仍指向根 `.venv/bin/python`，Scene 2 launch `--show-args` 可正常加载；未运行 Gazebo Closed-loop Demo。
+
+## 2026-09-05 — BRNE Scene 1 sensor-input V1
+
+- 新增独立 `brne_sensor_scene1_demo.launch.py`，将 crossing 移到 odom `x=1.0`，robot goal 设为 `(2.0, 0)`；BRNE 输入不再启动 Gazebo odometry adapter。物理行人的真值 odometry 只在 `/scenario/brne_pedestrian/odometry` 内供场景 driver 判断终点，唯一 `/brne/pedestrians` writer 是 LiDAR dynamic-agent node。
+- 感知核心保持 ROS-free：对 `/scan` 做相邻点 clustering，以 scan timestamp 的 `lidar_link -> odom` TF 转换 centroid；跨帧最近邻匹配后，用多个背景 cluster 位移的鲁棒中值扣除公共 drift，再从 6 帧短历史拟合 residual velocity。达到净位移、速度和方向一致性门槛才提升为带稳定 track ID 的 dynamic agent；track 丢失立即删除。
+- 运行探针发现，移动行人会遮挡/揭露较远静态轮廓，使其 centroid 在短时间内呈现与行人近似的速度。V1 保留 6 m 背景用于 drift，却只把 2.0 m 局部交互范围内的 dynamic track 送入 BRNE；该范围覆盖 Scene 1 行人的约 `1.0–1.4 m` 观测距离，并排除实测位于约 `2.85–5.4 m` 的 scan-shadow 假 track。
+- 三次真实 Gazebo 检查均使用 `arm_brne=false`，因此 gate 没有创建 `/cmd_vel` publisher。最终 probe 中，行人启动前 dynamic agent 为 0；启动后约 6 帧建立唯一 track，传感器估计 `vy` 约 `0.21–0.24 m/s`；有效观测段只向 BRNE 发布该 agent，行人结束并丢失后恢复为空。BRNE JIT warm-up 后能持续规划。该证据只验证 sensor-input 链，不代替最终 armed 人工 Closed-loop 验收。
+- 人工验收进一步暴露跨层职责冲突：原始 `/scan` 也进入 Navfn 的 global obstacle layer，导致同一个已确认行人既改变 global path、又作为 BRNE dynamic agent 改变局部 interaction。最小修复让 tracker 保留每个 cluster 的原 scan beam 区间，并额外发布 `/brne/static_scan`：只把当前已确认且实际送入 BRNE 的 dynamic cluster beam 改为有限 `range_max` clearing rays，其余量测不变。
+- Phase 10 planner launch 新增默认仍为 `/scan` 的 planner-only remap 参数，所以既有 Phase 10 行为不变；仅 sensor Scene 1 令 `planner_server/global_costmap` 使用 `/brne/static_scan`，AMCL 与 tracker 仍使用原始 `/scan`。disarmed runtime 中该 topic 为 LiDAR node 单 publisher、global costmap 单 subscriber；行人确认后每帧实际 mask 约 `35–44` beams，BRNE agent/planning 持续有效，crossing 期间 global path 始终保持 80 poses。该结果验证数据流和 path 稳定性，不冒充最终 armed 行为验收。
+
+## 2026-09-06 — BRNE dynamic-cluster global-costmap quarantine
+
+- 审查确认 sensor Demo 的 planner remap 本身正确：只有 global planner 的 obstacle layer 使用
+  `/brne/static_scan`，AMCL/tracker 仍使用原始 `/scan`。真正缺口是过滤门槛原先与 BRNE agent 发布门槛
+  相同，导致新行人在 6 帧 dynamic confirmation 和后续 3 帧 EMA 稳定前仍可能被 global costmap 当作
+  静态障碍；已确认 dynamic track 停止后也不会自动恢复 fixed 身份。
+- 现在所有新出现、尺寸可跟踪的 cluster 从首帧开始进入 Navfn quarantine。连续 6 帧内最大位移不超过
+  `0.02 m` 且 fitted speed 不超过 `0.04 m/s` 才确认为 fixed 并恢复其原始 scan beams；至少 3 帧出现
+  `0.02 m` 净位移、`0.08 m/s` 速度和一致方向时继续隔离，但仍需原 6 帧 dynamic + 3 帧 EMA 门槛才向
+  BRNE 发布。已发布 dynamic track 若连续 8 帧 filtered speed 不超过 `0.04 m/s`，则降级为 fixed。
+  这只改变 global-costmap 输入身份管理，不改变 BRNE core、interaction、event 或 control。
+- sensor Scene 1/Scene 2/Scene 3 共用的 RViz profile 新增 `/global_costmap/costmap` display，允许人工直接
+  对照 global path 与动态行人占据。ROS-free targeted tests 为 `23 passed`；首次 package test 因 sandbox
+  无法写 `~/.ros/log` 产生 3 个环境失败，设置 `ROS_LOG_DIR=/tmp/...` 后重跑为 `136 passed, 1 xfailed`，
+  xfail 仍是 pinned scalar `traj_sim()` 缺 `dt`。`.venv` scoped build 成功，正式 shadow console script
+  shebang 保持根 `.venv/bin/python`。本轮未运行 Gazebo，costmap/path 的动态效果仍待人工验收。

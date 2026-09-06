@@ -49,6 +49,13 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 
 阶段 3 至 9 的既有基线保持完成。**Phase 10 CLOSED — engineering accepted with known limitations**：healthy saved-map 定位、Global/Local Costmap、Navfn、RPP、无 Recovery BT 1 Hz 重规划、GT-isolated benchmark、动态 detour、fully blocked safe failure、官方 Recovery 和 Goal Cancel 均已收口；Task 1–3/Nav2 参数未修改。严格 Task 4 9/9 未达成（8/8 valid PASS）、定位/scan-TF 偏差、长墙终止/clear 观测限制均透明保留。详见 `docs/PHASE10_SUMMARY.md`。fault-aware navigation 与 Agent navigation 尚未实现；RA-1A 仍为离线只读诊断。
 
+**BRNE V1 CLOSED — Scene 1/2/3 unified baseline**：`resilient_nav_brne` 保持 pinned
+MurpheyLab/brne 数学核心，以机器人 LiDAR 建立 dynamic-agent track，并在同一冻结 profile 中统一
+interaction lifecycle、横穿和迎面两类互斥 event、proposal support、time-aligned safety weighting 与
+5 Hz mixed-control 输出。Scene 1 横穿、Scene 2 顺序双横穿和 Scene 3 迎面 Demo 均使用
+`config/brne_v1_runtime.yaml`；Gazebo odometry 输入只保留为隔离验证入口。完整合同和启动方式见
+`docs/BRNE_CLOSED_LOOP_DEMO.md`。
+
 ## 核心方向
 
 项目后续计划围绕以下能力逐步展开：
@@ -77,7 +84,7 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 | ROS 2 工具 | `ros2`、`colcon`、`rosdep` 可用 |
 | ROS 2 基础通信 | 官方 C++ talker 与 Python listener 通信验证通过 |
 | ROS 2 工作空间 | `ros2_ws` 已创建；空构建和 `--symlink-install` 包构建均通过 |
-| 项目 ROS 2 包 | 共 12 包；`resilient_nav_navigation` 是第 12 个 ROS package |
+| 项目 ROS 2 包 | 共 13 包；新增 `resilient_nav_brne` BRNE V1 闭环包 |
 | 项目 ROS 2 节点 | `system_heartbeat` 发布存活消息；`odom_tf_broadcaster` 从 `/odom` 发布 `odom -> base_footprint` |
 | Gazebo | Gazebo Harmonic / Gazebo Sim 8.11.0，可用 |
 | ROS 2—Gazebo 集成 | `/clock`、`/cmd_vel`、`/odom` 和 `/joint_states` 的阶段内定向桥接已验证 |
@@ -92,6 +99,7 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 | 阶段 7.2 相机健康 | 已完成真实 C920 健康监测、真值/评价、runtime 验证和 evaluation config 冻结；339 tests passed / 0 failures |
 | Phase 10 Nav2 基线 | **CLOSED — engineering accepted with known limitations**。官方 Jazzy Nav2 1.3.12 binary；Task 1–3、Task 4（8/8 valid PASS）与 Task 5.1–5.4 已收口。5.2 冻结 Planner-first `NO_VALID_PATH/208` safe failure，5.3 engineering acceptance 保留有限观测 limitation，5.4 native Goal Cancel PASS；未修改 Task 1–3 参数。详见 `docs/PHASE10_SUMMARY.md`。 |
 | Phase 10 Task 4 benchmark | **CLOSED — engineering accepted with a known infrastructure limitation**。GT-free `NavigateToPose` runner、evaluator-only GT recorder、offline evaluator、fresh-process isolation 与 teardown barrier 已实现。最终证据为 8/8 valid navigation PASS（simple 3/3、detour 3/3、multi-turn 2/2 valid）；multi-turn-r03 为 pre-goal infrastructure-invalid，严格 9/9 automated contract 未满足，不再追加动态验证。 |
+| BRNE V1 | **CLOSED — unified Scene 1/2/3 baseline**。pinned BRNE `196×25`、LiDAR dynamic-agent 输入、统一 interaction/crossing/head-on policy、Navfn static-only scan、armed control gate 和 prismatic pedestrians 已冻结；当前结论为人工 Demo baseline，不是统计 benchmark。 |
 | RA-1A Robot Agent | 3 个只读 Tools、strict Runtime、Scorer/Batch 和 8-case Fake pipeline 已完成；Agent package 88 tests，九包 491 tests / 0 failures / 1 skipped |
 
 完整核验结果和复核命令见 [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)。
@@ -113,6 +121,7 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 - [Phase 10 Task 5 Dynamic Obstacles](docs/PHASE10_TASK5_DYNAMIC_OBSTACLES.md)
 - [Phase 10 Final Summary](docs/PHASE10_SUMMARY.md)
 - [Phase 10 Evidence Index](docs/PHASE10_EVIDENCE_INDEX.md)
+- [BRNE V1 Closed-loop Demo](docs/BRNE_CLOSED_LOOP_DEMO.md)
 - [Phase 10 Task 4 multi-turn fresh evidence](docs/PHASE10_TASK4_MULTI_TURN_20260829_HOST.md)
 - [阶段 2 收尾总结](docs/PHASE2_SUMMARY.md)
 - [阶段 3 收尾总结](docs/PHASE3_SUMMARY.md)
@@ -135,4 +144,4 @@ Phase 9 已完成健康二维 LiDAR SLAM baseline：`resilient_nav_slam` Borrow 
 
 ## 近期里程碑
 
-阶段 2 至 9 的已授权基线保持完成。Phase 10 已 CLOSED — engineering accepted with known limitations；Task 1–5.4 与 evidence boundary 均冻结，详见 `docs/PHASE10_SUMMARY.md`。fault-aware/Agent navigation 与通用自主导航仍未实现。RA-1A 已完成离线、只读 Diagnosis pipeline 和 Fake 判卷基础设施；Fake 分数不代表真实 Robot Agent 智力，且当前没有 Live ROS Agent、真实模型结果、Agent Planner、Recovery、全部视觉退化、通用生产阈值、真实硬件定位或容错导航。WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。
+阶段 2 至 9 的已授权基线保持完成。Phase 10 已 CLOSED — engineering accepted with known limitations；Task 1–5.4 与 evidence boundary 均冻结。BRNE V1 的 Scene 1/2/3 sensor-input closed-loop baseline 也已冻结到单一 runtime profile。fault-aware/Agent navigation 与通用自主导航仍未实现。RA-1A 已完成离线、只读 Diagnosis pipeline 和 Fake 判卷基础设施；Fake 分数不代表真实 Robot Agent 智力，且当前没有 Live ROS Agent、真实模型结果、Agent Planner、Recovery、全部视觉退化、通用生产阈值、真实硬件定位或容错导航。WSL USB/IP 帧异常、帧率波动和偏暗画面仍作为已知验证边界保留。

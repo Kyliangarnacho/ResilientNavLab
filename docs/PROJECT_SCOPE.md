@@ -63,6 +63,12 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **阶段 10 Task 4：healthy navigation benchmark（已关闭）。** engineering accepted with a known infrastructure limitation：8/8 valid navigation trials PASS（simple 3/3、detour 3/3、multi-turn 2/2 valid），另一个 multi-turn 在发 goal 前为 infrastructure-invalid；严格 automated 9/9 因而未达成且不再追加动态验证。Task 1–3/Nav2 参数不为此改变。
 - **阶段 10 Task 5（已收口）。** 5.1 可绕行动态障碍 engineering PASS；5.2 r03 的 current offline reassessment PASS，冻结 Planner-first `NO_VALID_PATH/208 → BT ABORT → Controller stop` 无 Recovery safe-failure；5.3 官方 Recovery engineering PASS（独立 45 s Spawn/DeleteEntity 后最终 SUCCESS），全长墙 Global Costmap clear 是有限 LiDAR/遮挡 evidence limitation；5.4 Goal Cancel host r01 PASS（native CANCELED、0 Recovery、Controller/odom/GT stop）。全程不写 Costmap、不读 GT 控制、不改目标或 Task 1–3/Nav2 参数。Phase 10 因此 CLOSED — engineering accepted with known limitations。详见 `docs/PHASE10_SUMMARY.md`。
 
+- **BRNE V1 Scene 1/2/3（已收口）。** pinned BRNE core、LiDAR dynamic-agent 输入、统一
+  interaction lifecycle、互斥横穿/迎面 event、proposal support、time-aligned safety weighting、
+  no-agent path fallback 和 armed control gate 已形成可人工运行的闭环 baseline。三场景共用唯一
+  runtime profile；GT pedestrian adapter 只保留作隔离验证。本阶段不宣称统计 benchmark、真实人体
+  分类、通用人群规划或 fault-aware navigation。
+
 - **阶段 0：初始化。** 明确项目目标和初始范围，记录环境基线，建立仓库协作约束、学习日志和忽略规则。
 - **阶段 1：ROS 2 基础设施。** 安装 ROS 2 Jazzy，验证官方 talker/listener 通信，创建 `ros2_ws` 工作空间和 `resilient_nav_monitor` 包，实现并验证 `system_heartbeat` 节点。
 - **阶段 2：Gazebo 基础仿真与时钟链路。** 安装并验证 Gazebo Harmonic 与 `ros_gz`，创建 `resilient_nav_simulation` 包，完成自定义 SDF 世界、Gazebo 到 ROS 2 的 `/clock` 单向桥接、Python Launch 集成和 `use_sim_time` 暂停/恢复联动验证。
@@ -79,7 +85,7 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - **RA-1A Step 1：Robot Agent Bootstrap（已完成）。** 新增离线 `resilient_nav_agent` 包，以 Pydantic v2 定义 Agent-facing 合同，通过 fail-closed Sanitizer 隔离 FaultStatus/实验真值，构造最小 Incident/Evidence，并通过 Fake completion 使用独立 `Kyliangarnacho/agent-core`；不含 Live ROS、真实 LLM、Tool、Planner 或 Recovery。
 - **RA-1A Offline Diagnosis（已完成）。** 在 Step 1 合同上接入 agent-core Tool Runtime，完成三个 sanitized-context-only 只读 Tool、strict DiagnosisResult service、OfflineDiagnosisRun、deterministic Scorer 与 Batch Report；不含 Live ROS、真实模型结论、Planner 或 Recovery。
 
-当前工作空间已有十二个 ROS 2 软件包：
+当前工作空间已有十三个 ROS 2 软件包：
 
 - `resilient_nav_monitor`：包含 `system_heartbeat` 和 `odom_tf_broadcaster` 节点。
 - `resilient_nav_simulation`：包含阶段 2 的 Gazebo 世界、仅声明 `/clock` 的静态 bridge 配置，以及阶段 3 在 Launch 中动态建立的机器人基础运动 bridge、模型生成、Gazebo/RViz Demo、`motion_test` 工具和静态/单元测试。
@@ -93,13 +99,16 @@ ResilientNavLab 面向移动机器人在传感器异常、退化或失效条件�
 - `resilient_nav_agent`：包含 RA-1A 的纯 Python Schema、Sanitizer、Incident/Evidence builder、Robot DomainExtension、只读 Tools、Offline Runtime、Benchmark/Batch 和外部 agent-core Fake integration；当前没有 ROS Adapter 或在线节点入口。
 - `resilient_nav_slam`：包含 Phase 9 Slam Toolbox launch、冻结 occupancy/posegraph assets、mapping/localization probes 与 evaluator-only persisted-map 评价工具。
 - `resilient_nav_navigation`：包含 Phase 10 healthy Nav2 localization wrapper、Map-Server-only 与 Gazebo/AMCL smoke、明确 initial-pose helper、只读 readiness probe、Global/Local Costmap 参数与 probes、Navfn/RPP/无 Recovery baseline BT、Task 4 benchmark，以及 Task 5 官方 Gazebo SpawnEntity/DeleteEntity overlay、opt-in 官方 Behavior Server/Recovery BT profile 和离线安全 evaluator；不含 fault-aware autonomous navigation。
+- `resilient_nav_brne`：包含 pinned BRNE core 的 Numba wrapper、LiDAR dynamic-agent tracker、
+  static-only Navfn scan、interaction/crossing/head-on policy、显式 control gate、约束行人模型及
+  Scene 1/2/3 与 RPP 对照入口；不含通用 perception 或统计 benchmark。
 
 当前明确未完成：
 
 - ROS 2 `/cmd_vel`、`/odom` 和 `/joint_states` 已连接 Gazebo，短时直行、原地旋转、圆弧及停车已验证；尚未系统验收速度精度、长距离累计误差、轨迹跟踪或控制限制。
 - Gazebo 原生 TF/位姿输出没有桥接；ROS TF 由 `odom_tf_broadcaster` 只根据桥接后的 `/odom` 单独发布，避免重复来源。
 - IMU、二维 Lidar 和 RGB-D 基础接口已建立；IMU/wheel/Lidar 首批故障模型已完成；PointCloud2 bridge、RGB-D 故障模型和长期性能验收尚未完成。
-- wheel odometry + IMU 的 odom-frame EKF 基线已建立；健康 saved-map AMCL 全局定位、Global/Local Costmap、Navfn path、受限 RPP FollowPath 与固定健康目标的 BT `NavigateToPose` 已完成；真实硬件定位、动态障碍与通用自主导航尚未开始。
+- wheel odometry + IMU 的 odom-frame EKF 基线已建立；健康 saved-map AMCL 全局定位、Global/Local Costmap、Navfn/RPP/BT 与 BRNE V1 动态行人 Demo 已完成；真实硬件定位、统计化动态交互 benchmark、fault-aware 与通用自主导航尚未完成。
 - 可复现故障注入与健康评估闭环已完成；健康感知 policy、ROS measurement adapter 与独立 adaptive EKF 已实现并已有受控 benchmark；容错导航尚未开发。
 - 阶段 7.1 已完成 C920 的正式 CameraInfo、旧 K/D 复用、`image_proc` 去畸变和 image_raw / camera_info / image_rect 的 rosbag 无相机回放；真实机器人部署、相机再标定、TF、修改真实数据的相机故障模型和真实硬件定位尚未开始。阶段 7.2 的 freeze 专项源仅生成隔离测试输入，manual event 仅生成真值标签。
 - 阶段 7.2 已完成保守的 stale/freeze/underexposed/overexposed/blurred/low-information v1、人工 `FaultStatus` 时间窗、camera evaluator 和恢复评价接口；冻结 config 只适用于本阶段评价，不构成通用生产阈值。

@@ -57,6 +57,10 @@ def test_launch_is_scoped_planner_only_and_owns_no_second_costmap():
     assert 'nav2_costmap_2d' not in source
     assert 'phase10_global_costmap_smoke' not in source
     assert 'phase10_costmaps_smoke' not in source
+    assert "DeclareLaunchArgument('planner_scan_topic', default_value='/scan')" in source
+    assert "DeclareLaunchArgument('planner_plan_topic', default_value='/plan')" in source
+    assert "('/scan', planner_scan_topic)" in source
+    assert "('/plan', planner_plan_topic)" in source
     for forbidden in ('controller_server', 'bt_navigator', 'NavigateToPose', 'cmd_vel'):
         assert forbidden not in source
 

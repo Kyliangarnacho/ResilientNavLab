@@ -1,0 +1,79 @@
+<?xml version="1.0"?>
+<sdf version="1.10">
+  <!-- Spawned dynamically into the frozen Phase 9 world by the BRNE demo. -->
+  <model name="brne_pedestrian">
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <allow_auto_disable>false</allow_auto_disable>
+    <link name="body">
+      <!-- This collision-visible Scene 1 obstacle is not a free rigid body.
+           The world-parent prismatic joint below admits only world-Y motion,
+           structurally fixing X/Z and every orientation component. -->
+      <inertial>
+        <mass>40.0</mass>
+        <inertia>
+          <ixx>5.1240</ixx>
+          <iyy>5.1240</iyy>
+          <izz>0.6480</izz>
+        </inertia>
+      </inertial>
+      <collision name="body_collision">
+        <geometry>
+          <cylinder><radius>0.18</radius><length>1.20</length></cylinder>
+        </geometry>
+        <surface>
+          <friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction>
+        </surface>
+      </collision>
+      <visual name="body_visual">
+        <geometry>
+          <cylinder><radius>0.18</radius><length>1.20</length></cylinder>
+        </geometry>
+        <material>
+          <ambient>0.85 0.22 0.12 1</ambient>
+          <diffuse>0.85 0.22 0.12 1</diffuse>
+        </material>
+      </visual>
+    </link>
+
+    <!-- The model spawn pose is this joint's zero configuration.  The launch
+         creates it at world (-3.0, -4.5, 0.60, yaw=pi/2), so the permitted
+         The shared joint permits [0, 3] m for the longer sensor Scene 1;
+         the original demos still stop at 2 m through their driver target.
+         Dynamic model SDF does not resolve a world frame in its local graph;
+         its fixed spawn yaw=pi/2 maps model +X exactly to world +Y. -->
+    <joint name="crossing_joint" type="prismatic">
+      <parent>world</parent>
+      <child>body</child>
+      <axis>
+        <xyz expressed_in="__model__">1 0 0</xyz>
+        <limit>
+          <lower>0.0</lower>
+          <upper>3.0</upper>
+          <effort>1000.0</effort>
+          <velocity>0.25</velocity>
+        </limit>
+      </axis>
+    </joint>
+
+    <plugin
+      filename="gz-sim-joint-controller-system"
+      name="gz::sim::systems::JointController">
+      <joint_name>crossing_joint</joint_name>
+      <topic>/model/brne_pedestrian/joint/crossing_joint/cmd_vel</topic>
+    </plugin>
+    <plugin
+      filename="gz-sim-odometry-publisher-system"
+      name="gz::sim::systems::OdometryPublisher">
+      <!-- The canonical body remains the published child frame. The existing
+           adapter validates this child/body Twist contract at the ROS edge. -->
+      <odom_frame>gazebo_world</odom_frame>
+      <robot_base_frame>brne_pedestrian</robot_base_frame>
+      <!-- Publish full pose so the standalone verifier can observe the locked
+           Z/roll/pitch state; the planar BRNE adapter still consumes x/y/yaw. -->
+      <dimensions>3</dimensions>
+      <odom_publish_frequency>20</odom_publish_frequency>
+      <odom_topic>/model/brne_pedestrian/odometry</odom_topic>
+    </plugin>
+  </model>
+</sdf>

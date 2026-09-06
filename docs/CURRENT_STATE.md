@@ -16,6 +16,15 @@
 
 - Phase 10 已 **CLOSED — engineering accepted with known limitations**。Task 5.1 dynamic detour engineering PASS；Task 5.2 r03 经当前 offline reassessment PASS，冻结为 Planner-first `NO_VALID_PATH/208 → BT ABORT → Controller stop` 的无 Recovery safe-failure baseline；Task 5.3 r02 engineering PASS（官方 Recovery、独立 45 s DeleteEntity、最终 SUCCESS/Controller 恢复），全长墙 Global Costmap clear 仅为有限 LiDAR 观测 limitation；Task 5.4 host r01 PASS（native `CANCELED`、0 Recovery、Controller/odom/GT stop、cleanup/evidence 完整）。Task 4 保持 8/8 valid PASS、1 pre-goal infrastructure-invalid 的 engineering closure。没有修改 Planner/Controller/Costmap/AMCL 或 Task 3 baseline 参数。详见 `docs/PHASE10_SUMMARY.md` 与 `docs/PHASE10_EVIDENCE_INDEX.md`。
 
+- BRNE V1 已 **CLOSED — unified Scene 1/2/3 baseline**。第 13 个 ROS package
+  `resilient_nav_brne` 保持 pinned MurpheyLab/brne core 与官方 `196×25` runtime algorithm profile；
+  正式 Demo 的 pedestrian state 来自 timestamped LiDAR clustering/tracking，而非 Gazebo truth。
+  interaction lifecycle、互斥 crossing/head-on event、proposal support、time-aligned safety weighting、
+  no-agent Navfn waypoint fallback 和 armed `/cmd_vel` gate 已冻结在唯一
+  `config/brne_v1_runtime.yaml`。Scene 1/2/3 的 planner/controller 参数一致，仅场景几何与行人运动不同。
+  历史 passing-side state 和 global-path/nominal freeze 实验代码已移除；GT odometry adapter 仅保留为
+  非 benchmark 的隔离验证工具。详见 `docs/BRNE_CLOSED_LOOP_DEMO.md`。
+
 - Phase 8 里程碑 1–4 已完成接口、策略、measurement adapter 与独立 adaptive EKF：`FusionStatus` 已生成；`FusionPolicy` 只接收 sanitized wheel/IMU health 与显式配置，输出测量接纳、协方差倍率、wheel yaw fallback、状态、结构化 reasons 与置信度。`measurement_adapter` 订阅 wheel/IMU 输入及 `SensorHealth`，只发布匿名化 `/fusion/input/*` 与 `/fusion/status`，并在非法协方差时 fail closed。`adaptive_ekf.yaml` 仅订阅这三个 fusion input，固定发布 `/odometry/adaptive` 且 `publish_tf=false`；它不读取 `FaultStatus` 或 scenario，也没有 TF 或控制能力。包级 build 与 35 个 pytest 均通过。
 
 - Phase 8 补充了自终止 healthy smoke：实际证据记录 wheel 84、IMU 235、adaptive odometry 14 个有效样本和 4 次 `FusionStatus.NOMINAL`。evaluator-only Ground Truth channel 已实际确认 Gazebo `/model/resilient_nav_robot/tf` 的 `gz.msgs.Pose_V` source，单向桥接并 fail-closed 转为 `/evaluation/ground_truth_pose`；运行验收确认 `PoseStamped` 持续约 108 Hz、`frame_id=odom`、有效时间戳与合理的初始位姿。新增只读 Localization Evaluator：只对 Ground Truth、`/odometry/faulted` 和 `/odometry/adaptive` 作时间对齐，向 `/evaluation/localization_metrics` 输出 fixed/adaptive 的位置与 yaw 误差指标及 adaptive benefit；不回流进入 estimator、health 或 fusion。当前 fusion targeted pytest 为 44 项通过。
