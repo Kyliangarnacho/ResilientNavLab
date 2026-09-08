@@ -34,7 +34,12 @@ def generate_launch_description():
         executable='measurement_adapter',
         name='measurement_adapter',
         output='screen',
-        parameters=[{'use_sim_time': True}],
+        parameters=[{
+            'use_sim_time': True,
+            'rf_model_directory': str(
+                fusion_share / 'models' / 'physical_reliability_rf_v2'
+            ),
+        }],
     )
     adaptive_ekf = Node(
         package='robot_localization',

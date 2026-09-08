@@ -12,6 +12,7 @@ setup(
     version='0.0.0',
     packages=find_packages(exclude=['test']),
     py_modules=[
+        'amcl_crowd_oscillator',
         'amcl_evaluator',
         'costmap_contract',
         'costmap_experiment_evaluator',
@@ -62,6 +63,14 @@ setup(
             os.path.join('share', package_name, 'models', 'phase10_task5_blocking_wall'),
             glob(os.path.join('models', 'phase10_task5_blocking_wall', '*')),
         ),
+        (
+            os.path.join('share', package_name, 'models', 'amcl_crowd_pedestrian'),
+            glob(os.path.join('models', 'amcl_crowd_pedestrian', '*')),
+        ),
+        (
+            os.path.join('share', package_name, 'models', 'amcl_fixed_obstacle'),
+            glob(os.path.join('models', 'amcl_fixed_obstacle', '*')),
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -90,6 +99,7 @@ setup(
             'phase10_navigation_benchmark_batch = navigation_benchmark_batch:main',
             'phase10_navigation_obstacle_event_injector = navigation_obstacle_event_injector:main',
             'phase10_navigation_robustness_trial = navigation_robustness_trial:main',
+            'amcl_crowd_oscillator = amcl_crowd_oscillator:main',
         ],
     },
 )

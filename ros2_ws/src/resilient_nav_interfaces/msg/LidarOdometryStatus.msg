@@ -1,0 +1,6 @@
+std_msgs/Header header
+bool valid
+geometry_msgs/TwistWithCovariance velocity
+float32 icp_rmse_m
+float32 icp_inlier_ratio
+float32 icp_observability

@@ -12,6 +12,9 @@ PACKAGE_XML_PATH = PACKAGE_ROOT / 'package.xml'
 CMAKE_PATH = PACKAGE_ROOT / 'CMakeLists.txt'
 EKF_CONFIG_PATH = PACKAGE_ROOT / 'config' / 'ekf.yaml'
 EKF_LAUNCH_PATH = PACKAGE_ROOT / 'launch' / 'phase4_ekf_demo.launch.py'
+UNCERTAINTY_NODE_PATH = (
+    PACKAGE_ROOT / 'scripts' / 'wheel_odometry_uncertainty.py'
+)
 
 
 def ekf_parameters():
@@ -50,15 +53,15 @@ def test_ekf_yaml_uses_local_planar_frames_and_sim_time():
     assert parameters['base_link_frame'] == 'base_footprint'
 
 
-def test_ekf_inputs_use_only_wheel_vx_and_imu_yaw_rate():
-    """The minimal fusion vector should avoid duplicate pose information."""
+def test_ekf_anchors_yaw_with_wheel_pose_and_uses_independent_imu_yaw_rate():
+    """Absolute local yaw must correct integration loss around rotation edges."""
     parameters = ekf_parameters()
 
     assert parameters['odom0'] == '/wheel/odometry'
     assert parameters['imu0'] == '/imu/data'
     assert parameters['odom0_config'] == [
         False, False, False,
-        False, False, False,
+        False, False, True,
         True, False, False,
         False, False, False,
         False, False, False,
@@ -81,8 +84,18 @@ def test_ekf_launch_reuses_rgbd_and_switches_tf_ownership():
     ast.parse(launch_source)
 
     assert "'phase4_rgbd_demo.launch.py'" in launch_source
-    assert "'odom_ros_topic': '/wheel/odometry'" in launch_source
+    assert "'odom_ros_topic': '/wheel/odometry/raw'" in launch_source
     assert "'start_odom_tf_broadcaster': 'false'" in launch_source
+    assert "executable='wheel_odometry_uncertainty'" in launch_source
+    uncertainty_source = UNCERTAINTY_NODE_PATH.read_text(encoding='utf-8')
+    assert "declare_parameter('yaw_quantization_step_rad', 0.002)" in (
+        uncertainty_source
+    )
+    assert (
+        "declare_parameter('yaw_measurement_noise_stddev_rad', 0.0005)"
+        in uncertainty_source
+    )
+    assert "declare_parameter('random_seed', 240907)" in uncertainty_source
     assert "package='robot_localization'" in launch_source
     assert "executable='ekf_node'" in launch_source
     assert "name='ekf_filter_node'" in launch_source
@@ -94,3 +107,4 @@ def test_launch_and_config_names_match_installed_entrypoint():
     """The requested launch and configuration filenames should be exact."""
     assert EKF_CONFIG_PATH.is_file()
     assert EKF_LAUNCH_PATH.name == 'phase4_ekf_demo.launch.py'
+    assert UNCERTAINTY_NODE_PATH.is_file()

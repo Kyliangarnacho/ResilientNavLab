@@ -43,9 +43,17 @@ def generate_launch_description():
             'spawn_y': spawn_y,
             'spawn_z': spawn_z,
             'spawn_yaw': spawn_yaw,
-            'odom_ros_topic': '/wheel/odometry',
+            'odom_ros_topic': '/wheel/odometry/raw',
             'start_odom_tf_broadcaster': 'false',
         }.items(),
+    )
+
+    wheel_odometry_uncertainty = Node(
+        package='resilient_nav_localization',
+        executable='wheel_odometry_uncertainty',
+        name='wheel_odometry_uncertainty',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
     )
 
     ekf = Node(
@@ -89,5 +97,6 @@ def generate_launch_description():
             description='Initial robot yaw in radians.',
         ),
         rgbd_demo,
+        wheel_odometry_uncertainty,
         ekf,
     ])

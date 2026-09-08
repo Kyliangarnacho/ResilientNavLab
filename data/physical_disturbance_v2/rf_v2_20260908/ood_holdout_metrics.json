@@ -1,0 +1,191 @@
+{
+  "dataset_role": "FINAL_ACCEPTANCE_OOD_HOLDOUT",
+  "evaluated_after_model_selection": true,
+  "evaluation_schema_version": 1,
+  "targets": {
+    "imu_yaw_rate_reliable": {
+      "accuracy": 1.0,
+      "average_precision_unreliable": null,
+      "balanced_accuracy": 1.0,
+      "brier_score_reliable": 6.399569961080896e-08,
+      "class_support": {
+        "reliable": 118,
+        "unreliable": 0
+      },
+      "classification_report": {
+        "accuracy": 1.0,
+        "macro avg": {
+          "f1-score": 0.5,
+          "precision": 0.5,
+          "recall": 0.5,
+          "support": 118.0
+        },
+        "reliable": {
+          "f1-score": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 118.0
+        },
+        "unreliable": {
+          "f1-score": 0.0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "support": 0.0
+        },
+        "weighted avg": {
+          "f1-score": 1.0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "support": 118.0
+        }
+      },
+      "confusion_matrix": {
+        "columns": "predicted labels",
+        "label_names": [
+          "unreliable",
+          "reliable"
+        ],
+        "labels": [
+          0,
+          1
+        ],
+        "matrix": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            118
+          ]
+        ],
+        "rows": "true labels"
+      },
+      "roc_auc_reliable": null,
+      "window_count": 118
+    },
+    "wheel_rotation_reliable": {
+      "accuracy": 0.9745762711864406,
+      "average_precision_unreliable": 1.0,
+      "balanced_accuracy": 0.9851485148514851,
+      "brier_score_reliable": 0.013289893131416082,
+      "class_support": {
+        "reliable": 101,
+        "unreliable": 17
+      },
+      "classification_report": {
+        "accuracy": 0.9745762711864406,
+        "macro avg": {
+          "f1-score": 0.9519217710172485,
+          "precision": 0.925,
+          "recall": 0.9851485148514851,
+          "support": 118.0
+        },
+        "reliable": {
+          "f1-score": 0.9849246231155779,
+          "precision": 1.0,
+          "recall": 0.9702970297029703,
+          "support": 101.0
+        },
+        "unreliable": {
+          "f1-score": 0.918918918918919,
+          "precision": 0.85,
+          "recall": 1.0,
+          "support": 17.0
+        },
+        "weighted avg": {
+          "f1-score": 0.9754153267482627,
+          "precision": 0.9783898305084746,
+          "recall": 0.9745762711864406,
+          "support": 118.0
+        }
+      },
+      "confusion_matrix": {
+        "columns": "predicted labels",
+        "label_names": [
+          "unreliable",
+          "reliable"
+        ],
+        "labels": [
+          0,
+          1
+        ],
+        "matrix": [
+          [
+            17,
+            0
+          ],
+          [
+            3,
+            98
+          ]
+        ],
+        "rows": "true labels"
+      },
+      "roc_auc_reliable": 1.0,
+      "window_count": 118
+    },
+    "wheel_translation_reliable": {
+      "accuracy": 0.9576271186440678,
+      "average_precision_unreliable": 0.9964407727565621,
+      "balanced_accuracy": 0.9691358024691358,
+      "brier_score_reliable": 0.02121457771958937,
+      "class_support": {
+        "reliable": 81,
+        "unreliable": 37
+      },
+      "classification_report": {
+        "accuracy": 0.9576271186440678,
+        "macro avg": {
+          "f1-score": 0.9524308635007659,
+          "precision": 0.9404761904761905,
+          "recall": 0.9691358024691358,
+          "support": 118.0
+        },
+        "reliable": {
+          "f1-score": 0.9681528662420382,
+          "precision": 1.0,
+          "recall": 0.9382716049382716,
+          "support": 81.0
+        },
+        "unreliable": {
+          "f1-score": 0.9367088607594937,
+          "precision": 0.8809523809523809,
+          "recall": 1.0,
+          "support": 37.0
+        },
+        "weighted avg": {
+          "f1-score": 0.9582933052009013,
+          "precision": 0.9626715092816789,
+          "recall": 0.9576271186440678,
+          "support": 118.0
+        }
+      },
+      "confusion_matrix": {
+        "columns": "predicted labels",
+        "label_names": [
+          "unreliable",
+          "reliable"
+        ],
+        "labels": [
+          0,
+          1
+        ],
+        "matrix": [
+          [
+            37,
+            0
+          ],
+          [
+            5,
+            76
+          ]
+        ],
+        "rows": "true labels"
+      },
+      "roc_auc_reliable": 0.9983316649983316,
+      "window_count": 118
+    }
+  },
+  "training_prohibited": true
+}

@@ -34,7 +34,7 @@ def generate_launch_description():
             'spawn_x': '-3.5', 'spawn_y': '-3.5', 'spawn_yaw': '0.0',
             'auto_initial_pose': 'true',
             'initial_pose_x': '0.0', 'initial_pose_y': '0.0', 'initial_pose_yaw': '0.0',
-            'manage_planner': 'true', 'planner_scan_topic': '/brne/static_scan',
+            'manage_planner': 'true', 'global_obstacle_layer_enabled': 'false',
             'use_rviz': 'false', 'log_level': log_level,
         }.items(),
     )

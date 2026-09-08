@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 import math
 import time
 
@@ -12,18 +11,16 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from rclpy.time import Time
+from resilient_nav_interfaces.msg import Pedestrian, PedestrianArray
 from sensor_msgs.msg import LaserScan
 from tf2_ros import Buffer, TransformListener
 from visualization_msgs.msg import Marker, MarkerArray
 
-from resilient_nav_interfaces.msg import Pedestrian, PedestrianArray
-
 from .lidar_dynamic_tracker import (
-    LidarDynamicTracker,
-    LidarTrackerConfig,
     agents_within_range,
     clusters_from_scan,
-    ranges_without_dynamic_agents,
+    LidarDynamicTracker,
+    LidarTrackerConfig,
     transform_clusters,
 )
 
@@ -38,7 +35,6 @@ class BrneLidarDynamicAgentNode(Node):
         self.declare_parameter('output_frame', 'odom')
         self.declare_parameter('output_topic', '/brne/pedestrians')
         self.declare_parameter('marker_topic', '/brne/sensor_dynamic_agents')
-        self.declare_parameter('filtered_scan_topic', '/brne/static_scan')
         self.declare_parameter('maximum_scan_age_sec', 0.25)
         self.declare_parameter('transform_timeout_sec', 0.05)
         self.declare_parameter('cluster_gap', 0.12)
@@ -50,8 +46,7 @@ class BrneLidarDynamicAgentNode(Node):
         self.declare_parameter('minimum_common_matches', 3)
         self.declare_parameter('history_size', 6)
         self.declare_parameter('minimum_confirmations', 6)
-        self.declare_parameter('candidate_minimum_confirmations', 3)
-        self.declare_parameter('candidate_minimum_displacement', 0.02)
+        self.declare_parameter('common_motion_inlier_distance', 0.02)
         self.declare_parameter('dynamic_minimum_speed', 0.08)
         self.declare_parameter('dynamic_minimum_displacement', 0.04)
         self.declare_parameter('direction_consistency', 0.75)
@@ -103,11 +98,8 @@ class BrneLidarDynamicAgentNode(Node):
             minimum_confirmations=int(
                 self.get_parameter('minimum_confirmations').value
             ),
-            candidate_minimum_confirmations=int(
-                self.get_parameter('candidate_minimum_confirmations').value
-            ),
-            candidate_minimum_displacement=float(
-                self.get_parameter('candidate_minimum_displacement').value
+            common_motion_inlier_distance=float(
+                self.get_parameter('common_motion_inlier_distance').value
             ),
             dynamic_minimum_speed=float(
                 self.get_parameter('dynamic_minimum_speed').value
@@ -151,11 +143,6 @@ class BrneLidarDynamicAgentNode(Node):
         )
         self.marker_publisher = self.create_publisher(
             MarkerArray, str(self.get_parameter('marker_topic').value), 10
-        )
-        self.filtered_scan_publisher = self.create_publisher(
-            LaserScan,
-            str(self.get_parameter('filtered_scan_topic').value),
-            qos_profile_sensor_data,
         )
         self._pending_scan: LaserScan | None = None
         self._last_log_at = float('-inf')
@@ -228,11 +215,6 @@ class BrneLidarDynamicAgentNode(Node):
             observer_position=(translation.x, translation.y),
             maximum_range=self.maximum_dynamic_agent_range,
         )
-        costmap_exclusions = agents_within_range(
-            self.tracker.costmap_exclusion_agents(),
-            observer_position=(translation.x, translation.y),
-            maximum_range=self.maximum_dynamic_agent_range,
-        )
         output = PedestrianArray()
         output.header = scan.header
         output.header.frame_id = self.output_frame
@@ -250,15 +232,6 @@ class BrneLidarDynamicAgentNode(Node):
             output.pedestrians.append(pedestrian)
         self.publisher.publish(output)
         self.marker_publisher.publish(_agent_markers(output))
-        filtered_scan = deepcopy(scan)
-        clear_range = math.nextafter(float(scan.range_max), 0.0)
-        filtered_scan.ranges = ranges_without_dynamic_agents(
-            scan.ranges,
-            costmap_exclusions,
-            clear_range=clear_range,
-        )
-        self.filtered_scan_publisher.publish(filtered_scan)
-        masked_beams = _changed_range_count(scan.ranges, filtered_scan.ranges)
 
         now_wall = time.monotonic()
         if now_wall - self._last_log_at >= 1.0:
@@ -267,26 +240,14 @@ class BrneLidarDynamicAgentNode(Node):
                 f'clusters={diagnostics.cluster_count}, '
                 f'matches={diagnostics.matched_cluster_count}, '
                 f'common_drift={diagnostics.common_drift}, '
+                f'common_rotation_rad={diagnostics.common_rotation_rad:.5f}, '
                 f'tracks={diagnostics.track_count}, '
                 f'dynamic_candidates={diagnostics.dynamic_agent_count}, '
                 f'dynamic_agents={len(agents)}, '
-                f'costmap_exclusions={len(costmap_exclusions)}, '
-                f'masked_beams={masked_beams}, '
                 'states='
                 f'{[(agent.track_id, agent.position, agent.velocity) for agent in agents]}'
             )
             self._last_log_at = now_wall
-
-
-def _changed_range_count(before, after) -> int:
-    return sum(
-        1
-        for old_value, new_value in zip(before, after)
-        if not (
-            old_value == new_value
-            or (math.isnan(old_value) and math.isnan(new_value))
-        )
-    )
 
 
 def _yaw_from_quaternion(quaternion) -> float | None:

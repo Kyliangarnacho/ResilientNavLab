@@ -1,0 +1,25 @@
+lidar_odometry:
+  ros__parameters:
+    use_sim_time: true
+    scan_topic: /faulted/scan
+    output_topic: /lidar/odometry/twist
+    status_topic: /lidar/odometry/status
+    status_topic: /lidar/odometry/status
+    min_points: 40
+    max_points: 180
+    max_iterations: 12
+    max_correspondence_distance_m: 0.35
+    robust_mad_scale: 3.5
+    robust_residual_floor_m: 0.02
+    trim_fraction: 0.80
+    min_inlier_ratio: 0.45
+    max_rmse_m: 0.08
+    max_translation_m: 0.20
+    max_rotation_rad: 0.25
+    normal_neighbor_max_distance_m: 0.50
+    normal_max_curvature_ratio: 0.20
+    min_point_to_line_observability: 0.05
+    point_to_line_damping: 1.0e-6
+    minimum_linear_variance: 0.0025
+    maximum_scan_interval_sec: 0.50
+    maximum_linear_speed_mps: 1.0

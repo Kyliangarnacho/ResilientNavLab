@@ -1,0 +1,170 @@
+{
+  "candidates": [
+    {
+      "candidate": "baseline_v1_hyperparams",
+      "random_forest": {
+        "bootstrap": true,
+        "class_weight": "balanced_subsample",
+        "criterion": "gini",
+        "decision_threshold": 0.5,
+        "max_depth": 12,
+        "max_features": "sqrt",
+        "min_samples_leaf": 2,
+        "min_samples_split": 4,
+        "n_estimators": 500,
+        "n_jobs": 1,
+        "probability_contract": "class 1 predict_proba is reliability; raw and uncalibrated",
+        "random_state": 42,
+        "selected_decision_threshold": {
+          "imu_yaw_rate_reliable": 0.9399999999999996,
+          "wheel_rotation_reliable": 0.7199999999999998,
+          "wheel_translation_reliable": 0.8099999999999996
+        },
+        "threshold_grid_max": 0.95,
+        "threshold_grid_min": 0.05,
+        "threshold_grid_step": 0.005
+      },
+      "test_report_only_not_used_for_selection": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.9918831168831168,
+          "unreliable_f1": 0.6153846153846154
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9649442950441798,
+          "unreliable_f1": 0.8505747126436781
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.912399492170969,
+          "unreliable_f1": 0.75
+        }
+      },
+      "validation": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.8941348973607038,
+          "unreliable_f1": 0.7272727272727273
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9770642201834863,
+          "unreliable_f1": 0.7619047619047619
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.9771341463414633,
+          "unreliable_f1": 0.7540983606557377
+        }
+      },
+      "validation_mean_balanced_accuracy": 0.9494444212952179
+    },
+    {
+      "candidate": "regularized_depth8_leaf3",
+      "random_forest": {
+        "bootstrap": true,
+        "class_weight": "balanced_subsample",
+        "criterion": "gini",
+        "decision_threshold": 0.5,
+        "max_depth": 8,
+        "max_features": "sqrt",
+        "min_samples_leaf": 3,
+        "min_samples_split": 6,
+        "n_estimators": 700,
+        "n_jobs": 1,
+        "probability_contract": "class 1 predict_proba is reliability; raw and uncalibrated",
+        "random_state": 42,
+        "selected_decision_threshold": {
+          "imu_yaw_rate_reliable": 0.9349999999999996,
+          "wheel_rotation_reliable": 0.6849999999999997,
+          "wheel_translation_reliable": 0.7449999999999997
+        },
+        "threshold_grid_max": 0.95,
+        "threshold_grid_min": 0.05,
+        "threshold_grid_step": 0.005
+      },
+      "test_report_only_not_used_for_selection": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.9918831168831168,
+          "unreliable_f1": 0.6153846153846154
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9631194775259316,
+          "unreliable_f1": 0.8409090909090909
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.9159966144731273,
+          "unreliable_f1": 0.7692307692307693
+        }
+      },
+      "validation": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.8941348973607038,
+          "unreliable_f1": 0.7272727272727273
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9770642201834863,
+          "unreliable_f1": 0.7619047619047619
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.975609756097561,
+          "unreliable_f1": 0.7419354838709677
+        }
+      },
+      "validation_mean_balanced_accuracy": 0.9489362912139171
+    },
+    {
+      "candidate": "interaction_depth16_leaf1_features0p5",
+      "random_forest": {
+        "bootstrap": true,
+        "class_weight": "balanced_subsample",
+        "criterion": "gini",
+        "decision_threshold": 0.5,
+        "max_depth": 16,
+        "max_features": 0.5,
+        "min_samples_leaf": 1,
+        "min_samples_split": 4,
+        "n_estimators": 700,
+        "n_jobs": 1,
+        "probability_contract": "class 1 predict_proba is reliability; raw and uncalibrated",
+        "random_state": 42,
+        "selected_decision_threshold": {
+          "imu_yaw_rate_reliable": 0.8249999999999996,
+          "wheel_rotation_reliable": 0.8049999999999997,
+          "wheel_translation_reliable": 0.8349999999999996
+        },
+        "threshold_grid_max": 0.95,
+        "threshold_grid_min": 0.05,
+        "threshold_grid_step": 0.005
+      },
+      "test_report_only_not_used_for_selection": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.9918831168831168,
+          "unreliable_f1": 0.6153846153846154
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9612946600076835,
+          "unreliable_f1": 0.8314606741573034
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.7968683876428269,
+          "unreliable_f1": 0.575
+        }
+      },
+      "validation": {
+        "imu_yaw_rate_reliable": {
+          "balanced_accuracy": 0.6970674486803519,
+          "unreliable_f1": 0.5
+        },
+        "wheel_rotation_reliable": {
+          "balanced_accuracy": 0.9709480122324159,
+          "unreliable_f1": 0.7164179104477612
+        },
+        "wheel_translation_reliable": {
+          "balanced_accuracy": 0.9786585365853658,
+          "unreliable_f1": 0.7666666666666667
+        }
+      },
+      "validation_mean_balanced_accuracy": 0.8822246658327112
+    }
+  ],
+  "selected_candidate": "baseline_v1_hyperparams",
+  "selection_metric": "mean validation balanced_accuracy across the three targets",
+  "selection_uses_ood": false,
+  "selection_uses_test": false
+}

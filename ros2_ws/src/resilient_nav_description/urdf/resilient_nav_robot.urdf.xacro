@@ -17,6 +17,10 @@
   <xacro:property name="wheel_y" value="${base_width / 2.0 + wheel_width / 2.0}"/>
   <xacro:property name="wheel_separation" value="${2.0 * wheel_y}"/>
   <xacro:property name="wheel_z" value="${wheel_radius - base_z}"/>
+  <!-- Modest physical slip avoids an unrealistically ideal wheel odometry. -->
+  <xacro:property name="wheel_slip_compliance_lateral" value="0.004"/>
+  <xacro:property name="wheel_slip_compliance_longitudinal" value="0.002"/>
+  <xacro:property name="wheel_normal_force" value="25.0"/>
 
   <xacro:property name="caster_radius" value="0.05"/>
   <xacro:property name="caster_mass" value="0.20"/>
@@ -285,12 +289,14 @@
   <gazebo reference="left_wheel_link">
     <mu1>${wheel_friction}</mu1>
     <mu2>${wheel_friction}</mu2>
+    <fdir1>0 1 0</fdir1>
     <material>Gazebo/Black</material>
   </gazebo>
 
   <gazebo reference="right_wheel_link">
     <mu1>${wheel_friction}</mu1>
     <mu2>${wheel_friction}</mu2>
+    <fdir1>0 1 0</fdir1>
     <material>Gazebo/Black</material>
   </gazebo>
 
@@ -410,6 +416,23 @@
   </gazebo>
 
   <gazebo>
+    <!-- Evaluation-only world-pose source.  This is deliberately separate
+         from DiffDrive's odom/tf output so physical slip remains observable. -->
+    <plugin
+      filename="gz-sim-pose-publisher-system"
+      name="gz::sim::systems::PosePublisher">
+      <publish_link_pose>false</publish_link_pose>
+      <publish_model_pose>true</publish_model_pose>
+      <!-- Harmonic releases before the publish_model_pose fix require this
+           compatibility flag for the top-level model pose. -->
+      <publish_nested_model_pose>true</publish_nested_model_pose>
+      <publish_visual_pose>false</publish_visual_pose>
+      <publish_collision_pose>false</publish_collision_pose>
+      <publish_sensor_pose>false</publish_sensor_pose>
+      <use_pose_vector_msg>true</use_pose_vector_msg>
+      <update_frequency>50</update_frequency>
+    </plugin>
+
     <plugin
       filename="gz-sim-diff-drive-system"
       name="gz::sim::systems::DiffDrive">
@@ -421,6 +444,23 @@
       <odom_topic>/model/$(arg gazebo_model_name)/odometry</odom_topic>
       <frame_id>odom</frame_id>
       <child_frame_id>base_footprint</child_frame_id>
+    </plugin>
+
+    <plugin
+      filename="gz-sim-wheel-slip-system"
+      name="gz::sim::systems::WheelSlip">
+      <wheel link_name="left_wheel_link">
+        <wheel_radius>${wheel_radius}</wheel_radius>
+        <wheel_normal_force>${wheel_normal_force}</wheel_normal_force>
+        <slip_compliance_lateral>${wheel_slip_compliance_lateral}</slip_compliance_lateral>
+        <slip_compliance_longitudinal>${wheel_slip_compliance_longitudinal}</slip_compliance_longitudinal>
+      </wheel>
+      <wheel link_name="right_wheel_link">
+        <wheel_radius>${wheel_radius}</wheel_radius>
+        <wheel_normal_force>${wheel_normal_force}</wheel_normal_force>
+        <slip_compliance_lateral>${wheel_slip_compliance_lateral}</slip_compliance_lateral>
+        <slip_compliance_longitudinal>${wheel_slip_compliance_longitudinal}</slip_compliance_longitudinal>
+      </wheel>
     </plugin>
 
     <plugin

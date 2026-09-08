@@ -8,4 +8,3 @@ health_evaluator:
     # to /health/camera only for an explicitly requested camera evaluation.
     camera_health_topic: ''
     fault_status_topic: /fault_injection/status
-    output_json_path: /tmp/phase6_health_evaluation.json

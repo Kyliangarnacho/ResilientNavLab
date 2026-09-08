@@ -1,0 +1,88 @@
+{
+    "event_count": 1,
+    "events": [
+        {
+            "anomaly_detection": {
+                "alarm_count": 49,
+                "detected": true,
+                "detection_delay_sec": 0.40200000000000014,
+                "first_alarm_time_sec": 5.402
+            },
+            "classification": {
+                "all_alarms_exact": true,
+                "exact_match": true,
+                "expected": "freeze",
+                "matched": true,
+                "matched_alarm_count": 49,
+                "mismatched_alarm_count": 0,
+                "observed_faults": [
+                    "freeze"
+                ]
+            },
+            "detection_delay_sec": 0.40200000000000014,
+            "end_time_sec": 15.0,
+            "event_id": "wheel_freeze_ekf_001",
+            "first_alarm_time_sec": 5.402,
+            "missed": false,
+            "model": "freeze",
+            "positive_health_samples": 50,
+            "recovery": {
+                "first_healthy_time_sec": 15.2,
+                "observed": true,
+                "recovery_delay_sec": 0.1999999999999993
+            },
+            "recovery_delay_sec": 0.1999999999999993,
+            "recovery_time_sec": 15.2,
+            "sensor": "wheel",
+            "settled": true,
+            "start_time_sec": 5.0
+        }
+    ],
+    "schema_version": 1,
+    "sensors": {
+        "imu": {
+            "evaluated": 36,
+            "f1": 0.0,
+            "fn": 0,
+            "fp": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "tn": 36,
+            "tp": 0,
+            "unknown": 54
+        },
+        "scan": {
+            "evaluated": 86,
+            "f1": 0.0,
+            "fn": 0,
+            "fp": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "tn": 86,
+            "tp": 0,
+            "unknown": 4
+        },
+        "wheel": {
+            "evaluated": 90,
+            "f1": 0.98989898989899,
+            "fn": 1,
+            "fp": 0,
+            "precision": 1.0,
+            "recall": 0.98,
+            "tn": 40,
+            "tp": 49,
+            "unknown": 0
+        }
+    },
+    "total": {
+        "evaluated": 212,
+        "f1": 0.98989898989899,
+        "fn": 1,
+        "fp": 0,
+        "precision": 1.0,
+        "recall": 0.98,
+        "tn": 162,
+        "tp": 49,
+        "unknown": 58
+    }
+}

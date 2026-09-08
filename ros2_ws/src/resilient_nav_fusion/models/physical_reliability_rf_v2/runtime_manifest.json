@@ -1,0 +1,12 @@
+{
+  "artifact_schema_version": 1,
+  "dataset_schema_version": 2,
+  "selected_candidate": "baseline_v1_hyperparams",
+  "training_evidence": "data/physical_disturbance_v2/rf_v2_20260908",
+  "runtime_probability_contract": "class-1 predict_proba is continuous reliability; validation classification thresholds are not used",
+  "models": {
+    "imu_yaw_rate_reliable.joblib": "e32008eb799525f9f61a728db970cd09437e6f42f24cf76c755c05332cd0ddb3",
+    "wheel_rotation_reliable.joblib": "d4fef865b41cffdc4ea10e881ac2844184ee5593ff06278d8aa98efd61a3fc91",
+    "wheel_translation_reliable.joblib": "c19b147c68ee0db73d9bda0a7618067fe29b9af1a96bc1fed06afaaeb1f9860c"
+  }
+}

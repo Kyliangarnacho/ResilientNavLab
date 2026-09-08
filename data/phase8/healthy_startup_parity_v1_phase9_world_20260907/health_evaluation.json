@@ -1,0 +1,51 @@
+{
+    "event_count": 0,
+    "events": [],
+    "schema_version": 1,
+    "sensors": {
+        "imu": {
+            "evaluated": 89,
+            "f1": 0.0,
+            "fn": 0,
+            "fp": 1,
+            "precision": 0.0,
+            "recall": 0.0,
+            "tn": 88,
+            "tp": 0,
+            "unknown": 2
+        },
+        "scan": {
+            "evaluated": 91,
+            "f1": 0.0,
+            "fn": 0,
+            "fp": 0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "tn": 91,
+            "tp": 0,
+            "unknown": 0
+        },
+        "wheel": {
+            "evaluated": 91,
+            "f1": 0.0,
+            "fn": 0,
+            "fp": 1,
+            "precision": 0.0,
+            "recall": 0.0,
+            "tn": 90,
+            "tp": 0,
+            "unknown": 0
+        }
+    },
+    "total": {
+        "evaluated": 271,
+        "f1": 0.0,
+        "fn": 0,
+        "fp": 2,
+        "precision": 0.0,
+        "recall": 0.0,
+        "tn": 269,
+        "tp": 0,
+        "unknown": 2
+    }
+}

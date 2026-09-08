@@ -45,7 +45,7 @@ def generate_launch_description():
             'spawn_x': spawn_x,
             'spawn_y': spawn_y,
             'spawn_yaw': spawn_yaw,
-            'odom_ros_topic': '/wheel/odometry',
+            'odom_ros_topic': '/wheel/odometry/raw',
             'start_odom_tf_broadcaster': 'false',
         }.items(),
     )
@@ -57,6 +57,14 @@ def generate_launch_description():
         output='screen',
         parameters=[str(localization_share / 'config' / 'ekf.yaml')],
         remappings=[('odometry/filtered', '/odometry/filtered')],
+    )
+
+    wheel_odometry_uncertainty = Node(
+        package='resilient_nav_localization',
+        executable='wheel_odometry_uncertainty',
+        name='wheel_odometry_uncertainty',
+        output='screen',
+        parameters=[{'use_sim_time': True}],
     )
 
     nav2_localization = IncludeLaunchDescription(
@@ -126,6 +134,7 @@ def generate_launch_description():
             scoped=True,
             forwarding=True,
         ),
+        wheel_odometry_uncertainty,
         healthy_ekf,
         nav2_localization,
         initial_pose_helper,

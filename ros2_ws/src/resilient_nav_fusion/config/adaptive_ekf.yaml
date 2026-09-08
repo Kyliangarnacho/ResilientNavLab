@@ -18,11 +18,11 @@ adaptive_ekf_filter_node:
     odom_frame: odom
     base_link_frame: base_footprint
 
-    # Wheel longitudinal velocity, forwarded or covariance-scaled by the
-    # measurement adapter according to FusionPolicy.
+    # Wheel yaw pose and longitudinal velocity share one Odometry message but
+    # receive independent covariance scales from the Fusion Supervisor.
     odom0: /fusion/input/wheel/odometry
     odom0_config: [false, false, false,
-                   false, false, false,
+                   false, false, true,
                    true,  false, false,
                    false, false, false,
                    false, false, false]
@@ -55,3 +55,15 @@ adaptive_ekf_filter_node:
     twist0_queue_size: 10
     twist0_differential: false
     twist0_relative: false
+
+    # Scan-matched longitudinal velocity fallback.  FusionPolicy publishes this
+    # input only while wheel odometry is rejected and scan health is usable.
+    twist1: /fusion/input/lidar/velocity
+    twist1_config: [false, false, false,
+                    false, false, false,
+                    true,  false, false,
+                    false, false, false,
+                    false, false, false]
+    twist1_queue_size: 10
+    twist1_differential: false
+    twist1_relative: false

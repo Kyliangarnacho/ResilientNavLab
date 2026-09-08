@@ -23,7 +23,7 @@ from rclpy.qos import (
 from resilient_nav_slam.slam_evaluator import (
     SE2Alignment,
     TimedPose,
-    evaluate_persisted_map_localization,
+    evaluate_persisted_map_localization_trajectory,
 )
 
 
@@ -119,7 +119,7 @@ class AmclEvaluator(Node):
             yaw=float(self.get_parameter('map_to_odom_yaw').value),
         )
         try:
-            metrics = evaluate_persisted_map_localization(
+            metrics = evaluate_persisted_map_localization_trajectory(
                 self._truth,
                 self._healthy_ekf,
                 self._amcl,

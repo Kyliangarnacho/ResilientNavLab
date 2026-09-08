@@ -93,9 +93,10 @@ def test_wheel_observer_requires_policy_to_reject_wheel_and_keep_imu_yaw_rate():
     observer.observe_fusion_status(
         2,
         6.0,
-        accepted_measurements=('imu_yaw_rate',),
+        accepted_measurements=('lidar_velocity', 'imu_yaw_rate'),
         rejected_measurements=('wheel_velocity', 'wheel_yaw_rate'),
     )
+    observer.observe_lidar_velocity(6.1)
     observer.observe_fault_status(2, 15.0)
     observer.observe_target_health(1, 15.4)
     observer.observe_fusion_status(
@@ -109,8 +110,10 @@ def test_wheel_observer_requires_policy_to_reject_wheel_and_keep_imu_yaw_rate():
     assert observer.complete is True
     result = observer.result('phase8_wheel_freeze', 'PASS')
     assert result['events']['wheel_fault_response'] == 6.0
+    assert result['events']['lidar_velocity_observed'] == 6.1
     assert result['fusion_behavior'] == {
         'wheel_velocity_rejected': True,
+        'lidar_velocity_accepted': True,
         'imu_yaw_rate_accepted': True,
         'wheel_yaw_fallback_enabled': False,
     }
@@ -131,6 +134,38 @@ def test_wheel_observer_fails_closed_when_fusion_keeps_wheel_velocity():
     assert 'wheel_fault_response' in observer.missing_requirements()
 
 
+def test_wheel_observer_requires_lidar_translation_fallback():
+    observer = SensorBenchmarkObserver('wheel')
+    observer.observe_fault_status(1, 5.0)
+    observer.observe_target_health(3, 6.0)
+    observer.observe_fusion_status(
+        2,
+        6.0,
+        accepted_measurements=('imu_yaw_rate',),
+        rejected_measurements=(
+            'wheel_velocity', 'lidar_velocity', 'wheel_yaw_rate'
+        ),
+    )
+
+    assert observer.complete is False
+    assert 'wheel_fault_response' in observer.missing_requirements()
+
+
+def test_wheel_observer_requires_real_lidar_adapter_output():
+    observer = SensorBenchmarkObserver('wheel')
+    observer.observe_fault_status(1, 5.0)
+    observer.observe_target_health(3, 6.0)
+    observer.observe_fusion_status(
+        2,
+        6.0,
+        accepted_measurements=('lidar_velocity', 'imu_yaw_rate'),
+        rejected_measurements=('wheel_velocity', 'wheel_yaw_rate'),
+    )
+
+    assert 'wheel_fault_response' in observer.events
+    assert 'lidar_velocity_observed' in observer.missing_requirements()
+
+
 def test_confirmed_wheel_response_is_not_overwritten_by_shutdown_noise():
     """A later UNKNOWN sample cannot erase the first valid fault response."""
     observer = SensorBenchmarkObserver('wheel')
@@ -138,7 +173,7 @@ def test_confirmed_wheel_response_is_not_overwritten_by_shutdown_noise():
     observer.observe_fusion_status(
         2,
         7.0,
-        accepted_measurements=('imu_yaw_rate',),
+        accepted_measurements=('lidar_velocity', 'imu_yaw_rate'),
         rejected_measurements=('wheel_velocity',),
     )
     observer.observe_fusion_status(
@@ -150,3 +185,4 @@ def test_confirmed_wheel_response_is_not_overwritten_by_shutdown_noise():
 
     assert observer.events['wheel_fault_response'] == 7.0
     assert observer.fusion_behavior['wheel_velocity_rejected'] is True
+    assert observer.fusion_behavior['lidar_velocity_accepted'] is True

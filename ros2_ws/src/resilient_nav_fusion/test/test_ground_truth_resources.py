@@ -7,8 +7,8 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_ground_truth_launch_uses_verified_model_tf_source_and_pose_v_bridge():
-    """The source is model-specific Gazebo TF, not an estimated ROS pose."""
+def test_ground_truth_launch_uses_independent_world_pose_source():
+    """The source is PosePublisher world pose, never DiffDrive odom TF."""
     source = (PACKAGE_ROOT / 'launch' / 'phase8_ground_truth.launch.py').read_text(
         encoding='utf-8'
     )
@@ -17,8 +17,9 @@ def test_ground_truth_launch_uses_verified_model_tf_source_and_pose_v_bridge():
     assert "package='ros_gz_bridge'" in source
     assert 'gz.msgs.Pose_V' in source
     assert 'TFMessage[gz.msgs.Pose_V' in source
-    assert '/model/resilient_nav_robot/tf' in source
-    assert '/evaluation/gazebo_model_tf' in source
+    assert '/model/resilient_nav_robot/pose' in source
+    assert '/evaluation/gazebo_world_model_tf' in source
+    assert '/model/resilient_nav_robot/tf' not in source
     assert "executable='ground_truth_pose_adapter'" in source
 
 

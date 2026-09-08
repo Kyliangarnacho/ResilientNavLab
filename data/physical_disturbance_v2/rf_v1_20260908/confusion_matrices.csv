@@ -1,0 +1,10 @@
+target,split,true_unreliable_pred_unreliable,true_unreliable_pred_reliable,true_reliable_pred_unreliable,true_reliable_pred_reliable
+wheel_translation_reliable,train,24,0,1,513
+wheel_translation_reliable,validation,4,0,2,163
+wheel_translation_reliable,test,4,30,2,276
+wheel_rotation_reliable,train,56,0,2,480
+wheel_rotation_reliable,validation,10,0,2,157
+wheel_rotation_reliable,test,37,1,7,267
+imu_yaw_rate_reliable,train,14,0,0,524
+imu_yaw_rate_reliable,validation,5,3,2,159
+imu_yaw_rate_reliable,test,4,0,5,303

@@ -1,0 +1,40 @@
+{
+  "dataset_schema_version": 2,
+  "window_count": 118,
+  "run_count": 1,
+  "feature_count": 44,
+  "label_balance": {
+    "wheel_translation_reliable": {
+      "reliable": 81,
+      "unreliable": 37
+    },
+    "wheel_rotation_reliable": {
+      "reliable": 101,
+      "unreliable": 17
+    },
+    "imu_yaw_rate_reliable": {
+      "reliable": 118,
+      "unreliable": 0
+    },
+    "lidar_translation_reliable": {
+      "reliable": 118,
+      "unreliable": 0
+    }
+  },
+  "runs": [
+    {
+      "run_id": "17_ood_low_friction_mu_0p055_long_zone_p2l_v2",
+      "route_start_sec": 11.556000000000001,
+      "route_end_sec": 35.449,
+      "window_count": 118,
+      "lidar_pair_count": 665,
+      "lidar_valid_pair_count": 665,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 37,
+        "wheel_rotation_reliable": 17,
+        "imu_yaw_rate_reliable": 0,
+        "lidar_translation_reliable": 0
+      }
+    }
+  ]
+}

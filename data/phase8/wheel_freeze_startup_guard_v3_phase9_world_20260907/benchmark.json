@@ -1,0 +1,163 @@
+{
+    "adaptive_improved": true,
+    "alignment_sensitivity": {
+        "0.020": {
+            "adaptive_improved": true,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.7264187584348176,
+                    "final_yaw_drift": 0.006295717983106464,
+                    "max_position_error": 0.8931798855438368,
+                    "max_yaw_error": 0.3467120292378456,
+                    "position_rmse": 0.4516550373050706,
+                    "sample_count": 617,
+                    "yaw_rmse": 0.24886983517564884
+                },
+                "fixed": {
+                    "final_position_drift": 2.31806838884881,
+                    "final_yaw_drift": 0.0035272277009736897,
+                    "max_position_error": 2.321496405701487,
+                    "max_yaw_error": 2.989603845990441,
+                    "position_rmse": 1.2922955186713019,
+                    "sample_count": 617,
+                    "yaw_rmse": 1.3813291096056872
+                },
+                "position_rmse_benefit": 0.8406404813662313,
+                "position_rmse_improvement_ratio": 0.6505017383566816
+            },
+            "outcome": "PASS"
+        },
+        "0.030": {
+            "adaptive_improved": true,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.7264187584348176,
+                    "final_yaw_drift": 0.006295717983106464,
+                    "max_position_error": 0.8931798855438368,
+                    "max_yaw_error": 0.34868570713667557,
+                    "position_rmse": 0.43192196306421077,
+                    "sample_count": 817,
+                    "yaw_rmse": 0.24195223643756394
+                },
+                "fixed": {
+                    "final_position_drift": 2.31806838884881,
+                    "final_yaw_drift": 0.0035272277009736897,
+                    "max_position_error": 2.3228068251940375,
+                    "max_yaw_error": 3.001603845988644,
+                    "position_rmse": 1.2319190312683552,
+                    "sample_count": 817,
+                    "yaw_rmse": 1.3465599648700697
+                },
+                "position_rmse_benefit": 0.7999970682041444,
+                "position_rmse_improvement_ratio": 0.6493909485110284
+            },
+            "outcome": "PASS"
+        },
+        "0.050": {
+            "adaptive_improved": true,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.7263516332114556,
+                    "final_yaw_drift": 0.012295717981830379,
+                    "max_position_error": 0.8931798855438368,
+                    "max_yaw_error": 0.34868570713667557,
+                    "position_rmse": 0.4303958729423821,
+                    "sample_count": 826,
+                    "yaw_rmse": 0.24164238138664715
+                },
+                "fixed": {
+                    "final_position_drift": 2.3195052999873784,
+                    "final_yaw_drift": 0.009527227699697605,
+                    "max_position_error": 2.3228068251940375,
+                    "max_yaw_error": 3.001603845988644,
+                    "position_rmse": 1.2279081271631016,
+                    "sample_count": 826,
+                    "yaw_rmse": 1.3401212555339714
+                },
+                "position_rmse_benefit": 0.7975122542207196,
+                "position_rmse_improvement_ratio": 0.6494885379277133
+            },
+            "outcome": "PASS"
+        }
+    },
+    "benchmark": "wheel_freeze_startup_guard_v3",
+    "benchmark_outcome": "PASS",
+    "events": {
+        "fault_end": 15.0,
+        "fault_start": 5.0,
+        "fusion_first_non_nominal": 5.402,
+        "fusion_recovered_nominal": 15.4,
+        "lidar_velocity_observed": 6.006,
+        "wheel_fault_response": 6.0,
+        "wheel_health_first_abnormal": 5.402,
+        "wheel_health_recovered_healthy": 15.2
+    },
+    "fault_status_observations": [
+        {
+            "sensor": "wheel_odometry",
+            "stamp_sec": 0.02,
+            "state": 0
+        },
+        {
+            "sensor": "imu",
+            "stamp_sec": 0.64,
+            "state": 3
+        },
+        {
+            "sensor": "lidar",
+            "stamp_sec": 0.66,
+            "state": 3
+        },
+        {
+            "sensor": "wheel_odometry",
+            "stamp_sec": 5.0,
+            "state": 1
+        },
+        {
+            "sensor": "wheel_odometry",
+            "stamp_sec": 15.0,
+            "state": 2
+        }
+    ],
+    "fusion_behavior": {
+        "imu_yaw_rate_accepted": true,
+        "lidar_velocity_accepted": true,
+        "wheel_velocity_rejected": true,
+        "wheel_yaw_fallback_enabled": false
+    },
+    "last_sim_time_sec": 18.0,
+    "metrics": {
+        "adaptive": {
+            "final_position_drift": 0.7263516332114556,
+            "final_yaw_drift": 0.012295717981830379,
+            "max_position_error": 0.8931798855438368,
+            "max_yaw_error": 0.34868570713667557,
+            "position_rmse": 0.4303958729423821,
+            "sample_count": 826,
+            "yaw_rmse": 0.24164238138664715
+        },
+        "fixed": {
+            "final_position_drift": 2.3195052999873784,
+            "final_yaw_drift": 0.009527227699697605,
+            "max_position_error": 2.3228068251940375,
+            "max_yaw_error": 3.001603845988644,
+            "position_rmse": 1.2279081271631016,
+            "sample_count": 826,
+            "yaw_rmse": 1.3401212555339714
+        },
+        "position_rmse_benefit": 0.7975122542207196,
+        "position_rmse_improvement_ratio": 0.6494885379277133
+    },
+    "observation_counts": {
+        "evaluator_metrics_messages": 34,
+        "fault_status_messages": 5,
+        "fusion_status_messages": 179,
+        "lidar_fallback_messages": 139,
+        "target_health_messages": 90
+    },
+    "path_evidence": {
+        "adaptive": 347,
+        "fixed": 352,
+        "ground_truth": 862
+    }
+}

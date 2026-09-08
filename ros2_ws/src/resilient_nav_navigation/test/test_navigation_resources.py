@@ -157,6 +157,8 @@ def test_localization_smoke_reuses_healthy_inputs_and_excludes_duplicate_tf_owne
     for required in (
         "'phase4_imu_lidar_demo.launch.py'", "'phase10_localization.launch.py'",
         "'start_odom_tf_broadcaster': 'false'", "package='robot_localization'",
+        "'odom_ros_topic': '/wheel/odometry/raw'",
+        "executable='wheel_odometry_uncertainty'",
         "executable='phase10_initial_pose_helper'", "default_value='-3.5'",
         "default_value='0.0'",
     ):
@@ -227,6 +229,13 @@ def test_evaluation_isolated_from_the_localization_runtime():
 
     for primary in (LAUNCH_FILE, SMOKE_LAUNCH_FILE, CONFIG_FILE):
         assert '/evaluation/' not in primary.read_text(encoding='utf-8').lower()
+
+
+def test_amcl_evaluator_imports_the_exported_trajectory_evaluator():
+    """The evaluation launch must not fail on a stale function name."""
+    source = (PACKAGE_ROOT / 'amcl_evaluator.py').read_text(encoding='utf-8')
+    assert 'evaluate_persisted_map_localization_trajectory' in source
+    assert 'evaluate_persisted_map_localization(' not in source
 
 
 def test_package_metadata_and_install_rules_cover_all_static_resources():

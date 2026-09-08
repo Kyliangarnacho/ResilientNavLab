@@ -1,0 +1,27 @@
+{
+  "split_schema_version": 1,
+  "description": "Run-grouped RF v2 split. Hyperparameters and thresholds use validation only; test retains the RF v1 severe-slip, stronger-push, and healthy comparison runs. The separately stored run 17 OOD dataset is forbidden from all selection and training.",
+  "train_runs": [
+    "01_low_friction_mu_0p12_p2l_v2",
+    "02_asymmetric_left_mu_0p15_p2l_v2",
+    "03_rough_h0p008_spacing0p45_p2l_v2",
+    "05_wheel_block_left_f3N_tau0p08_t0p60_p2l_v2",
+    "07b_healthy_high_safe_zigzag_p2l_v2",
+    "08_low_friction_mild_mu_0p20_p2l_v2",
+    "10_external_impact_neg_x12N_p2l_v2",
+    "13_low_friction_mu_0p10_variable_s_p2l_v2",
+    "14_low_friction_mu_0p075_fast_chicane_p2l_v2",
+    "15_wheel_drag_both_f1p6_t1p2_p2l_v2"
+  ],
+  "validation_runs": [
+    "00_normal_p2l_v2",
+    "04_external_impact_y12N_t0p25_p2l_v2",
+    "12_low_friction_mu_0p16_low_weave_p2l_v2",
+    "16_rough_h0p012_spacing0p28_hard_negative_p2l_v2"
+  ],
+  "test_runs": [
+    "06_healthy_low_turns_p2l_v2",
+    "09_low_friction_severe_mu_0p06_p2l_v2",
+    "11_external_impact_y20N_p2l_v2"
+  ]
+}

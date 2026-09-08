@@ -30,6 +30,7 @@ class SensorBenchmarkObserver:
         if self.target_sensor == 'wheel':
             self.fusion_behavior = {
                 'wheel_velocity_rejected': None,
+                'lidar_velocity_accepted': None,
                 'imu_yaw_rate_accepted': None,
                 'wheel_yaw_fallback_enabled': None,
             }
@@ -100,14 +101,21 @@ class SensorBenchmarkObserver:
         if 'wheel_fault_response' in self.events:
             return
         wheel_rejected = 'wheel_velocity' in rejected
+        lidar_accepted = 'lidar_velocity' in accepted
         imu_accepted = 'imu_yaw_rate' in accepted
         fallback_enabled = 'wheel_yaw_rate' in accepted
         self.fusion_behavior = {
             'wheel_velocity_rejected': wheel_rejected,
+            'lidar_velocity_accepted': lidar_accepted,
             'imu_yaw_rate_accepted': imu_accepted,
             'wheel_yaw_fallback_enabled': fallback_enabled,
         }
-        if wheel_rejected and imu_accepted and not fallback_enabled:
+        if (
+            wheel_rejected
+            and lidar_accepted
+            and imu_accepted
+            and not fallback_enabled
+        ):
             self.events.setdefault('wheel_fault_response', stamp_sec)
 
     def observe_metrics(self, metrics: Mapping[str, object]) -> None:
@@ -117,6 +125,15 @@ class SensorBenchmarkObserver:
         self.metrics = metrics
         if self.recovered:
             self.metrics_after_recovery += 1
+
+    def observe_lidar_velocity(self, stamp_sec: float) -> None:
+        """Record one real adapter output inside an active wheel fault."""
+        if (
+            self.target_sensor == 'wheel'
+            and 'fault_start' in self.events
+            and 'fault_end' not in self.events
+        ):
+            self.events.setdefault('lidar_velocity_observed', stamp_sec)
 
     @property
     def recovered(self) -> bool:
@@ -181,7 +198,10 @@ class SensorBenchmarkObserver:
             'fusion_recovered_nominal',
         ]
         if self.target_sensor == 'wheel':
-            required.append('wheel_fault_response')
+            required.extend((
+                'wheel_fault_response',
+                'lidar_velocity_observed',
+            ))
         return tuple(required)
 
 

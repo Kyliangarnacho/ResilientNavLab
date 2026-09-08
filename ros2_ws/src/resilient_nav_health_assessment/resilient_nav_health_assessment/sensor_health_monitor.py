@@ -101,6 +101,9 @@ class HealthEvaluator:
         scan_sector_fault_width_rad=0.90,
         scan_confirmation_cycles=3,
         scan_recovery_cycles=3,
+        freeze_warning_duration_sec=0.40,
+        wheel_yaw_span_threshold_rad=0.01,
+        future_stamp_tolerance_sec=0.05,
     ):
         self._min_samples = min_samples
         self._stale_timeout_sec = stale_timeout_sec
@@ -114,11 +117,23 @@ class HealthEvaluator:
         self._command_linear_threshold_mps = command_linear_threshold_mps
         self._command_angular_threshold_rad_s = command_angular_threshold_rad_s
         self._freeze_duration_sec = freeze_duration_sec
+        self._freeze_warning_duration_sec = freeze_warning_duration_sec
         self._wheel_pose_span_threshold_m = wheel_pose_span_threshold_m
+        self._wheel_yaw_span_threshold_rad = wheel_yaw_span_threshold_rad
         self._wheel_linear_span_threshold_mps = wheel_linear_span_threshold_mps
         self._wheel_angular_span_threshold_rad_s = (
             wheel_angular_span_threshold_rad_s
         )
+        self._future_stamp_tolerance_sec = future_stamp_tolerance_sec
+        if not 0.0 < freeze_warning_duration_sec < freeze_duration_sec:
+            raise ValueError(
+                'freeze warning duration must be positive and shorter than '
+                'freeze duration'
+            )
+        if wheel_yaw_span_threshold_rad <= 0.0:
+            raise ValueError('wheel yaw span threshold must be positive')
+        if future_stamp_tolerance_sec < 0.0:
+            raise ValueError('future stamp tolerance must be non-negative')
         if imu_wheel_max_pairing_time_diff_sec < 0.0:
             raise ValueError('imu_wheel_max_pairing_time_diff_sec must be non-negative')
         if imu_bias_min_pairs < 1:
@@ -344,6 +359,19 @@ class HealthEvaluator:
                 timing_decision.window_end_sec,
                 timing_decision.sample_count,
             )
+        if bias_level in ('warning', 'fault'):
+            return HealthDecision(
+                SensorHealth.DEGRADED,
+                0.5,
+                timing_decision.confidence,
+                'bias',
+                ['imu_yaw_rate_bias_confirmation_pending'],
+                names,
+                values,
+                timing_decision.window_start_sec,
+                timing_decision.window_end_sec,
+                timing_decision.sample_count,
+            )
         return self._with_metrics(timing_decision, names, values)
 
     def evaluate_wheel(self, now_sec):
@@ -388,18 +416,27 @@ class HealthEvaluator:
         if decision.state in (SensorHealth.UNKNOWN, SensorHealth.FAULT):
             return self._with_metrics(decision, names, values)
 
-        if self._wheel_is_frozen(
-            now_sec,
-            pose_span_m,
-            yaw_span_rad,
-            samples,
-        ):
+        freeze_level = self._wheel_freeze_level(now_sec, samples)
+        if freeze_level == 'fault':
             return HealthDecision(
                 SensorHealth.FAULT,
                 0.0,
                 decision.confidence,
                 'freeze',
                 ['motion_command_persisted_while_wheel_state_was_static'],
+                names,
+                values,
+                decision.window_start_sec,
+                decision.window_end_sec,
+                decision.sample_count,
+            )
+        if freeze_level == 'warning':
+            return HealthDecision(
+                SensorHealth.DEGRADED,
+                0.5,
+                decision.confidence,
+                'freeze',
+                ['short_horizon_wheel_progress_missing'],
                 names,
                 values,
                 decision.window_start_sec,
@@ -502,14 +539,17 @@ class HealthEvaluator:
 
     def _timing_decision(self, sensor, samples, now_sec, min_samples=None):
         min_samples = min_samples or self._min_samples
-        if len(samples) < min_samples:
+        if not samples:
             self._reset_delay_counts(sensor)
             return self._unknown_decision(samples, min_samples)
 
         last = samples[-1]
-        message_age_sec = max(now_sec - last.received_sec, 0.0)
-        stamp_age_sec = max(now_sec - last.stamp_sec, 0.0)
-        interarrival_sec = last.received_sec - samples[-2].received_sec
+        message_age_sec = now_sec - last.received_sec
+        stamp_age_sec = now_sec - last.stamp_sec
+        interarrival_sec = (
+            last.received_sec - samples[-2].received_sec
+            if len(samples) >= 2 else 0.0
+        )
         names = [
             'message_age_sec',
             'stamp_age_sec',
@@ -519,6 +559,22 @@ class HealthEvaluator:
         confidence = min(len(samples) / min_samples, 1.0)
         window_start_sec = samples[0].received_sec
         window_end_sec = last.received_sec
+
+        invalid_reason = self._observation_invalid_reason(sensor, last, now_sec)
+        if invalid_reason is not None:
+            self._reset_delay_counts(sensor)
+            return HealthDecision(
+                SensorHealth.FAULT,
+                0.0,
+                confidence,
+                'invalid',
+                [invalid_reason],
+                names,
+                values,
+                window_start_sec,
+                window_end_sec,
+                len(samples),
+            )
 
         if message_age_sec > self._stale_timeout_sec:
             self._reset_delay_counts(sensor)
@@ -567,6 +623,32 @@ class HealthEvaluator:
                 window_end_sec,
                 len(samples),
             )
+        if stamp_age_sec > self._delay_warning_sec:
+            return HealthDecision(
+                SensorHealth.DEGRADED,
+                0.5,
+                confidence,
+                'delay',
+                ['header_delay_confirmation_pending'],
+                names,
+                values,
+                window_start_sec,
+                window_end_sec,
+                len(samples),
+            )
+        if len(samples) < min_samples:
+            return HealthDecision(
+                SensorHealth.UNKNOWN,
+                -1.0,
+                confidence,
+                'none',
+                ['startup_provisional_valid'],
+                names,
+                values,
+                window_start_sec,
+                window_end_sec,
+                len(samples),
+            )
         return HealthDecision(
             SensorHealth.HEALTHY,
             1.0,
@@ -579,6 +661,35 @@ class HealthEvaluator:
             window_end_sec,
             len(samples),
         )
+
+    def _observation_invalid_reason(self, sensor, observation, now_sec):
+        """Reject malformed values before provisional startup acceptance."""
+        timing_values = (
+            now_sec,
+            observation.received_sec,
+            observation.stamp_sec,
+        )
+        if not all(isfinite(value) for value in timing_values):
+            return 'non_finite_message_timing'
+        if observation.received_sec < 0.0 or observation.stamp_sec < 0.0:
+            return 'negative_message_timing'
+        if observation.received_sec > now_sec + self._future_stamp_tolerance_sec:
+            return 'receive_time_is_in_the_future'
+        if observation.stamp_sec > now_sec + self._future_stamp_tolerance_sec:
+            return 'header_stamp_is_in_the_future'
+        if sensor == 'imu' and not isfinite(observation.angular_z):
+            return 'non_finite_imu_yaw_rate'
+        if sensor == 'wheel':
+            wheel_values = (
+                observation.pose_x,
+                observation.pose_y,
+                observation.yaw_rad,
+                observation.linear_x,
+                observation.angular_z,
+            )
+            if not all(isfinite(value) for value in wheel_values):
+                return 'non_finite_wheel_measurement'
+        return None
 
     def _update_delay_counts(self, sensor, stamp_age_sec):
         """Track consecutive warning and fault-level header-delay checks."""
@@ -859,22 +970,42 @@ class HealthEvaluator:
             previous_yaw_rad = sample.yaw_rad
         return max_yaw_rad - min_yaw_rad
 
-    def _wheel_is_frozen(
-        self,
-        now_sec,
-        pose_span_m,
-        yaw_span_rad,
-        samples,
-    ):
+    def _wheel_freeze_level(self, now_sec, samples):
+        """Return warning/fault from short and full no-progress horizons."""
         if not self._is_motion_commanded() or self._motion_command_started_sec is None:
-            return False
-        if now_sec - self._motion_command_started_sec < self._freeze_duration_sec:
-            return False
-        if (
-            not samples
-            or samples[-1].received_sec < self._motion_command_started_sec
+            return 'none'
+        fault_samples = self._covered_recent_samples(
+            now_sec, samples, self._freeze_duration_sec
+        )
+        if fault_samples is not None and self._wheel_lacks_progress(fault_samples):
+            return 'fault'
+        warning_samples = self._covered_recent_samples(
+            now_sec, samples, self._freeze_warning_duration_sec
+        )
+        if warning_samples is None or not self._wheel_lacks_progress(
+            warning_samples
         ):
-            return False
+            return 'none'
+        return 'warning'
+
+    def _covered_recent_samples(self, now_sec, samples, duration_sec):
+        if now_sec - self._motion_command_started_sec < duration_sec:
+            return None
+        start_sec = max(
+            now_sec - duration_sec,
+            self._motion_command_started_sec,
+        )
+        recent = [
+            sample for sample in samples if sample.received_sec >= start_sec
+        ]
+        if len(recent) < 2:
+            return None
+        if recent[-1].received_sec - recent[0].received_sec < 0.8 * duration_sec:
+            return None
+        return recent
+
+    def _wheel_lacks_progress(self, samples):
+        pose_span_m, yaw_span_rad, _, _ = self._wheel_spans(samples)
         linear_is_frozen = (
             self._command_linear_abs_mps > self._command_linear_threshold_mps
             and pose_span_m < self._wheel_pose_span_threshold_m
@@ -882,7 +1013,7 @@ class HealthEvaluator:
         angular_is_frozen = (
             self._command_angular_abs_rad_s
             > self._command_angular_threshold_rad_s
-            and yaw_span_rad == 0.0
+            and yaw_span_rad < self._wheel_yaw_span_threshold_rad
         )
         return linear_is_frozen or angular_is_frozen
 
@@ -1011,6 +1142,9 @@ class SensorHealthMonitor(Node):
             self._float_parameter('scan_sector_fault_width_rad'),
             self._integer_parameter('scan_confirmation_cycles'),
             self._integer_parameter('scan_recovery_cycles'),
+            self._float_parameter('freeze_warning_duration_sec'),
+            self._float_parameter('wheel_yaw_span_threshold_rad'),
+            self._float_parameter('future_stamp_tolerance_sec'),
         )
         self._health_publishers = {
             'imu': self.create_publisher(SensorHealth, '/health/imu', 10),
@@ -1059,7 +1193,9 @@ class SensorHealthMonitor(Node):
             'command_linear_threshold_mps': 0.05,
             'command_angular_threshold_rad_s': 0.10,
             'freeze_duration_sec': 1.0,
+            'freeze_warning_duration_sec': 0.40,
             'wheel_pose_span_threshold_m': 0.01,
+            'wheel_yaw_span_threshold_rad': 0.01,
             'wheel_linear_span_threshold_mps': 0.01,
             'wheel_angular_span_threshold_rad_s': 0.02,
             'imu_wheel_max_pairing_time_diff_sec': 0.05,
@@ -1077,6 +1213,7 @@ class SensorHealthMonitor(Node):
             'scan_sector_fault_width_rad': 0.90,
             'scan_confirmation_cycles': 3,
             'scan_recovery_cycles': 3,
+            'future_stamp_tolerance_sec': 0.05,
         }
         for name, default in defaults.items():
             self.declare_parameter(name, default)

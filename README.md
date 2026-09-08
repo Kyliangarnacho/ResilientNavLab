@@ -15,10 +15,11 @@ ResilientNavLab 是一个基于 ROS 2 Jazzy 与 Gazebo Harmonic 的移动机器�
 | 5 | 完成 | IMU/wheel/LiDAR 故障注入、真值接口、faulted EKF、probe 与 rosbag |
 | 6 | 完成 | 传感器健康监测、分类、恢复和 evaluator |
 | 7 | 完成 | C920 接入、CameraInfo、去畸变、回放与 camera health v1 |
-| 8 | 完成 | 健康感知 `FusionPolicy`、measurement adapter、adaptive EKF 与隔离评价 |
+| 8 | 完成 | 健康感知 `FusionPolicy`、启动准入/异常预降级、Robust ICP LiDAR 平移 fallback 及 wheel fault 动态验证 |
 | 9 | 完成 | Slam Toolbox 建图、地图持久化、重定位与 loop closure |
 | 10 | 已收口 | saved-map Nav2、Costmap、Navfn、RPP、BT、动态障碍、Recovery 与 Goal Cancel |
 | BRNE V1 | 已收口 | LiDAR dynamic-agent、统一 interaction/crossing/head-on policy 和 Scene 1/2/3 闭环 |
+| Physical Disturbance V2 | 持续压力验收中 | RF V2 三模型已在线接入统一 Fusion；6 组有效首轮 full-chain 对照中 healthy 不劣于 fixed、external impact 的位置 RMSE 改善 11.8%，low-friction OOD 已触发强降权但未改善 RMSE；已增加大覆盖扰动区和持续压力路线 |
 | RA-1A | 完成 | 离线只读诊断、Sanitizer、Evidence/Incident、Tools、strict output 与 benchmark |
 
 Phase 10 的工程验收为 8/8 valid navigation PASS，另有一次发 goal 前的 infrastructure-invalid trial；
@@ -107,6 +108,7 @@ ros2 launch resilient_nav_brne rpp_scene1_comparison_demo.launch.py use_rviz:=tr
 ## 当前未完成
 
 - fault-aware navigation 与 Health/Fusion 到 Nav2 的正式自适应闭环；
+- Physical Disturbance RF V2 的持续压力场景与 `0.20` fallback 候选门限尚待动态验收，概率也未校准；
 - Live ROS Robot Agent、Planner/Recovery 权限和真实机器人执行；
 - RGB-D/PointCloud2 完整处理与视觉故障模型；
 - BRNE 的人类分类、遮挡续接、统计 benchmark 和完整 footprint 安全证明。

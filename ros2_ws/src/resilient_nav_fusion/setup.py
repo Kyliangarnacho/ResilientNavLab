@@ -26,8 +26,15 @@ setup(
             glob(os.path.join('config', '*.yaml'))
             + glob(os.path.join('config', '*.rviz')),
         ),
+        (
+            os.path.join(
+                'share', package_name, 'models', 'physical_reliability_rf_v2'
+            ),
+            glob(os.path.join('models', 'physical_reliability_rf_v2', '*.joblib'))
+            + glob(os.path.join('models', 'physical_reliability_rf_v2', '*.json')),
+        ),
     ],
-    install_requires=['setuptools'],
+    install_requires=['joblib', 'numpy', 'scikit-learn', 'setuptools'],
     zip_safe=True,
     maintainer='Kylian',
     maintainer_email='kylian@example.com',
@@ -66,6 +73,22 @@ setup(
             (
                 'trajectory_path_adapter = '
                 'resilient_nav_fusion.trajectory_path_adapter:main'
+            ),
+            (
+                'lidar_projection_evaluator = '
+                'resilient_nav_fusion.lidar_projection_evaluator:main'
+            ),
+            (
+                'lidar_odometry = '
+                'resilient_nav_fusion.lidar_odometry:main'
+            ),
+            (
+                'physical_reliability_dataset = '
+                'resilient_nav_fusion.physical_reliability_dataset:main'
+            ),
+            (
+                'physical_reliability_rf = '
+                'resilient_nav_fusion.physical_reliability_rf:main'
             ),
         ],
     },

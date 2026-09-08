@@ -22,7 +22,7 @@ def test_scene2_uses_sensor_input_and_scene1_tuned_brne_profile():
         "'robot_min_map_x': 0.8", "'scene_delay_sec': 0.4",
         "'config' / 'brne_v1_runtime.yaml'",
         "parameters=[str(runtime_profile), {'use_sim_time': True}]",
-        "'planner_scan_topic': '/brne/static_scan'",
+        "'global_obstacle_layer_enabled': 'false'",
         "'world_y_direction': -1",
     ):
         assert expected in source

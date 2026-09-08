@@ -17,6 +17,7 @@
 | 工作空间 | `/home/kylian/projects/resilient_nav_lab/ros2_ws` |
 | ROS 2 package | 13 个 |
 | Python 环境 | 仓库根 `.venv`，启用 system site packages |
+| 离线 RF | scikit-learn 1.9.0、joblib 1.6.0（仓库根 `.venv`） |
 
 Gazebo Transport 与 ROS 2 Topic 是独立通信域；只有 launch/config 明确建立的 `ros_gz_bridge` 才会
 转换消息。TF 也必须保持唯一 owner，不能因为 Gazebo 中存在 pose/TF 就无条件桥接到 ROS。

@@ -146,6 +146,25 @@ def test_physical_links_have_collision_and_inertia():
         assert link.find('inertial') is not None
 
 
+def test_pose_publisher_exposes_independent_model_world_pose():
+    """Evaluation truth must not reuse DiffDrive's odom transform."""
+    root = expanded_robot()
+    plugins = root.findall('./gazebo/plugin')
+    pose_publishers = [
+        plugin
+        for plugin in plugins
+        if plugin.attrib.get('filename') == 'gz-sim-pose-publisher-system'
+    ]
+
+    assert len(pose_publishers) == 1
+    plugin = pose_publishers[0]
+    assert plugin.findtext('publish_model_pose') == 'true'
+    assert plugin.findtext('publish_nested_model_pose') == 'true'
+    assert plugin.findtext('publish_link_pose') == 'false'
+    assert plugin.findtext('use_pose_vector_msg') == 'true'
+    assert float(plugin.findtext('update_frequency')) == 50.0
+
+
 def test_longitudinal_support_contains_low_center_of_mass():
     """Wheel, caster, clearance, and inertia should resist body tipping."""
     root = expanded_robot()
@@ -327,6 +346,8 @@ def test_gazebo_materials_and_friction_cover_physical_links():
         assert gazebo.findtext('mu1') == friction
         assert gazebo.findtext('mu2') == friction
         assert gazebo.findtext('material') == expected_materials[link_name]
+        if link_name in ('left_wheel_link', 'right_wheel_link'):
+            assert gazebo.findtext('fdir1') == '0 1 0'
 
 
 def test_gazebo_diff_drive_uses_robot_joint_and_geometry_values():
@@ -350,6 +371,31 @@ def test_gazebo_diff_drive_uses_robot_joint_and_geometry_values():
     )
     assert plugin.findtext('frame_id') == 'odom'
     assert plugin.findtext('child_frame_id') == 'base_footprint'
+
+
+def test_gazebo_wheel_slip_adds_symmetric_physical_odom_error():
+    """Nominal wheel odometry should include modest symmetric wheel slip."""
+    root = expanded_robot()
+    plugin = root.find(
+        "./gazebo/plugin[@name='gz::sim::systems::WheelSlip']"
+    )
+
+    assert plugin is not None
+    assert plugin.attrib['filename'] == 'gz-sim-wheel-slip-system'
+    wheels = plugin.findall('wheel')
+    assert [wheel.attrib['link_name'] for wheel in wheels] == [
+        'left_wheel_link',
+        'right_wheel_link',
+    ]
+    for wheel in wheels:
+        assert float(wheel.findtext('wheel_radius')) == pytest.approx(0.10)
+        assert float(wheel.findtext('wheel_normal_force')) == pytest.approx(25.0)
+        assert float(
+            wheel.findtext('slip_compliance_lateral')
+        ) == pytest.approx(0.004)
+        assert float(
+            wheel.findtext('slip_compliance_longitudinal')
+        ) == pytest.approx(0.002)
 
 
 def test_gazebo_joint_states_use_native_topic_and_wheel_joints():
@@ -510,6 +556,8 @@ def test_description_has_only_authorized_plugins_and_sensors():
     assert plugins == {
         'gz::sim::systems::DiffDrive',
         'gz::sim::systems::JointStatePublisher',
+        'gz::sim::systems::PosePublisher',
+        'gz::sim::systems::WheelSlip',
     }
     assert {
         sensor.attrib['name']

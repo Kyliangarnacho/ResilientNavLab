@@ -46,7 +46,7 @@
     proposal_protection_window_outputs: 5
     proposal_protection_output_deadband: 0.05
 
-    # Unified sensor-input tracker and dynamic/static identity policy.
+    # Sensor-input tracker. Global planning uses only the saved static map.
     maximum_scan_age_sec: 0.25
     transform_timeout_sec: 0.05
     cluster_gap: 0.12
@@ -58,8 +58,7 @@
     minimum_common_matches: 3
     history_size: 6
     minimum_confirmations: 6
-    candidate_minimum_confirmations: 3
-    candidate_minimum_displacement: 0.02
+    common_motion_inlier_distance: 0.02
     dynamic_minimum_speed: 0.08
     dynamic_minimum_displacement: 0.04
     direction_consistency: 0.75

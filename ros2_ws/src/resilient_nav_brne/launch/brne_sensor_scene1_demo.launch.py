@@ -40,7 +40,7 @@ def generate_launch_description():
             'initial_pose_y': '0.0',
             'initial_pose_yaw': '0.0',
             'manage_planner': 'true',
-            'planner_scan_topic': '/brne/static_scan',
+            'global_obstacle_layer_enabled': 'false',
             'use_rviz': 'false',
             'log_level': log_level,
         }.items(),

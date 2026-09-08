@@ -18,8 +18,10 @@ Gazebo odometry 输入只保留为隔离感知问题的验证入口。
   -> armed control gate -> /cmd_vel
 ```
 
-Navfn 只消费 `/brne/static_scan`。新 cluster 在确认静态前被隔离；已确认 dynamic agent 不再以静态障碍
-身份重复影响 global path。RViz 显示 Global Costmap、dynamic-agent marker、global path 和 BRNE prediction。
+BRNE demo 的 Navfn Global Costmap 只使用保存的静态地图；实时 `/scan` 不再进入 global obstacle
+layer，也不再生成 `/brne/static_scan`。tracker 只向 BRNE 提供 dynamic-agent state，因此行人、临时障碍
+和新出现的固定障碍不会触发 global-path 重规划。RViz 显示 Global Costmap、dynamic-agent marker、global
+path 和 BRNE prediction。
 
 ## 冻结参数
 
@@ -51,10 +53,11 @@ ros2 launch resilient_nav_brne brne_scene3_head_on_demo.launch.py arm_brne:=true
 
 ## 验证与边界
 
-- 包测试：`123 passed, 1 xfailed`；xfail 是 pinned scalar `traj_sim()` 缺 `dt` 的已知合同。
+- 包测试：`125 passed, 1 xfailed`；xfail 是 pinned scalar `traj_sim()` 缺 `dt` 的已知合同。
 - `196×25` warm planning mean/P95/max：`11.315/12.706/15.292 ms`，低于 200 ms 周期。
 - `close_stop_threshold=0.20 m` 是 point-agent 实验阈值，不是完整 footprint 几何安全证明。
+- 新出现固定障碍的局部安全处理尚未实现；静态地图外障碍不会进入 Navfn，后续应由独立、轻量的局部
+  停车/绕障约束处理，不能把这一边界表述成当前已具备的能力。
 - LiDAR V1 不做人类分类、遮挡续接或统计 benchmark。
 - 旧 passing-side commitment、global-path freeze、nominal freeze 和 output low-pass 已从生产逻辑删除；
   相关实验经验只保留在学习日志。
-

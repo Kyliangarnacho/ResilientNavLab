@@ -9,6 +9,8 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterFile
+from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
@@ -27,6 +29,9 @@ def generate_launch_description():
     initial_pose_result = LaunchConfiguration('initial_pose_result')
     use_rviz = LaunchConfiguration('use_rviz')
     manage_planner = LaunchConfiguration('manage_planner')
+    global_obstacle_layer_enabled = LaunchConfiguration(
+        'global_obstacle_layer_enabled'
+    )
     planner_scan_topic = LaunchConfiguration('planner_scan_topic')
     planner_plan_topic = LaunchConfiguration('planner_plan_topic')
     log_level = LaunchConfiguration('log_level')
@@ -50,13 +55,27 @@ def generate_launch_description():
         }.items(),
     )
 
+    configured_costmaps = ParameterFile(
+        RewrittenYaml(
+            source_file=str(navigation_share / 'config' / 'nav2_costmaps.yaml'),
+            param_rewrites={
+                (
+                    'global_costmap.global_costmap.ros__parameters.'
+                    'obstacle_layer.enabled'
+                ): global_obstacle_layer_enabled,
+            },
+            convert_types=True,
+        ),
+        allow_substs=True,
+    )
+
     planner_server = Node(
         package='nav2_planner',
         executable='planner_server',
         name='planner_server',
         output='screen',
         parameters=[
-            str(navigation_share / 'config' / 'nav2_costmaps.yaml'),
+            configured_costmaps,
             str(navigation_share / 'config' / 'nav2_planner.yaml'),
             {'use_sim_time': True},
         ],
@@ -112,6 +131,13 @@ def generate_launch_description():
         # BT wrapper disables this manager and starts all navigation servers
         # in one explicit ordered manager instead.
         DeclareLaunchArgument('manage_planner', default_value='true'),
+        DeclareLaunchArgument(
+            'global_obstacle_layer_enabled',
+            default_value='true',
+            description=(
+                'Enable live LaserScan marking/clearing in the global costmap.'
+            ),
+        ),
         DeclareLaunchArgument('planner_scan_topic', default_value='/scan'),
         DeclareLaunchArgument('planner_plan_topic', default_value='/plan'),
         DeclareLaunchArgument('log_level', default_value='info'),

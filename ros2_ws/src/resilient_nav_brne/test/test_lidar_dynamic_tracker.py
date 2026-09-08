@@ -4,16 +4,15 @@ import numpy as np
 import pytest
 
 from resilient_nav_brne.lidar_dynamic_tracker import (
-    LidarCluster,
-    LidarDynamicTracker,
-    LidarTrackerConfig,
-    DynamicAgent,
-    agents_within_range,
-    clusters_from_scan,
     _ema_velocity,
     _reject_velocity_direction_outlier,
     _velocity_ema_window_is_stable,
-    ranges_without_dynamic_agents,
+    agents_within_range,
+    clusters_from_scan,
+    DynamicAgent,
+    LidarCluster,
+    LidarDynamicTracker,
+    LidarTrackerConfig,
     transform_clusters,
 )
 
@@ -84,75 +83,6 @@ def test_only_local_dynamic_agents_reach_the_brne_input():
     assert [agent.track_id for agent in local] == [1]
 
 
-def test_confirmed_dynamic_beams_become_finite_clearing_ranges_only():
-    original = [1.0, 1.1, 0.8, 0.8, 0.8, 2.0]
-    agents = [
-        DynamicAgent(1, (1.0, 0.0), (0.0, 0.25), (2, 4)),
-        DynamicAgent(2, (1.5, 0.0), (0.0, 0.25)),
-    ]
-
-    filtered = ranges_without_dynamic_agents(
-        original,
-        agents,
-        clear_range=12.0,
-    )
-
-    assert filtered == [1.0, 1.1, 12.0, 12.0, 12.0, 2.0]
-    assert original == [1.0, 1.1, 0.8, 0.8, 0.8, 2.0]
-
-
-def test_moving_candidate_is_excluded_before_it_is_published_to_brne():
-    tracker = LidarDynamicTracker()
-    static = np.array([[0.0, 0.0], [2.0, 0.0], [0.0, 2.0]])
-    for frame_index in range(6):
-        tracker.update(
-            [_cluster(*position) for position in static],
-            stamp_sec=frame_index * 0.1,
-        )
-    assert tracker.costmap_exclusion_agents() == []
-
-    agents = []
-    for frame_index in range(3):
-        moving = _cluster(
-            1.0,
-            1.0 + frame_index * 0.025,
-            first_scan_index=20,
-            last_scan_index=24,
-        )
-        agents, _ = tracker.update(
-            [_cluster(*position) for position in static] + [moving],
-            stamp_sec=(frame_index + 6) * 0.1,
-        )
-
-    exclusions = tracker.costmap_exclusion_agents()
-
-    assert agents == []
-    assert len(exclusions) == 1
-    assert exclusions[0].track_id == 4
-    assert exclusions[0].scan_index_span == (20, 24)
-
-
-def test_new_cluster_is_quarantined_until_confirmed_static():
-    tracker = LidarDynamicTracker()
-    static = np.array([[0.0, 0.0], [2.0, 0.0], [0.0, 2.0], [1.0, 1.0]])
-    for frame_index in range(5):
-        agents, _ = tracker.update(
-            [_cluster(*position) for position in static],
-            stamp_sec=frame_index * 0.1,
-        )
-
-    assert agents == []
-    assert len(tracker.costmap_exclusion_agents()) == 4
-
-    agents, _ = tracker.update(
-        [_cluster(*position) for position in static],
-        stamp_sec=0.5,
-    )
-
-    assert agents == []
-    assert tracker.costmap_exclusion_agents() == []
-
-
 def test_common_drift_is_removed_before_dynamic_agent_promotion():
     tracker = LidarDynamicTracker()
     bases = np.array([
@@ -179,6 +109,7 @@ def test_common_drift_is_removed_before_dynamic_agent_promotion():
     assert diagnostics is not None
     assert diagnostics.matched_cluster_count == 4
     assert np.allclose(diagnostics.common_drift, [0.01, -0.005])
+    assert diagnostics.common_rotation_rad == pytest.approx(0.0)
     assert diagnostics.track_count == 4
     assert diagnostics.dynamic_agent_count == 1
     assert len(agents) == 1
@@ -205,8 +136,7 @@ def test_velocity_ema_alpha_must_be_in_unit_interval():
     assert config.velocity_ema_stability_window == 3
     assert config.velocity_ema_max_direction_change_rad == 0.35
     assert config.velocity_ema_outlier_direction_change_rad == 0.70
-    assert config.candidate_minimum_confirmations == 3
-    assert config.candidate_minimum_displacement == 0.02
+    assert config.common_motion_inlier_distance == 0.02
     assert config.stationary_maximum_speed == 0.04
     assert config.stationary_confirmation_frames == 8
     with pytest.raises(ValueError):
@@ -220,7 +150,7 @@ def test_velocity_ema_alpha_must_be_in_unit_interval():
     with pytest.raises(ValueError):
         LidarTrackerConfig(velocity_ema_outlier_direction_change_rad=0.0)
     with pytest.raises(ValueError):
-        LidarTrackerConfig(candidate_minimum_confirmations=6)
+        LidarTrackerConfig(common_motion_inlier_distance=0.0)
     with pytest.raises(ValueError):
         LidarTrackerConfig(stationary_maximum_speed=0.08)
     with pytest.raises(ValueError):
@@ -293,7 +223,7 @@ def test_dynamic_agent_waits_for_three_stable_velocity_ema_samples():
     assert outputs[5:9] == [0, 0, 1, 1]
 
 
-def test_sustained_stationary_dynamic_track_returns_to_static_costmap():
+def test_sustained_stationary_dynamic_track_returns_to_non_dynamic_state():
     tracker = LidarDynamicTracker()
     static = np.array([[0.0, 0.0], [2.0, 0.0], [0.0, 2.0]])
     agents = []
@@ -309,7 +239,6 @@ def test_sustained_stationary_dynamic_track_returns_to_static_costmap():
             stamp_sec=frame_index * 0.1,
         )
     assert len(agents) == 1
-    assert len(tracker.costmap_exclusion_agents()) == 1
 
     stopped_position = 1.0 + 8 * 0.025
     for frame_index in range(9, 39):
@@ -325,7 +254,6 @@ def test_sustained_stationary_dynamic_track_returns_to_static_costmap():
         )
 
     assert agents == []
-    assert tracker.costmap_exclusion_agents() == []
     pedestrian_track = tracker._tracks[4]
     assert not pedestrian_track.dynamic
     assert not pedestrian_track.velocity_stable
@@ -343,6 +271,66 @@ def test_common_motion_alone_does_not_promote_static_clusters():
         )
 
     assert agents == []
+
+
+@pytest.mark.parametrize('rotation_step', [-0.035, 0.035])
+def test_common_rotation_does_not_create_direction_dependent_motion(
+    rotation_step,
+):
+    tracker = LidarDynamicTracker()
+    bases = np.array([
+        [-2.0, -1.0],
+        [2.0, -1.0],
+        [-2.0, 1.0],
+        [2.0, 1.0],
+    ])
+    diagnostics = None
+    agents = []
+    for frame_index in range(9):
+        angle = frame_index * rotation_step
+        rotation = np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)],
+        ])
+        translation = frame_index * np.array([0.005, -0.003])
+        positions = bases @ rotation.T + translation
+        agents, diagnostics = tracker.update(
+            [_cluster(*position) for position in positions],
+            stamp_sec=frame_index * 0.1,
+        )
+
+    assert agents == []
+    assert diagnostics is not None
+    assert diagnostics.common_rotation_rad == pytest.approx(rotation_step)
+    assert diagnostics.dynamic_agent_count == 0
+
+
+def test_common_rigid_motion_keeps_independent_target_motion():
+    tracker = LidarDynamicTracker()
+    bases = np.array([
+        [-2.0, -1.0],
+        [2.0, -1.0],
+        [-2.0, 1.0],
+        [1.0, 0.0],
+    ])
+    agents = []
+    for frame_index in range(9):
+        angle = frame_index * 0.025
+        rotation = np.array([
+            [np.cos(angle), -np.sin(angle)],
+            [np.sin(angle), np.cos(angle)],
+        ])
+        positions = bases @ rotation.T
+        positions[-1] += frame_index * np.array([0.0, 0.025])
+        clusters = [_cluster(*position) for position in positions]
+        clusters[-1] = _cluster(
+            *positions[-1], first_scan_index=20, last_scan_index=24
+        )
+        agents, _ = tracker.update(clusters, stamp_sec=frame_index * 0.1)
+
+    assert len(agents) == 1
+    assert agents[0].track_id == 4
+    assert np.linalg.norm(agents[0].velocity) == pytest.approx(0.25, rel=0.05)
 
 
 def test_lost_dynamic_track_is_deleted_and_reappearance_gets_a_new_id():

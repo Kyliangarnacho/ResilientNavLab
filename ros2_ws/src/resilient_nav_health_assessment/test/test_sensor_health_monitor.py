@@ -212,13 +212,15 @@ def test_header_delay_requires_consecutive_confirmation():
     fault_evaluator.add_imu(1.4, 0.8)
     fault = fault_evaluator.evaluate_imu(1.4)
 
-    assert first_warning.state == SensorHealth.HEALTHY
-    assert second_warning.state == SensorHealth.HEALTHY
+    assert first_warning.state == SensorHealth.DEGRADED
+    assert first_warning.reasons == ['header_delay_confirmation_pending']
+    assert second_warning.state == SensorHealth.DEGRADED
     assert warning.state == SensorHealth.DEGRADED
     assert warning.health_score == 0.5
     assert warning.detected_fault == 'delay'
-    assert first_fault.state == SensorHealth.HEALTHY
-    assert second_fault.state == SensorHealth.HEALTHY
+    assert first_fault.state == SensorHealth.DEGRADED
+    assert first_fault.reasons == ['header_delay_confirmation_pending']
+    assert second_fault.state == SensorHealth.DEGRADED
     assert fault.state == SensorHealth.FAULT
     assert fault.health_score == 0.0
     assert fault.detected_fault == 'delay'
@@ -328,6 +330,45 @@ def test_continuous_motion_commands_do_not_reset_freeze_timer():
     assert decision.detected_fault == 'freeze'
 
 
+def test_wheel_freeze_enters_degraded_on_short_horizon_before_fault():
+    evaluator = make_evaluator()
+    evaluator.set_command(0.0, linear_x=0.2, angular_z=0.0)
+    moving = [
+        (time_sec, time_sec * 0.2, 0.2, 0.0)
+        for time_sec in [3.6, 4.0, 4.4, 4.8]
+    ]
+    frozen = [
+        (time_sec, 0.96, 0.2, 0.0)
+        for time_sec in [5.0, 5.1, 5.2, 5.3, 5.4, 5.5]
+    ]
+    add_wheel_samples(evaluator, moving + frozen)
+
+    degraded = evaluator.evaluate_wheel(5.5)
+    for time_sec in [5.6, 5.7, 5.8, 5.9, 6.0, 6.1]:
+        add_wheel_samples(evaluator, [(time_sec, 0.96, 0.2, 0.0)])
+    fault = evaluator.evaluate_wheel(6.1)
+
+    assert degraded.state == SensorHealth.DEGRADED
+    assert degraded.detected_fault == 'freeze'
+    assert degraded.reasons == ['short_horizon_wheel_progress_missing']
+    assert fault.state == SensorHealth.FAULT
+    assert fault.detected_fault == 'freeze'
+
+
+def test_normal_arc_progress_does_not_trigger_early_freeze_warning():
+    evaluator = make_evaluator()
+    evaluator.set_command(0.0, linear_x=0.0, angular_z=0.3)
+    add_wheel_samples(evaluator, [
+        (time_sec, time_sec * 0.3, 0.0, 0.3)
+        for time_sec in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+    ])
+
+    decision = evaluator.evaluate_wheel(0.5)
+
+    assert decision.state == SensorHealth.HEALTHY
+    assert decision.detected_fault == 'none'
+
+
 def test_metric_names_and_values_have_the_same_length():
     evaluator = make_evaluator()
     add_static_wheel_samples(evaluator, [0.0, 0.5, 1.2])
@@ -348,7 +389,8 @@ def test_scan_without_data_or_with_insufficient_samples_is_unknown():
     assert no_data.state == SensorHealth.UNKNOWN
     assert no_data.reasons == ['no_messages_received']
     assert insufficient.state == SensorHealth.UNKNOWN
-    assert insufficient.reasons == ['insufficient_samples']
+    assert insufficient.reasons == ['startup_provisional_valid']
+    assert insufficient.detected_fault == 'none'
 
 
 def test_normal_finite_scan_is_healthy_with_complete_metrics():
@@ -567,8 +609,9 @@ def test_persistent_signed_yaw_rate_bias_becomes_a_fault(bias):
     decision = evaluator.evaluate_imu(7.36, evaluator.evaluate_wheel(7.36))
 
     assert calibration.state == SensorHealth.HEALTHY
-    assert first.state == SensorHealth.HEALTHY
-    assert second.state == SensorHealth.HEALTHY
+    assert first.state == SensorHealth.DEGRADED
+    assert first.reasons == ['imu_yaw_rate_bias_confirmation_pending']
+    assert second.state == SensorHealth.DEGRADED
     assert decision.state == SensorHealth.FAULT
     assert decision.detected_fault == 'bias'
     metrics = dict(zip(decision.metric_names, decision.metric_values))
@@ -655,9 +698,9 @@ def test_insufficient_imu_wheel_pairs_reports_reference_status():
 
 
 def test_unpairable_header_timestamps_report_reference_status():
-    evaluator = make_evaluator()
+    evaluator = make_evaluator(imu_wheel_max_pairing_time_diff_sec=0.001)
     imu_samples, wheel_samples = paired_yaw_rate_samples(
-        0.55, 0.4, stamp_offset=0.6
+        0.55, 0.4, stamp_offset=0.01
     )
     add_imu_yaw_rate_samples(evaluator, imu_samples)
     add_wheel_yaw_rate_samples(evaluator, wheel_samples)
@@ -667,6 +710,35 @@ def test_unpairable_header_timestamps_report_reference_status():
     assert decision.state == SensorHealth.UNKNOWN
     assert decision.detected_fault == 'none'
     assert decision.reasons == ['imu_wheel_timestamp_pairs_unavailable']
+
+
+def test_legal_first_sample_is_provisional_but_invalid_value_faults_immediately():
+    provisional_evaluator = make_evaluator()
+    provisional_evaluator.add_imu(1.0, 1.0, angular_z=0.2)
+
+    provisional = provisional_evaluator.evaluate_imu(1.0)
+
+    invalid_evaluator = make_evaluator()
+    invalid_evaluator.add_imu(1.0, 1.0, angular_z=float('nan'))
+    invalid = invalid_evaluator.evaluate_imu(1.0)
+
+    assert provisional.state == SensorHealth.UNKNOWN
+    assert provisional.detected_fault == 'none'
+    assert provisional.reasons == ['startup_provisional_valid']
+    assert invalid.state == SensorHealth.FAULT
+    assert invalid.detected_fault == 'invalid'
+    assert invalid.reasons == ['non_finite_imu_yaw_rate']
+
+
+def test_future_header_stamp_is_invalid_before_startup_acceptance():
+    evaluator = make_evaluator(future_stamp_tolerance_sec=0.05)
+    evaluator.add_imu(1.0, 1.2, angular_z=0.2)
+
+    decision = evaluator.evaluate_imu(1.0)
+
+    assert decision.state == SensorHealth.FAULT
+    assert decision.detected_fault == 'invalid'
+    assert decision.reasons == ['header_stamp_is_in_the_future']
 
 
 def test_imu_wheel_pairing_does_not_reuse_a_wheel_observation():

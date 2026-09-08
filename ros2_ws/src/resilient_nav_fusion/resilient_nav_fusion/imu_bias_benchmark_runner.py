@@ -5,6 +5,7 @@ from math import isfinite
 from pathlib import Path
 from time import monotonic
 
+from geometry_msgs.msg import TwistWithCovarianceStamped
 from resilient_nav_interfaces.msg import FaultStatus, FusionStatus, SensorHealth
 from nav_msgs.msg import Path as NavPath
 import rclpy
@@ -53,6 +54,7 @@ class ImuBenchmarkRunner(Node):
             'fault_status_messages': 0,
             'target_health_messages': 0,
             'fusion_status_messages': 0,
+            'lidar_fallback_messages': 0,
             'evaluator_metrics_messages': 0,
         }
         self._fault_status_observations: list[dict[str, object]] = []
@@ -89,6 +91,13 @@ class ImuBenchmarkRunner(Node):
         self.create_subscription(
             FusionStatus, '/fusion/status', self._on_fusion, 10
         )
+        if self._fault_sensor == 'wheel':
+            self.create_subscription(
+                TwistWithCovarianceStamped,
+                '/fusion/input/lidar/velocity',
+                self._on_lidar_fallback,
+                10,
+            )
         self.create_subscription(
             String,
             '/evaluation/localization_metrics',
@@ -156,6 +165,14 @@ class ImuBenchmarkRunner(Node):
             self.get_logger().warning('suppressed malformed evaluator metrics')
             return
         self._observer.observe_metrics(metrics)
+
+    def _on_lidar_fallback(
+        self, message: TwistWithCovarianceStamped
+    ) -> None:
+        self._observation_counts['lidar_fallback_messages'] += 1
+        stamp_sec = _stamp_sec(message.header.stamp)
+        if isfinite(stamp_sec):
+            self._observer.observe_lidar_velocity(stamp_sec)
 
     def _on_alignment_sensitivity(self, message: String) -> None:
         try:

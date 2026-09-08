@@ -5,16 +5,22 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    """Bridge the model-specific Gazebo TF source into evaluator-only ROS data."""
+    """Bridge independent Gazebo world pose into evaluator-only ROS data."""
     gazebo_tf_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         name='phase8_ground_truth_tf_bridge',
         output='screen',
         arguments=[
-            '/model/resilient_nav_robot/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V'
+            '/model/resilient_nav_robot/pose'
+            '@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V'
         ],
-        remappings=[('/model/resilient_nav_robot/tf', '/evaluation/gazebo_model_tf')],
+        remappings=[
+            (
+                '/model/resilient_nav_robot/pose',
+                '/evaluation/gazebo_world_model_tf',
+            )
+        ],
     )
     adapter = Node(
         package='resilient_nav_fusion',

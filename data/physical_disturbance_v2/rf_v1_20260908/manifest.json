@@ -1,0 +1,191 @@
+{
+  "created_at_utc": "2026-09-08T07:13:18.249042+00:00",
+  "dataset": {
+    "dataset_schema_version": 2,
+    "directory": "/home/kylian/projects/resilient_nav_lab/data/physical_disturbance_v2/rf_dataset_v2_expanded_20260908",
+    "feature_count": 44,
+    "manifest_sha256": "720b1dbff7beb51846d403e948deb616c992d317215efddc4302564eeb8e74e3",
+    "scan_matcher_algorithm": "robust_point_to_line_v2",
+    "window_count": 1019,
+    "windows_sha256": "46401e30ea0b9276bd6a29d91e572f5a1b3c2cdb49f3783cce8d1c00d3f32577"
+  },
+  "excluded_target": {
+    "name": "lidar_translation_reliable",
+    "reason": "No unreliable LiDAR examples in schema-v2 dataset.",
+    "runtime_policy": "Keep ICP quality plus observability gate."
+  },
+  "features": [
+    "wheel_lidar_vx_residual_mean",
+    "wheel_lidar_vx_residual_abs_mean",
+    "wheel_lidar_vx_residual_abs_max",
+    "wheel_lidar_vx_residual_std",
+    "wheel_lidar_vx_residual_persistence",
+    "wheel_lidar_vx_normalized_residual_mean",
+    "wheel_lidar_vx_normalized_residual_abs_mean",
+    "wheel_lidar_vx_normalized_residual_abs_max",
+    "wheel_lidar_vx_normalized_residual_std",
+    "wheel_lidar_vx_normalized_residual_persistence",
+    "wheel_imu_yaw_residual_mean",
+    "wheel_imu_yaw_residual_abs_mean",
+    "wheel_imu_yaw_residual_abs_max",
+    "wheel_imu_yaw_residual_std",
+    "wheel_imu_yaw_residual_persistence",
+    "wheel_lidar_yaw_residual_mean",
+    "wheel_lidar_yaw_residual_abs_mean",
+    "wheel_lidar_yaw_residual_abs_max",
+    "wheel_lidar_yaw_residual_std",
+    "wheel_lidar_yaw_residual_persistence",
+    "imu_lidar_yaw_residual_mean",
+    "imu_lidar_yaw_residual_abs_mean",
+    "imu_lidar_yaw_residual_abs_max",
+    "imu_lidar_yaw_residual_std",
+    "imu_lidar_yaw_residual_persistence",
+    "wheel_vx_abs_mean",
+    "wheel_yaw_rate_abs_mean",
+    "imu_yaw_rate_abs_mean",
+    "lidar_vx_abs_mean",
+    "lidar_yaw_rate_abs_mean",
+    "imu_horizontal_accel_rms",
+    "imu_horizontal_accel_std",
+    "imu_horizontal_accel_mad",
+    "imu_roll_pitch_gyro_energy",
+    "icp_valid_fraction",
+    "icp_rmse_mean",
+    "icp_rmse_max",
+    "icp_rmse_std",
+    "icp_inlier_ratio_mean",
+    "icp_inlier_ratio_min",
+    "icp_inlier_ratio_std",
+    "icp_observability_mean",
+    "icp_observability_min",
+    "icp_observability_std"
+  ],
+  "ground_truth_boundary": "GT-derived binary labels are read from windows.csv for supervised training. label_audit_gt_only.csv is never opened. Runtime model inputs are restricted to the manifest feature allowlist.",
+  "model_files": {
+    "imu_yaw_rate_reliable": "models/imu_yaw_rate_reliable.joblib",
+    "wheel_rotation_reliable": "models/wheel_rotation_reliable.joblib",
+    "wheel_translation_reliable": "models/wheel_translation_reliable.joblib"
+  },
+  "model_sha256": {
+    "imu_yaw_rate_reliable": "4782eb55e6e9a5ff9c221decc76918669479208d87cc2ab1da3ce99ffeb7e315",
+    "wheel_rotation_reliable": "da123f46232067dcccccc31c69a2f8840b22bf7cd83da322a4b73dd4ec4f0c95",
+    "wheel_translation_reliable": "46e042634ad69d73aa07c89209b53de26fefdff67d7b1fd8f1cde7a1e591fccd"
+  },
+  "outputs": {
+    "classification_metrics": "classification_metrics.csv",
+    "confusion_matrices": "confusion_matrices.csv",
+    "feature_importance": "feature_importance.csv",
+    "metrics": "metrics.json",
+    "predict_proba": "predict_proba.csv",
+    "split_assignments": "split_assignments.csv"
+  },
+  "random_forest": {
+    "bootstrap": true,
+    "class_weight": "balanced_subsample",
+    "criterion": "gini",
+    "decision_threshold": 0.5,
+    "max_depth": 12,
+    "max_features": "sqrt",
+    "min_samples_leaf": 2,
+    "min_samples_split": 4,
+    "n_estimators": 500,
+    "n_jobs": 1,
+    "probability_contract": "class 1 predict_proba is reliability; raw and uncalibrated",
+    "random_state": 42,
+    "selected_decision_threshold": {
+      "imu_yaw_rate_reliable": 0.9349999999999996,
+      "wheel_rotation_reliable": 0.5949999999999998,
+      "wheel_translation_reliable": 0.5
+    },
+    "threshold_grid_max": 0.95,
+    "threshold_grid_min": 0.05,
+    "threshold_grid_step": 0.005
+  },
+  "software": {
+    "joblib": "1.6.0",
+    "numpy": "1.26.4",
+    "python": "3.12.3",
+    "scikit_learn": "1.9.0"
+  },
+  "split": {
+    "class_count": {
+      "imu_yaw_rate_reliable": {
+        "test": {
+          "reliable": 308,
+          "unreliable": 4
+        },
+        "train": {
+          "reliable": 524,
+          "unreliable": 14
+        },
+        "validation": {
+          "reliable": 161,
+          "unreliable": 8
+        }
+      },
+      "wheel_rotation_reliable": {
+        "test": {
+          "reliable": 274,
+          "unreliable": 38
+        },
+        "train": {
+          "reliable": 482,
+          "unreliable": 56
+        },
+        "validation": {
+          "reliable": 159,
+          "unreliable": 10
+        }
+      },
+      "wheel_translation_reliable": {
+        "test": {
+          "reliable": 278,
+          "unreliable": 34
+        },
+        "train": {
+          "reliable": 514,
+          "unreliable": 24
+        },
+        "validation": {
+          "reliable": 165,
+          "unreliable": 4
+        }
+      }
+    },
+    "config_path": "/home/kylian/projects/resilient_nav_lab/ros2_ws/src/resilient_nav_fusion/config/physical_reliability_rf_v1_split.json",
+    "config_sha256": "51e1a713e565c8817c308e5ff8de05001e3132e33eaf021f5294c8306a7042a6",
+    "contract": "disjoint complete runs; no window-level random split",
+    "runs": {
+      "test": [
+        "06_healthy_low_turns_p2l_v2",
+        "09_low_friction_severe_mu_0p06_p2l_v2",
+        "11_external_impact_y20N_p2l_v2"
+      ],
+      "train": [
+        "01_low_friction_mu_0p12_p2l_v2",
+        "02_asymmetric_left_mu_0p15_p2l_v2",
+        "03_rough_h0p008_spacing0p45_p2l_v2",
+        "05_wheel_block_left_f3N_tau0p08_t0p60_p2l_v2",
+        "07b_healthy_high_safe_zigzag_p2l_v2",
+        "08_low_friction_mild_mu_0p20_p2l_v2",
+        "10_external_impact_neg_x12N_p2l_v2"
+      ],
+      "validation": [
+        "00_normal_p2l_v2",
+        "04_external_impact_y12N_t0p25_p2l_v2"
+      ]
+    },
+    "window_count": {
+      "test": 312,
+      "train": 538,
+      "validation": 169
+    }
+  },
+  "trained_targets": [
+    "wheel_translation_reliable",
+    "wheel_rotation_reliable",
+    "imu_yaw_rate_reliable"
+  ],
+  "training_schema_version": 1,
+  "training_status": "COMPLETE"
+}

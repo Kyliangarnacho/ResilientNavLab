@@ -1,0 +1,22 @@
+{
+  "split_schema_version": 1,
+  "description": "Run-grouped RF v1 split. Test holds out a healthy route, severe friction intensity, and stronger push magnitude.",
+  "train_runs": [
+    "01_low_friction_mu_0p12_p2l_v2",
+    "02_asymmetric_left_mu_0p15_p2l_v2",
+    "03_rough_h0p008_spacing0p45_p2l_v2",
+    "05_wheel_block_left_f3N_tau0p08_t0p60_p2l_v2",
+    "07b_healthy_high_safe_zigzag_p2l_v2",
+    "08_low_friction_mild_mu_0p20_p2l_v2",
+    "10_external_impact_neg_x12N_p2l_v2"
+  ],
+  "validation_runs": [
+    "00_normal_p2l_v2",
+    "04_external_impact_y12N_t0p25_p2l_v2"
+  ],
+  "test_runs": [
+    "06_healthy_low_turns_p2l_v2",
+    "09_low_friction_severe_mu_0p06_p2l_v2",
+    "11_external_impact_y20N_p2l_v2"
+  ]
+}

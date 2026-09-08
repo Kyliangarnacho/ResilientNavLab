@@ -1,0 +1,94 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.45
+      Class: rviz_default_plugins/Map
+      Color Scheme: map
+      Enabled: true
+      Name: Saved Map
+      Topic:
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /map
+    - Alpha: 0.65
+      Class: rviz_default_plugins/Map
+      Color Scheme: costmap
+      Enabled: true
+      Name: Global Costmap
+      Topic:
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+        Value: /global_costmap/costmap
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 0; 255; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Name: GT Projection (green)
+      Position Transformer: XYZ
+      Size (Pixels): 4
+      Style: Points
+      Topic:
+        Reliability Policy: Reliable
+        Value: /evaluation/lidar_points_gt
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 255; 0; 255
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Name: Exact-stamp EKF Projection (magenta)
+      Position Transformer: XYZ
+      Size (Pixels): 3
+      Style: Points
+      Topic:
+        Reliability Policy: Reliable
+        Value: /evaluation/lidar_points_ekf
+    - Class: rviz_default_plugins/LaserScan
+      Color: 255; 255; 255
+      Decay Time: 0
+      Enabled: false
+      Name: Raw Scan (EKF TF)
+      Size (Pixels): 2
+      Style: Points
+      Topic:
+        Reliability Policy: Best Effort
+        Value: /scan
+    - Class: rviz_default_plugins/RobotModel
+      Description Source: Topic
+      Enabled: true
+      Name: Robot
+      Robot Description: robot_description
+    - Class: rviz_default_plugins/TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 0.25
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Pitch: 0.8
+      Yaw: 0.8
+Window Geometry:
+  Height: 900
+  Width: 1400

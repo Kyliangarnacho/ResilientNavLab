@@ -20,7 +20,7 @@ def test_scene3_reuses_scene2_profile_with_one_head_on_sensor_agent():
         "'y': -3.5",
         "'Y': 3.141592653589793",
         "'goal_x': 2.8",
-        "'planner_scan_topic': '/brne/static_scan'",
+        "'global_obstacle_layer_enabled': 'false'",
         "'config' / 'brne_v1_runtime.yaml'",
         "parameters=[str(runtime_profile), {'use_sim_time': True}]",
         "'motion_axis': 'x'",

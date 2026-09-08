@@ -21,6 +21,18 @@ install(
 )
 
 install(
+  PROGRAMS scripts/physical_disturbance_pulse.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME physical_disturbance_pulse
+)
+
+install(
+  PROGRAMS scripts/physical_disturbance_route.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME physical_disturbance_route
+)
+
+install(
   FILES scripts/motion_safety.py
   DESTINATION lib/${PROJECT_NAME}
 )
@@ -36,6 +48,11 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_simulation_resources
     test/test_simulation_resources.py
+  )
+
+  ament_add_pytest_test(
+    test_physical_disturbance_scenes
+    test/test_physical_disturbance_scenes.py
   )
 endif()
 

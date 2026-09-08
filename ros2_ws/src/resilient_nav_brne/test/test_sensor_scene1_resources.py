@@ -71,20 +71,23 @@ def test_sensor_node_uses_scan_timestamped_odom_tf_and_existing_message_contract
         "declare_parameter('velocity_ema_outlier_direction_change_rad', 0.70)"
         in source
     )
-    assert "declare_parameter('candidate_minimum_confirmations', 3)" in source
-    assert "declare_parameter('candidate_minimum_displacement', 0.02)" in source
+    assert "declare_parameter('common_motion_inlier_distance', 0.02)" in source
     assert "declare_parameter('stationary_maximum_speed', 0.04)" in source
     assert "declare_parameter('stationary_confirmation_frames', 8)" in source
-    assert "declare_parameter('filtered_scan_topic', '/brne/static_scan')" in source
-    assert 'self.tracker.costmap_exclusion_agents()' in source
-    assert 'ranges_without_dynamic_agents(' in source
-    assert 'self.filtered_scan_publisher.publish(filtered_scan)' in source
+    assert '/brne/static_scan' not in source
+    assert 'costmap_exclusion_agents' not in source
+    assert 'ranges_without_dynamic_agents' not in source
 
 
-def test_only_global_planner_uses_the_static_filtered_scan():
+def test_brne_global_planner_uses_only_the_saved_static_map():
     scene_launch = LAUNCH.read_text(encoding='utf-8')
     planner_launch = PLANNER_LAUNCH.read_text(encoding='utf-8')
-    assert "'planner_scan_topic': '/brne/static_scan'" in scene_launch
+    assert "'global_obstacle_layer_enabled': 'false'" in scene_launch
+    assert '/brne/static_scan' not in scene_launch
+    assert "DeclareLaunchArgument(\n            'global_obstacle_layer_enabled'" in (
+        planner_launch
+    )
+    assert "default_value='true'" in planner_launch
     assert "DeclareLaunchArgument('planner_scan_topic', default_value='/scan')" in (
         planner_launch
     )
@@ -117,8 +120,7 @@ def test_tracking_core_stays_ros_free_and_uses_thin_v1_rules():
     assert 'velocity_ema_stability_window: int = 3' in source
     assert 'velocity_ema_max_direction_change_rad: float = 0.35' in source
     assert 'velocity_ema_outlier_direction_change_rad: float = 0.70' in source
-    assert 'candidate_minimum_confirmations: int = 3' in source
-    assert 'candidate_minimum_displacement: float = 0.02' in source
+    assert 'common_motion_inlier_distance: float = 0.02' in source
     assert 'stationary_maximum_speed: float = 0.04' in source
     assert 'stationary_confirmation_frames: int = 8' in source
     assert '_reject_velocity_direction_outlier(' in source

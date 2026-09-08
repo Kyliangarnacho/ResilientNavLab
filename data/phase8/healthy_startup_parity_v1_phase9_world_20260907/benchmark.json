@@ -1,0 +1,123 @@
+{
+    "adaptive_improved": false,
+    "alignment_sensitivity": {
+        "0.020": {
+            "adaptive_improved": false,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.0013167586494762218,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.005663543206367072,
+                    "max_yaw_error": 0.007845659209500422,
+                    "position_rmse": 0.0027330088370133574,
+                    "sample_count": 652,
+                    "yaw_rmse": 0.0036889697849747695
+                },
+                "fixed": {
+                    "final_position_drift": 0.0015931593144172713,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.005925773854805213,
+                    "max_yaw_error": 0.007773155717910818,
+                    "position_rmse": 0.0026057798226045074,
+                    "sample_count": 652,
+                    "yaw_rmse": 0.00363671510342403
+                },
+                "position_rmse_benefit": -0.00012722901440884995,
+                "position_rmse_improvement_ratio": -0.04882569636358726
+            },
+            "outcome": "PASS"
+        },
+        "0.030": {
+            "adaptive_improved": false,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.0013167586494762218,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.007493426516132998,
+                    "max_yaw_error": 0.010306269872661922,
+                    "position_rmse": 0.003162345015500534,
+                    "sample_count": 844,
+                    "yaw_rmse": 0.004361211845935709
+                },
+                "fixed": {
+                    "final_position_drift": 0.0015931593144172713,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.007371335951510665,
+                    "max_yaw_error": 0.010306269872661922,
+                    "position_rmse": 0.0031334871372096324,
+                    "sample_count": 844,
+                    "yaw_rmse": 0.004344709634296677
+                },
+                "position_rmse_benefit": -2.8857878290901567e-05,
+                "position_rmse_improvement_ratio": -0.009209509095543786
+            },
+            "outcome": "PASS"
+        },
+        "0.050": {
+            "adaptive_improved": false,
+            "metrics": {
+                "adaptive": {
+                    "final_position_drift": 0.0013167586494762218,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.009194156998721257,
+                    "max_yaw_error": 0.012585359250400607,
+                    "position_rmse": 0.0032263713685519806,
+                    "sample_count": 857,
+                    "yaw_rmse": 0.004449269901221077
+                },
+                "fixed": {
+                    "final_position_drift": 0.0015931593144172713,
+                    "final_yaw_drift": 0.0003537504374291345,
+                    "max_position_error": 0.007451737763931747,
+                    "max_yaw_error": 0.010306269872661922,
+                    "position_rmse": 0.003175165224994201,
+                    "sample_count": 857,
+                    "yaw_rmse": 0.004394081586315096
+                },
+                "position_rmse_benefit": -5.1206143557779634e-05,
+                "position_rmse_improvement_ratio": -0.016127079987742418
+            },
+            "outcome": "PASS"
+        }
+    },
+    "benchmark": "healthy_startup_parity_v1",
+    "benchmark_outcome": "PASS",
+    "events": {},
+    "fault_status_observations": [],
+    "fusion_behavior": {},
+    "last_sim_time_sec": 18.0,
+    "metrics": {
+        "adaptive": {
+            "final_position_drift": 0.0013672505578127246,
+            "final_yaw_drift": 0.00044513500454623767,
+            "max_position_error": 0.009194156998721257,
+            "max_yaw_error": 0.012585359250400607,
+            "position_rmse": 0.003192940886062326,
+            "sample_count": 879,
+            "yaw_rmse": 0.004394118636189315
+        },
+        "fixed": {
+            "final_position_drift": 0.0016455687384697923,
+            "final_yaw_drift": 0.00044513500454623767,
+            "max_position_error": 0.007451737763931747,
+            "max_yaw_error": 0.010306269872661922,
+            "position_rmse": 0.003145836561558427,
+            "sample_count": 879,
+            "yaw_rmse": 0.004339485438347111
+        },
+        "position_rmse_benefit": -4.710432450389908e-05,
+        "position_rmse_improvement_ratio": -0.014973544741486476
+    },
+    "observation_counts": {
+        "evaluator_metrics_messages": 36,
+        "fault_status_messages": 0,
+        "fusion_status_messages": 180,
+        "lidar_fallback_messages": 0,
+        "target_health_messages": 90
+    },
+    "path_evidence": {
+        "adaptive": 359,
+        "fixed": 361,
+        "ground_truth": 896
+    }
+}

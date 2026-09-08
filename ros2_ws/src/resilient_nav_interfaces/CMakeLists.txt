@@ -10,6 +10,8 @@ find_package(std_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/FaultStatus.msg"
   "msg/FusionStatus.msg"
+  "msg/LidarOdometryStatus.msg"
+  "msg/MeasurementReliability.msg"
   "msg/Pedestrian.msg"
   "msg/PedestrianArray.msg"
   "msg/SensorHealth.msg"
@@ -28,6 +30,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_pedestrian_interfaces
     test/test_pedestrian_interfaces.py
+  )
+  ament_add_pytest_test(
+    test_reliability_interfaces
+    test/test_reliability_interfaces.py
   )
 endif()
 

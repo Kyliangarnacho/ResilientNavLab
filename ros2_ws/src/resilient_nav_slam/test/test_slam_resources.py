@@ -188,7 +188,8 @@ def test_smoke_launch_uses_only_existing_healthy_chain_and_frozen_tf_owners():
     assert "'use_rviz': 'false'" in launch_source
     assert 'GroupAction(' in launch_source
     assert 'scoped=True' in launch_source
-    assert "'odom_ros_topic': '/wheel/odometry'" in launch_source
+    assert "'odom_ros_topic': '/wheel/odometry/raw'" in launch_source
+    assert "executable='wheel_odometry_uncertainty'" in launch_source
     assert "'start_odom_tf_broadcaster': 'false'" in launch_source
     assert "package='robot_localization'" in launch_source
     assert "executable='ekf_node'" in launch_source

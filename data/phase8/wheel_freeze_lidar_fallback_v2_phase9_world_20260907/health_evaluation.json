@@ -1,0 +1,88 @@
+{
+  "event_count": 1,
+  "events": [
+    {
+      "anomaly_detection": {
+        "alarm_count": 40,
+        "detected": true,
+        "detection_delay_sec": 2.0,
+        "first_alarm_time_sec": 7.0
+      },
+      "classification": {
+        "all_alarms_exact": true,
+        "exact_match": true,
+        "expected": "freeze",
+        "matched": true,
+        "matched_alarm_count": 40,
+        "mismatched_alarm_count": 0,
+        "observed_faults": [
+          "freeze"
+        ]
+      },
+      "detection_delay_sec": 2.0,
+      "end_time_sec": 15.0,
+      "event_id": "wheel_freeze_ekf_001",
+      "first_alarm_time_sec": 7.0,
+      "missed": false,
+      "model": "freeze",
+      "positive_health_samples": 50,
+      "recovery": {
+        "first_healthy_time_sec": 15.2,
+        "observed": true,
+        "recovery_delay_sec": 0.1999999999999993
+      },
+      "recovery_delay_sec": 0.1999999999999993,
+      "recovery_time_sec": 15.2,
+      "sensor": "wheel",
+      "settled": true,
+      "start_time_sec": 5.0
+    }
+  ],
+  "schema_version": 1,
+  "sensors": {
+    "imu": {
+      "evaluated": 48,
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tn": 48,
+      "tp": 0,
+      "unknown": 43
+    },
+    "scan": {
+      "evaluated": 91,
+      "f1": 0.0,
+      "fn": 0,
+      "fp": 0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tn": 91,
+      "tp": 0,
+      "unknown": 0
+    },
+    "wheel": {
+      "evaluated": 91,
+      "f1": 0.8791208791208791,
+      "fn": 10,
+      "fp": 1,
+      "precision": 0.975609756097561,
+      "recall": 0.8,
+      "tn": 40,
+      "tp": 40,
+      "unknown": 0
+    }
+  },
+  "total": {
+    "evaluated": 230,
+    "f1": 0.8791208791208791,
+    "fn": 10,
+    "fp": 1,
+    "precision": 0.975609756097561,
+    "recall": 0.8,
+    "tn": 179,
+    "tp": 40,
+    "unknown": 43
+  }
+}

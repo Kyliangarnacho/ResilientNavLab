@@ -1,12 +1,14 @@
 """Publish Gazebo model pose only to the evaluation ground-truth channel."""
 
+from copy import deepcopy
+
 from geometry_msgs.msg import PoseStamped
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data
 from tf2_msgs.msg import TFMessage
 
-from .ground_truth_pose import ground_truth_pose_from_tf
+from .ground_truth_pose import ground_truth_pose_from_tf, relative_pose_from_origin
 
 
 class GroundTruthPoseAdapter(Node):
@@ -14,10 +16,16 @@ class GroundTruthPoseAdapter(Node):
 
     def __init__(self):
         super().__init__('ground_truth_pose_adapter')
-        self.declare_parameter('input_topic', '/evaluation/gazebo_model_tf')
+        self.declare_parameter(
+            'input_topic', '/evaluation/gazebo_world_model_tf'
+        )
         self.declare_parameter('output_topic', '/evaluation/ground_truth_pose')
-        self.declare_parameter('expected_frame', 'odom')
-        self.declare_parameter('expected_child_frame', 'base_footprint')
+        self.declare_parameter('expected_frame', 'resilient_lab')
+        self.declare_parameter(
+            'expected_child_frame', 'resilient_nav_robot'
+        )
+        self.declare_parameter('output_frame', 'odom')
+        self._origin = None
         self._publisher = self.create_publisher(
             PoseStamped, str(self.get_parameter('output_topic').value), 10
         )
@@ -39,7 +47,19 @@ class GroundTruthPoseAdapter(Node):
         if pose is None:
             self.get_logger().warning('suppressed invalid evaluation ground-truth pose')
             return
-        self._publisher.publish(pose)
+        if self._origin is None:
+            self._origin = deepcopy(pose.pose)
+        relative = relative_pose_from_origin(
+            pose,
+            self._origin,
+            output_frame=str(self.get_parameter('output_frame').value),
+        )
+        if relative is None:
+            self.get_logger().warning(
+                'suppressed invalid rebased evaluation ground-truth pose'
+            )
+            return
+        self._publisher.publish(relative)
 
 
 def main(args=None):

@@ -21,17 +21,24 @@ def test_manifest_declares_adapter_and_launch_dependencies_only():
         'launch',
         'launch_ros',
         'nav_msgs',
+        'python3-numpy',
+        'python3-joblib',
+        'python3-sklearn',
         'rclpy',
         'resilient_nav_fault_injection',
         'resilient_nav_health_assessment',
         'resilient_nav_interfaces',
         'resilient_nav_simulation',
-            'ros_gz_bridge',
-            'robot_localization',
-            'rviz2',
-            'sensor_msgs',
+        'ros_gz_bridge',
+        'rosbag2_py',
+        'rosidl_runtime_py',
+        'robot_localization',
+        'rviz2',
+        'sensor_msgs',
+        'sensor_msgs_py',
         'std_msgs',
         'tf2_msgs',
+        'tf2_ros',
     }
 
 
@@ -94,4 +101,4 @@ def test_adapter_uses_sensor_qos_for_faulted_measurement_streams():
     )
 
     assert 'from rclpy.qos import qos_profile_sensor_data' in adapter
-    assert adapter.count('qos_profile_sensor_data,') == 2
+    assert adapter.count('qos_profile_sensor_data,') == 3

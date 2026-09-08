@@ -5,6 +5,9 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from launch import LaunchContext
+from launch.substitutions import LaunchConfiguration
+from nav2_common.launch import RewrittenYaml
 import yaml
 
 
@@ -57,12 +60,40 @@ def test_launch_is_scoped_planner_only_and_owns_no_second_costmap():
     assert 'nav2_costmap_2d' not in source
     assert 'phase10_global_costmap_smoke' not in source
     assert 'phase10_costmaps_smoke' not in source
+    assert 'RewrittenYaml(' in source
+    assert "'global_obstacle_layer_enabled'" in source
+    assert "'obstacle_layer.enabled'" in source
     assert "DeclareLaunchArgument('planner_scan_topic', default_value='/scan')" in source
     assert "DeclareLaunchArgument('planner_plan_topic', default_value='/plan')" in source
     assert "('/scan', planner_scan_topic)" in source
     assert "('/plan', planner_plan_topic)" in source
     for forbidden in ('controller_server', 'bt_navigator', 'NavigateToPose', 'cmd_vel'):
         assert forbidden not in source
+
+
+def test_brne_override_disables_only_the_global_obstacle_layer():
+    context = LaunchContext()
+    context.launch_configurations['global_obstacle_layer_enabled'] = 'false'
+    rewritten_path = RewrittenYaml(
+        source_file=PACKAGE_ROOT / 'config' / 'nav2_costmaps.yaml',
+        param_rewrites={
+            (
+                'global_costmap.global_costmap.ros__parameters.'
+                'obstacle_layer.enabled'
+            ): LaunchConfiguration('global_obstacle_layer_enabled'),
+        },
+        convert_types=True,
+    ).perform(context)
+
+    rewritten = yaml.safe_load(Path(rewritten_path).read_text())
+    global_parameters = rewritten['global_costmap']['global_costmap'][
+        'ros__parameters'
+    ]
+    local_parameters = rewritten['local_costmap']['local_costmap'][
+        'ros__parameters'
+    ]
+    assert global_parameters['obstacle_layer']['enabled'] is False
+    assert local_parameters['obstacle_layer']['enabled'] is True
 
 
 def test_probe_checks_action_path_costs_and_cannot_command_motion():

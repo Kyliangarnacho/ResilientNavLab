@@ -1,0 +1,110 @@
+{
+  "dataset_schema_version": 1,
+  "window_count": 419,
+  "run_count": 6,
+  "feature_count": 44,
+  "label_balance": {
+    "wheel_translation_reliable": {
+      "reliable": 399,
+      "unreliable": 20
+    },
+    "wheel_rotation_reliable": {
+      "reliable": 374,
+      "unreliable": 45
+    },
+    "imu_yaw_rate_reliable": {
+      "reliable": 406,
+      "unreliable": 13
+    },
+    "lidar_translation_reliable": {
+      "reliable": 80,
+      "unreliable": 339
+    }
+  },
+  "runs": [
+    {
+      "run_id": "00_normal_v2",
+      "route_start_sec": 38.859,
+      "route_end_sec": 51.797,
+      "window_count": 63,
+      "lidar_pair_count": 397,
+      "lidar_valid_pair_count": 397,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 3,
+        "wheel_rotation_reliable": 6,
+        "imu_yaw_rate_reliable": 2,
+        "lidar_translation_reliable": 50
+      }
+    },
+    {
+      "run_id": "01_low_friction_mu_0p12",
+      "route_start_sec": 12.078,
+      "route_end_sec": 26.433,
+      "window_count": 70,
+      "lidar_pair_count": 340,
+      "lidar_valid_pair_count": 340,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 7,
+        "wheel_rotation_reliable": 10,
+        "imu_yaw_rate_reliable": 1,
+        "lidar_translation_reliable": 52
+      }
+    },
+    {
+      "run_id": "02_asymmetric_left_mu_0p15",
+      "route_start_sec": 13.469,
+      "route_end_sec": 29.246,
+      "window_count": 77,
+      "lidar_pair_count": 393,
+      "lidar_valid_pair_count": 393,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 5,
+        "wheel_rotation_reliable": 13,
+        "imu_yaw_rate_reliable": 2,
+        "lidar_translation_reliable": 65
+      }
+    },
+    {
+      "run_id": "03_rough_h0p008_spacing0p45",
+      "route_start_sec": 15.583,
+      "route_end_sec": 33.568999999999996,
+      "window_count": 88,
+      "lidar_pair_count": 439,
+      "lidar_valid_pair_count": 439,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 0,
+        "wheel_rotation_reliable": 5,
+        "imu_yaw_rate_reliable": 2,
+        "lidar_translation_reliable": 76
+      }
+    },
+    {
+      "run_id": "04_external_impact_y12N_t0p25",
+      "route_start_sec": 27.925,
+      "route_end_sec": 40.865,
+      "window_count": 63,
+      "lidar_pair_count": 670,
+      "lidar_valid_pair_count": 670,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 3,
+        "wheel_rotation_reliable": 8,
+        "imu_yaw_rate_reliable": 4,
+        "lidar_translation_reliable": 50
+      }
+    },
+    {
+      "run_id": "05_wheel_block_left_f3N_tau0p08_t0p60",
+      "route_start_sec": 11.585,
+      "route_end_sec": 23.534,
+      "window_count": 58,
+      "lidar_pair_count": 287,
+      "lidar_valid_pair_count": 287,
+      "label_unreliable_count": {
+        "wheel_translation_reliable": 2,
+        "wheel_rotation_reliable": 3,
+        "imu_yaw_rate_reliable": 2,
+        "lidar_translation_reliable": 46
+      }
+    }
+  ]
+}

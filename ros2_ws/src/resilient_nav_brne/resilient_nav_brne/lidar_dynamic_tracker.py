@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
+from itertools import combinations
 import math
 from typing import Sequence
 
@@ -22,8 +23,7 @@ class LidarTrackerConfig:
     minimum_common_matches: int = 3
     history_size: int = 6
     minimum_confirmations: int = 6
-    candidate_minimum_confirmations: int = 3
-    candidate_minimum_displacement: float = 0.02
+    common_motion_inlier_distance: float = 0.02
     dynamic_minimum_speed: float = 0.08
     dynamic_minimum_displacement: float = 0.04
     direction_consistency: float = 0.75
@@ -41,7 +41,7 @@ class LidarTrackerConfig:
             self.maximum_usable_range,
             self.maximum_track_diameter,
             self.association_distance,
-            self.candidate_minimum_displacement,
+            self.common_motion_inlier_distance,
             self.dynamic_minimum_speed,
             self.dynamic_minimum_displacement,
             self.minimum_direction_step,
@@ -53,7 +53,6 @@ class LidarTrackerConfig:
             or self.minimum_common_matches < 2
             or self.history_size < 3
             or not 3 <= self.minimum_confirmations <= self.history_size
-            or not 2 <= self.candidate_minimum_confirmations < self.minimum_confirmations
             or not 0.0 < self.direction_consistency <= 1.0
             or not 0.0 < self.velocity_ema_alpha <= 1.0
             or self.velocity_ema_stability_window < 2
@@ -93,6 +92,7 @@ class TrackerDiagnostics:
     cluster_count: int
     matched_cluster_count: int
     common_drift: tuple[float, float]
+    common_rotation_rad: float
     track_count: int
     dynamic_agent_count: int
 
@@ -109,7 +109,6 @@ class _Track:
     confirmations: int = 1
     dynamic: bool = False
     velocity_stable: bool = False
-    static_confirmed: bool = False
     stationary_frames: int = 0
 
 
@@ -225,36 +224,8 @@ def agents_within_range(
     ]
 
 
-def ranges_without_dynamic_agents(
-    ranges: Sequence[float],
-    agents: Sequence[DynamicAgent],
-    *,
-    clear_range: float,
-) -> list[float]:
-    """Replace dynamic or moving-candidate cluster beams with clearing rays."""
-    filtered = [float(value) for value in ranges]
-    if not math.isfinite(clear_range) or clear_range <= 0.0:
-        return filtered
-    for agent in agents:
-        span = agent.scan_index_span
-        if (
-            span is None
-            or len(span) != 2
-            or not all(isinstance(index, int) for index in span)
-        ):
-            continue
-        first_index = max(0, span[0])
-        last_index = min(len(filtered) - 1, span[1])
-        if first_index > last_index:
-            continue
-        filtered[first_index:last_index + 1] = [clear_range] * (
-            last_index - first_index + 1
-        )
-    return filtered
-
-
 class LidarDynamicTracker:
-    """Track cluster motion after subtracting frame-wise common displacement."""
+    """Track cluster motion after subtracting frame-wise common rigid motion."""
 
     def __init__(self, config: LidarTrackerConfig | None = None) -> None:
         self.config = config or LidarTrackerConfig()
@@ -278,7 +249,9 @@ class LidarDynamicTracker:
         valid_clusters = [cluster for cluster in clusters if _valid_cluster(cluster)]
         if not math.isfinite(stamp_sec):
             self.reset()
-            return [], self._diagnostics(len(valid_clusters), 0, np.zeros(2))
+            return [], self._diagnostics(
+                len(valid_clusters), 0, np.zeros(2), 0.0
+            )
         if self._last_stamp is not None and stamp_sec <= self._last_stamp:
             self.reset()
 
@@ -287,15 +260,21 @@ class LidarDynamicTracker:
             valid_clusters,
             self.config.association_distance,
         )
-        drift_samples = [
+        previous_points = np.asarray([
+            self._previous_clusters[previous_index].cluster.position
+            for previous_index, _ in associations
+        ])
+        current_points = np.asarray([
             valid_clusters[current_index].position
-            - self._previous_clusters[previous_index].cluster.position
-            for previous_index, current_index in associations
-        ]
-        common_drift = (
-            np.median(np.asarray(drift_samples), axis=0)
-            if len(drift_samples) >= self.config.minimum_common_matches
-            else np.zeros(2)
+            for _, current_index in associations
+        ])
+        common_rotation, common_drift, common_rotation_rad = (
+            _common_rigid_motion(
+                previous_points,
+                current_points,
+                minimum_matches=self.config.minimum_common_matches,
+                inlier_distance=self.config.common_motion_inlier_distance,
+            )
         )
         previous_by_current = {
             current_index: previous_index
@@ -321,7 +300,9 @@ class LidarDynamicTracker:
                 track = self._new_track(cluster, stamp_sec)
             else:
                 residual = (
-                    cluster.position - old_track.last_raw_position - common_drift
+                    cluster.position
+                    - common_rotation @ old_track.last_raw_position
+                    - common_drift
                 )
                 track = old_track
                 track.last_raw_position = cluster.position.copy()
@@ -331,9 +312,6 @@ class LidarDynamicTracker:
                 track.history.append((stamp_sec, track.corrected_position.copy()))
                 if not track.dynamic and self._is_dynamic(track):
                     track.dynamic = True
-                    track.static_confirmed = False
-                elif not track.dynamic and self._is_stationary_candidate(track):
-                    track.static_confirmed = True
             new_tracks[track.track_id] = track
             current_track_ids[current_index] = track.track_id
 
@@ -367,31 +345,12 @@ class LidarDynamicTracker:
                     continue
                 agents.append(agent)
         return agents, self._diagnostics(
-            len(valid_clusters), len(associations), common_drift, len(agents)
+            len(valid_clusters),
+            len(associations),
+            common_drift,
+            common_rotation_rad,
+            len(agents),
         )
-
-    def costmap_exclusion_agents(self) -> list[DynamicAgent]:
-        """Return quarantined candidates and dynamic agents excluded from Navfn."""
-        exclusions = []
-        for _, track in sorted(self._tracks.items()):
-            if (
-                track.static_confirmed
-                and not track.dynamic
-                and not self._is_moving_candidate(track)
-            ):
-                continue
-            velocity = (
-                track.filtered_velocity
-                if track.filtered_velocity is not None
-                else _fitted_velocity(track.history)
-            )
-            exclusions.append(DynamicAgent(
-                track_id=track.track_id,
-                position=tuple(float(value) for value in track.corrected_position),
-                velocity=tuple(float(value) for value in velocity),
-                scan_index_span=track.current_scan_index_span,
-            ))
-        return exclusions
 
     def _new_track(self, cluster: LidarCluster, stamp_sec: float) -> _Track:
         track_id = self._next_track_id
@@ -429,40 +388,6 @@ class LidarDynamicTracker:
         consistency = float(np.linalg.norm(np.sum(unit_steps, axis=0)) / len(unit_steps))
         return consistency >= self.config.direction_consistency
 
-    def _is_moving_candidate(self, track: _Track) -> bool:
-        if track.confirmations < self.config.candidate_minimum_confirmations:
-            return False
-        positions = np.asarray([position for _, position in track.history])
-        if (
-            np.linalg.norm(positions[-1] - positions[0])
-            < self.config.candidate_minimum_displacement
-            or np.linalg.norm(_fitted_velocity(track.history))
-            < self.config.dynamic_minimum_speed
-        ):
-            return False
-        steps = np.diff(positions, axis=0)
-        lengths = np.linalg.norm(steps, axis=1)
-        moving_steps = steps[lengths >= self.config.minimum_direction_step]
-        moving_lengths = lengths[lengths >= self.config.minimum_direction_step]
-        if len(moving_steps) < self.config.candidate_minimum_confirmations - 1:
-            return False
-        unit_steps = moving_steps / moving_lengths[:, np.newaxis]
-        consistency = float(np.linalg.norm(np.sum(unit_steps, axis=0)) / len(unit_steps))
-        return consistency >= self.config.direction_consistency
-
-    def _is_stationary_candidate(self, track: _Track) -> bool:
-        if track.confirmations < self.config.minimum_confirmations:
-            return False
-        positions = np.asarray([position for _, position in track.history])
-        maximum_excursion = float(np.max(np.linalg.norm(
-            positions - positions[0], axis=1
-        )))
-        return (
-            maximum_excursion <= self.config.candidate_minimum_displacement
-            and np.linalg.norm(_fitted_velocity(track.history))
-            <= self.config.stationary_maximum_speed
-        )
-
     def _demote_stationary_track(self, track: _Track) -> None:
         latest_observation = track.history[-1]
         track.history.clear()
@@ -472,7 +397,6 @@ class LidarDynamicTracker:
         track.confirmations = 1
         track.dynamic = False
         track.velocity_stable = False
-        track.static_confirmed = True
         track.stationary_frames = 0
 
     def _agent_from_track(self, track: _Track) -> DynamicAgent:
@@ -504,12 +428,14 @@ class LidarDynamicTracker:
         cluster_count: int,
         matched_count: int,
         common_drift: np.ndarray,
+        common_rotation_rad: float,
         dynamic_count: int = 0,
     ) -> TrackerDiagnostics:
         return TrackerDiagnostics(
             cluster_count=cluster_count,
             matched_cluster_count=matched_count,
             common_drift=tuple(float(value) for value in common_drift),
+            common_rotation_rad=float(common_rotation_rad),
             track_count=len(self._tracks),
             dynamic_agent_count=dynamic_count,
         )
@@ -564,6 +490,93 @@ def _greedy_associations(
         used_new.add(new_index)
         associations.append((old_index, new_index))
     return associations
+
+
+def _common_rigid_motion(
+    previous: np.ndarray,
+    current: np.ndarray,
+    *,
+    minimum_matches: int,
+    inlier_distance: float,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Estimate robust frame-wise SE(2) motion from matched scan clusters."""
+    identity = np.eye(2)
+    zero = np.zeros(2)
+    if (
+        previous.shape != current.shape
+        or previous.ndim != 2
+        or previous.shape[1:] != (2,)
+        or len(previous) < minimum_matches
+        or not np.isfinite(previous).all()
+        or not np.isfinite(current).all()
+    ):
+        return identity, zero, 0.0
+
+    best_inliers: np.ndarray | None = None
+    best_score: tuple[int, float] | None = None
+    candidate_pairs = list(combinations(range(len(previous)), 2))
+    if len(candidate_pairs) > 32:
+        pair_indices = np.random.default_rng(0).choice(
+            len(candidate_pairs), size=32, replace=False
+        )
+        candidate_pairs = [candidate_pairs[index] for index in pair_indices]
+    for first_index, second_index in candidate_pairs:
+        old_delta = previous[second_index] - previous[first_index]
+        new_delta = current[second_index] - current[first_index]
+        if np.linalg.norm(old_delta) <= 1e-9 or np.linalg.norm(new_delta) <= 1e-9:
+            continue
+        yaw = math.atan2(new_delta[1], new_delta[0]) - math.atan2(
+            old_delta[1], old_delta[0]
+        )
+        rotation = _rotation_matrix(yaw)
+        pair = np.array([first_index, second_index])
+        translation = np.mean(
+            current[pair] - previous[pair] @ rotation.T,
+            axis=0,
+        )
+        residuals = np.linalg.norm(
+            current - previous @ rotation.T - translation,
+            axis=1,
+        )
+        inliers = residuals <= inlier_distance
+        inlier_count = int(np.count_nonzero(inliers))
+        if inlier_count < minimum_matches:
+            continue
+        score = (inlier_count, -float(np.median(residuals[inliers])))
+        if best_score is None or score > best_score:
+            best_score = score
+            best_inliers = inliers
+
+    if best_inliers is None:
+        best_inliers = np.ones(len(previous), dtype=bool)
+    rotation, translation = _fit_rigid_motion(
+        previous[best_inliers], current[best_inliers]
+    )
+    yaw = math.atan2(rotation[1, 0], rotation[0, 0])
+    return rotation, translation, yaw
+
+
+def _fit_rigid_motion(
+    previous: np.ndarray,
+    current: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return the least-squares 2D rigid transform from previous to current."""
+    previous_center = np.mean(previous, axis=0)
+    current_center = np.mean(current, axis=0)
+    covariance = (previous - previous_center).T @ (current - current_center)
+    left, _, right_transposed = np.linalg.svd(covariance)
+    rotation = right_transposed.T @ left.T
+    if np.linalg.det(rotation) < 0.0:
+        right_transposed[-1, :] *= -1.0
+        rotation = right_transposed.T @ left.T
+    translation = current_center - rotation @ previous_center
+    return rotation, translation
+
+
+def _rotation_matrix(yaw: float) -> np.ndarray:
+    cosine = math.cos(yaw)
+    sine = math.sin(yaw)
+    return np.array([[cosine, -sine], [sine, cosine]])
 
 
 def _fitted_velocity(history: deque[tuple[float, np.ndarray]]) -> np.ndarray:
