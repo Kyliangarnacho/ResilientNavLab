@@ -69,6 +69,7 @@ class FusionPolicyConfig:
     wheel_yaw_fallback_covariance_scale: float = 8.0
     recovery_confirmation_cycles: int = 1
     nominal_reliability: float = 0.95
+    nominal_state_reliability: float = 0.80
     reliability_floor: float = 0.05
     maximum_covariance_scale: float = 100.0
     fallback_reliability_threshold: float = 0.10
@@ -92,6 +93,12 @@ class FusionPolicyConfig:
             raise ValueError('recovery_confirmation_cycles must be at least 1')
         if not 0.0 < self.reliability_floor < self.nominal_reliability <= 1.0:
             raise ValueError('reliability floor/nominal values are invalid')
+        if not (
+            self.reliability_floor
+            < self.nominal_state_reliability
+            <= self.nominal_reliability
+        ):
+            raise ValueError('nominal-state reliability threshold is invalid')
         if self.maximum_covariance_scale < 1.0:
             raise ValueError('maximum_covariance_scale must be at least 1.0')
         if not 0.0 <= self.fallback_reliability_threshold <= 1.0:
@@ -278,7 +285,7 @@ class FusionPolicy:
             wheel_action,
             imu_action,
             lidar_translation_fallback_enabled,
-            scales,
+            scores,
         )
         reasons = self._reasons(
             wheel,
@@ -401,15 +408,15 @@ class FusionPolicy:
             return health
         return MeasurementHealth(state=HealthState(health))
 
-    @staticmethod
     def _fusion_state(
+        self,
         wheel: MeasurementHealth,
         imu: MeasurementHealth,
         lidar: MeasurementHealth,
         wheel_action: _MeasurementAction,
         imu_action: _MeasurementAction,
         lidar_translation_fallback_enabled: bool,
-        scales: Mapping[str, float | None],
+        scores: ReliabilityScores,
     ) -> FusionState:
         if (
             not wheel_action.accepted
@@ -426,11 +433,19 @@ class FusionPolicy:
         if (
             wheel_action.accepted
             and imu_action.accepted
-            and scales[FusionPolicy.WHEEL_VELOCITY] == 1.0
-            and scales[FusionPolicy.WHEEL_ROTATION] == 1.0
-            and scales[FusionPolicy.IMU_YAW_RATE] == 1.0
+            and wheel_action.health_state is HealthState.HEALTHY
+            and imu_action.health_state is HealthState.HEALTHY
             and wheel.state is HealthState.HEALTHY
             and imu.state is HealthState.HEALTHY
+            and not lidar_translation_fallback_enabled
+            and (
+                not scores.rf_ready
+                or min(
+                    scores.wheel_translation,
+                    scores.wheel_rotation,
+                    scores.imu_yaw_rate,
+                ) >= self._config.nominal_state_reliability
+            )
         ):
             return FusionState.NOMINAL
         return FusionState.DEGRADED

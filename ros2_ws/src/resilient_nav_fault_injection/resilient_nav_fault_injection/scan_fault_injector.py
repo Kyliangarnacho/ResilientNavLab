@@ -13,6 +13,7 @@ from resilient_nav_fault_injection.imu_fault_models import (
 )
 from resilient_nav_fault_injection.scan_fault_models import (
     apply_scan_fault,
+    DROPOUT_MODEL,
     make_scan_fault_status,
     SECTOR_BLINDNESS_MODEL,
     validate_model,
@@ -130,7 +131,8 @@ class ScanFaultInjector(Node):
             start_time_sec=self._start_time_sec,
             end_time_sec=self._end_time_sec,
         )
-        self._publisher.publish(faulted_msg)
+        if faulted_msg is not None:
+            self._publisher.publish(faulted_msg)
 
     def _get_enabled(self):
         return self.get_parameter('enabled').get_parameter_value().bool_value
@@ -173,6 +175,7 @@ def main(args=None):
 
 
 __all__ = [
+    'DROPOUT_MODEL',
     'SECTOR_BLINDNESS_MODEL',
     'ScanFaultInjector',
     'main',

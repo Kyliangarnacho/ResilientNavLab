@@ -1,0 +1,17 @@
+{
+  "selection_policy": "Keep the latest completed retry for each scenario; keep the latest run for scenario 07 even when navigation does not finish.",
+  "healthy": {
+    "01_simple": "healthy_20260908/01_simple_retry",
+    "02_detour": "healthy_detour_retry2_20260909/02_detour",
+    "03_multi_turn": "healthy_20260908/03_multi_turn"
+  },
+  "faults": {
+    "01_wheel_freeze": "fault_benchmark_20260908_v1/01_wheel_freeze",
+    "02_wheel_bias": "fault_benchmark_20260908_v1/02_wheel_bias",
+    "03_lidar_dropout": "fault_benchmark_retry2_20260909/03_lidar_dropout",
+    "04_wheel_imu_mild": "fault_benchmark_20260908_v1/04_wheel_imu_mild",
+    "05_wheel_imu_moderate": "fault_benchmark_retry_20260909/05_wheel_imu_moderate",
+    "06_wheel_imu_severe": "fault_benchmark_retry_20260909/06_wheel_imu_severe",
+    "07_navigation_gauntlet": "fault_benchmark_retry11_20260909/07_navigation_gauntlet"
+  }
+}

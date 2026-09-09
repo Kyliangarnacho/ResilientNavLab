@@ -1,0 +1,13 @@
+scan_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /scan
+    output_topic: /faulted/scan
+    status_topic: /fault_injection/status
+    enabled: true
+    model: dropout
+    start_time_sec: 18.0
+    end_time_sec: 28.0
+    scenario_id: navigation_lidar_dropout
+    scenario_seed: 20260908
+    event_id: navigation_lidar_dropout_001

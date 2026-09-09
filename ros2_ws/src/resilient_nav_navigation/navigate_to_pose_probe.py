@@ -171,8 +171,11 @@ def feedback_pose_record(pose: PoseStamped) -> dict[str, float | str]:
 class NavigateToPoseProbe(Node):
     """Observe Nav2 and issue one outer navigation action only."""
 
-    def __init__(self) -> None:
+    def __init__(self, action_name: str = NAVIGATE_TO_POSE_ACTION) -> None:
         super().__init__('phase10_navigate_to_pose_probe')
+        if not action_name:
+            raise ValueError('NavigateToPose action name must not be empty')
+        self.action_name = action_name
         self.global_raw: Costmap | None = None
         self.local_raw: Costmap | None = None
         self.odom: Odometry | None = None
@@ -200,7 +203,7 @@ class NavigateToPoseProbe(Node):
             Trigger, '/lifecycle_manager_navigation/is_active'
         )
         self.parameter_client = self.create_client(GetParameters, '/bt_navigator/get_parameters')
-        self.action_client = ActionClient(self, NavigateToPose, NAVIGATE_TO_POSE_ACTION)
+        self.action_client = ActionClient(self, NavigateToPose, action_name)
         self.zero_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
         self.create_subscription(Costmap, '/global_costmap/costmap_raw', self._on_global_raw, MAP_QOS)
         self.create_subscription(Costmap, '/local_costmap/costmap_raw', self._on_local_raw, MAP_QOS)

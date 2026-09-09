@@ -22,8 +22,12 @@ SUPPORTED_SCENARIOS = {
     'rough_surface',
     'external_impact',
     'wheel_block',
+    'navigation_gauntlet',
 }
 WHEEL_TRACK_OFFSET_M = 0.195
+GAUNTLET_ROUGHNESS_LENGTH_FRACTION = 0.25
+GAUNTLET_ROUGHNESS_WIDTH_FRACTION = 0.65
+GAUNTLET_MAX_REGION_GAP_M = 0.18
 
 
 @dataclass(frozen=True)
@@ -111,7 +115,7 @@ class PhysicalSceneConfig:
 
 
 def build_physical_world(base_world: Path, output_world: Path, config):
-    """Add common landmarks and at most one disturbance to the Phase 9 world."""
+    """Add common landmarks and one bounded disturbance configuration."""
     tree = ET.parse(base_world)
     root = tree.getroot()
     world = root.find('world')
@@ -149,6 +153,45 @@ def build_physical_world(base_world: Path, output_world: Path, config):
         )
     elif config.scenario == 'rough_surface':
         _append_roughness_bumps(world, config)
+    elif config.scenario == 'navigation_gauntlet':
+        zone_min_x = config.zone_center_x - 0.5 * config.zone_length_m
+        roughness_length = (
+            config.zone_length_m * GAUNTLET_ROUGHNESS_LENGTH_FRACTION
+        )
+        region_gap = min(
+            GAUNTLET_MAX_REGION_GAP_M, 0.15 * config.zone_length_m
+        )
+        friction_length = config.zone_length_m - roughness_length - region_gap
+        roughness_center_x = zone_min_x + 0.5 * roughness_length
+        friction_center_x = (
+            zone_min_x + roughness_length + region_gap
+            + 0.5 * friction_length
+        )
+        _append_surface_patch(
+            world,
+            name='physical_low_friction_zone',
+            center_x=friction_center_x,
+            center_y=config.zone_center_y,
+            length=friction_length,
+            width=config.zone_width_m,
+            friction=config.low_friction_mu,
+            color='0.12 0.32 0.85 0.52',
+        )
+        _append_roughness_bumps(
+            world,
+            config,
+            center_x=roughness_center_x,
+            length=roughness_length,
+            width=config.zone_width_m * GAUNTLET_ROUGHNESS_WIDTH_FRACTION,
+            minimum_count=3,
+        )
+        world.insert(
+            5,
+            ET.fromstring(
+                '<plugin filename="gz-sim-apply-link-wrench-system" '
+                'name="gz::sim::systems::ApplyLinkWrench"/>'
+            ),
+        )
     else:
         world.insert(
             5,
@@ -230,12 +273,23 @@ def _append_lidar_landmarks(world):
         world.append(model)
 
 
-def _append_roughness_bumps(world, config):
+def _append_roughness_bumps(
+    world,
+    config,
+    *,
+    center_x=None,
+    length=None,
+    width=None,
+    minimum_count=5,
+):
+    center_x = config.zone_center_x if center_x is None else center_x
+    length = config.zone_length_m if length is None else length
+    width = config.zone_width_m if width is None else width
     bump_count = max(
-        5, ceil(config.zone_length_m / config.roughness_spacing_m)
+        minimum_count, ceil(length / config.roughness_spacing_m)
     )
     covered_length = (bump_count - 1) * config.roughness_spacing_m
-    first_x = config.zone_center_x - 0.5 * covered_length
+    first_x = center_x - 0.5 * covered_length
     for index in range(bump_count):
         center_x = first_x + index * config.roughness_spacing_m
         height = config.roughness_height_m
@@ -248,7 +302,7 @@ def _append_roughness_bumps(world, config):
             <link name="bump_link">
               <collision name="bump_collision">
                 <geometry>
-                  <cylinder><radius>{radius}</radius><length>{config.zone_width_m}</length></cylinder>
+                  <cylinder><radius>{radius}</radius><length>{width}</length></cylinder>
                 </geometry>
                 <surface>
                   <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
@@ -256,7 +310,7 @@ def _append_roughness_bumps(world, config):
               </collision>
               <visual name="bump_visual">
                 <geometry>
-                  <cylinder><radius>{radius}</radius><length>{config.zone_width_m}</length></cylinder>
+                  <cylinder><radius>{radius}</radius><length>{width}</length></cylinder>
                 </geometry>
                 <material>
                   <ambient>0.48 0.25 0.08 1</ambient>
@@ -327,10 +381,16 @@ def _configure_scene(context):
             'spawn_y': _value(context, 'spawn_y'),
             'spawn_z': _value(context, 'spawn_z'),
             'spawn_yaw': _value(context, 'spawn_yaw'),
+            'odom_ros_topic': _value(context, 'odom_ros_topic'),
+            'start_odom_tf_broadcaster': _value(
+                context, 'start_odom_tf_broadcaster'
+            ),
         }.items(),
     )
     actions = [robot_scene]
-    if config.scenario in {'external_impact', 'wheel_block'}:
+    if config.scenario in {
+        'external_impact', 'wheel_block', 'navigation_gauntlet'
+    }:
         actions.extend(_dynamic_disturbance_actions(config, context))
     return actions
 
@@ -350,7 +410,7 @@ def _dynamic_disturbance_actions(config, context):
     )
     duration_sec = (
         config.impact_duration_sec
-        if config.scenario == 'external_impact'
+        if config.scenario in {'external_impact', 'navigation_gauntlet'}
         else config.wheel_block_duration_sec
     )
     pulse = Node(
@@ -360,7 +420,11 @@ def _dynamic_disturbance_actions(config, context):
         output='screen',
         parameters=[{
             'use_sim_time': True,
-            'mode': config.scenario,
+            'mode': (
+                'external_impact'
+                if config.scenario == 'navigation_gauntlet'
+                else config.scenario
+            ),
             'delay_after_motion_sec': config.disturbance_delay_sec,
             'duration_sec': duration_sec,
             'pulse_count': config.disturbance_pulse_count,
@@ -408,6 +472,12 @@ def generate_launch_description():
         ('spawn_y', '-3.5', 'Experiment start Y position.'),
         ('spawn_z', '0.25', 'Experiment start Z position.'),
         ('spawn_yaw', '0.0', 'Experiment start yaw.'),
+        ('odom_ros_topic', '/odom', 'Raw Gazebo wheel-odometry topic.'),
+        (
+            'start_odom_tf_broadcaster',
+            'true',
+            'Preserve the legacy raw odometry TF owner by default.',
+        ),
         ('zone_center_x', '-1.5', 'Static disturbance zone center X.'),
         ('zone_center_y', '-3.5', 'Static disturbance zone center Y.'),
         ('zone_length_m', '2.0', 'Static disturbance zone length.'),

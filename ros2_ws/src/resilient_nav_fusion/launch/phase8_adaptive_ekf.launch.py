@@ -14,6 +14,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     """Connect adapter-owned fusion inputs to an EKF without TF ownership."""
     fusion_share = Path(get_package_share_directory('resilient_nav_fusion'))
+    adaptive_output_topic = LaunchConfiguration('adaptive_output_topic')
+    publish_tf = LaunchConfiguration('publish_tf')
 
     lidar_odometry = Node(
         package='resilient_nav_fusion',
@@ -45,14 +47,23 @@ def generate_launch_description():
         executable='ekf_node',
         name='adaptive_ekf_filter_node',
         output='screen',
-        parameters=[str(fusion_share / 'config' / 'adaptive_ekf.yaml')],
-        remappings=[('odometry/filtered', '/odometry/adaptive')],
+        parameters=[
+            str(fusion_share / 'config' / 'adaptive_ekf.yaml'),
+            {
+                'publish_tf': ParameterValue(publish_tf, value_type=bool),
+            },
+        ],
+        remappings=[('odometry/filtered', adaptive_output_topic)],
     )
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'fallback_reliability_threshold', default_value='0.10'
         ),
+        DeclareLaunchArgument(
+            'adaptive_output_topic', default_value='/odometry/adaptive'
+        ),
+        DeclareLaunchArgument('publish_tf', default_value='false'),
         lidar_odometry,
         measurement_adapter,
         adaptive_ekf,

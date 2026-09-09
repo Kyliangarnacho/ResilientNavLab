@@ -11,9 +11,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/FaultStatus.msg"
   "msg/FusionStatus.msg"
   "msg/LidarOdometryStatus.msg"
+  "msg/LocalizationQuality.msg"
   "msg/MeasurementReliability.msg"
   "msg/Pedestrian.msg"
   "msg/PedestrianArray.msg"
+  "msg/ResilienceStatus.msg"
   "msg/SensorHealth.msg"
   DEPENDENCIES builtin_interfaces geometry_msgs std_msgs
 )
@@ -34,6 +36,14 @@ if(BUILD_TESTING)
   ament_add_pytest_test(
     test_reliability_interfaces
     test/test_reliability_interfaces.py
+  )
+  ament_add_pytest_test(
+    test_localization_quality_interface
+    test/test_localization_quality_interface.py
+  )
+  ament_add_pytest_test(
+    test_resilience_status_interface
+    test/test_resilience_status_interface.py
   )
 endif()
 

@@ -419,6 +419,9 @@ class MeasurementAdapter(Node):
                 nominal_reliability=self._float_parameter(
                     'nominal_reliability'
                 ),
+                nominal_state_reliability=self._float_parameter(
+                    'nominal_state_reliability'
+                ),
                 reliability_floor=self._float_parameter(
                     'reliability_floor'
                 ),
@@ -536,6 +539,7 @@ class MeasurementAdapter(Node):
             'wheel_yaw_fallback_covariance_scale': 8.0,
             'recovery_confirmation_cycles': 1,
             'nominal_reliability': 0.95,
+            'nominal_state_reliability': 0.80,
             'reliability_floor': 0.05,
             'maximum_covariance_scale': 100.0,
             'fallback_reliability_threshold': 0.10,

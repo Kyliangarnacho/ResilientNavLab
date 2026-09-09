@@ -27,6 +27,9 @@ def generate_launch_description():
     initial_pose_result = LaunchConfiguration('initial_pose_result')
     use_rviz = LaunchConfiguration('use_rviz')
     use_recovery = LaunchConfiguration('use_recovery')
+    start_localization = LaunchConfiguration('start_localization')
+    navigation_scan_topic = LaunchConfiguration('navigation_scan_topic')
+    costmap_update_timeout = LaunchConfiguration('costmap_update_timeout')
     log_level = LaunchConfiguration('log_level')
 
     controller_chain = IncludeLaunchDescription(
@@ -51,6 +54,9 @@ def generate_launch_description():
             # failure on long, repeatedly replaced paths.  False preserves
             # the frozen Task 3 / Task 4 / Task 5.1--5.2 controller contract.
             'use_recovery_controller_profile': use_recovery,
+            'start_localization': start_localization,
+            'navigation_scan_topic': navigation_scan_topic,
+            'costmap_update_timeout': costmap_update_timeout,
         }.items(),
     )
     bt_navigator_baseline = Node(
@@ -136,6 +142,7 @@ def generate_launch_description():
         arguments=['-d', str(navigation_share / 'rviz' / 'phase10_bt_navigation.rviz')],
         output='screen',
         parameters=[{'use_sim_time': True}],
+        remappings=[('/scan', navigation_scan_topic)],
         condition=IfCondition(use_rviz),
     )
     return LaunchDescription([
@@ -155,6 +162,9 @@ def generate_launch_description():
         # The frozen Task 3 baseline is no-Recovery.  Task 5.3 alone selects
         # the official recovery XML and Behavior Server through this opt-in.
         DeclareLaunchArgument('use_recovery', default_value='false'),
+        DeclareLaunchArgument('start_localization', default_value='true'),
+        DeclareLaunchArgument('navigation_scan_topic', default_value='/scan'),
+        DeclareLaunchArgument('costmap_update_timeout', default_value='0.3'),
         DeclareLaunchArgument('log_level', default_value='info'),
         # Keep forced-off child RViz values local to nested wrappers.
         GroupAction(actions=[controller_chain], scoped=True, forwarding=True),

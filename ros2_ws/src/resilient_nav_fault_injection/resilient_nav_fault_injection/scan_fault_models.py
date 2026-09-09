@@ -12,12 +12,13 @@ from resilient_nav_interfaces.msg import FaultStatus
 
 
 SECTOR_BLINDNESS_MODEL = 'sector_blindness'
+DROPOUT_MODEL = 'dropout'
 
 
 def validate_model(model):
     """Validate a LaserScan fault model name."""
-    if model != SECTOR_BLINDNESS_MODEL:
-        raise ValueError('model must be sector_blindness')
+    if model not in {SECTOR_BLINDNESS_MODEL, DROPOUT_MODEL}:
+        raise ValueError('model must be sector_blindness or dropout')
 
 
 def validate_sector_width(sector_width_rad):
@@ -61,7 +62,6 @@ def apply_scan_fault(
     validate_sector_width(sector_width_rad)
     validate_time_window(start_time_sec, end_time_sec)
 
-    faulted_msg = deepcopy(scan_msg)
     msg_time_sec = stamp_to_seconds(scan_msg.header.stamp)
     if not is_active_window(
         enabled,
@@ -69,7 +69,12 @@ def apply_scan_fault(
         start_time_sec,
         end_time_sec,
     ):
-        return faulted_msg
+        return deepcopy(scan_msg)
+
+    if model == DROPOUT_MODEL:
+        return None
+
+    faulted_msg = deepcopy(scan_msg)
 
     intensities_match_ranges = len(faulted_msg.intensities) == len(
         faulted_msg.ranges
@@ -118,7 +123,7 @@ def make_scan_fault_status(
     status.source_topic = source_topic
     status.faulted_topic = faulted_topic
     status.sensor = 'lidar'
-    status.model = SECTOR_BLINDNESS_MODEL
+    status.model = model
     status.start_time = seconds_to_stamp(start_time_sec)
     status.end_time = seconds_to_stamp(end_time_sec)
     status.state = get_fault_state(
@@ -127,12 +132,17 @@ def make_scan_fault_status(
         start_time_sec,
         end_time_sec,
     )
-    status.severity = sector_width_rad
-    status.affected_fields = ['ranges']
-    status.parameters_yaml = (
-        f'model: {model}\n'
-        f'center: {sector_center_rad}\n'
-        f'width: {sector_width_rad}\n'
-        'invalid_value: nan\n'
-    )
+    if model == DROPOUT_MODEL:
+        status.severity = 1.0
+        status.affected_fields = ['message']
+        status.parameters_yaml = f'model: {model}\n'
+    else:
+        status.severity = sector_width_rad
+        status.affected_fields = ['ranges']
+        status.parameters_yaml = (
+            f'model: {model}\n'
+            f'center: {sector_center_rad}\n'
+            f'width: {sector_width_rad}\n'
+            'invalid_value: nan\n'
+        )
     return status

@@ -7,8 +7,10 @@ from resilient_nav_fault_injection.imu_fault_models import (
     validate_time_window,
 )
 from resilient_nav_fault_injection.wheel_fault_models import (
+    BIAS_MODEL,
     FREEZE_MODEL,
     make_wheel_fault_status,
+    validate_linear_bias,
     validate_model,
     WheelOdometryFreezeModel,
 )
@@ -183,6 +185,42 @@ def test_input_object_is_not_modified():
     assert msg == original
 
 
+def test_bias_changes_only_longitudinal_wheel_speed_inside_window():
+    model = WheelOdometryFreezeModel()
+    msg = make_odometry_message(time_sec=6.0, pose_x=2.0, twist_x=0.2)
+
+    faulted = model.apply(
+        msg,
+        model=BIAS_MODEL,
+        enabled=True,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+        linear_bias_mps=0.12,
+    )
+
+    assert faulted.twist.twist.linear.x == pytest.approx(0.32)
+    assert faulted.pose == msg.pose
+    assert faulted.twist.twist.angular.z == msg.twist.twist.angular.z
+    assert msg.twist.twist.linear.x == pytest.approx(0.2)
+
+
+def test_bias_is_passthrough_outside_window():
+    model = WheelOdometryFreezeModel()
+    msg = make_odometry_message(time_sec=4.9, twist_x=0.2)
+
+    faulted = model.apply(
+        msg,
+        model=BIAS_MODEL,
+        enabled=True,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+        linear_bias_mps=0.12,
+    )
+
+    assert faulted == msg
+    assert faulted is not msg
+
+
 @pytest.mark.parametrize(
     ('start_time_sec', 'end_time_sec'),
     [
@@ -211,16 +249,43 @@ def test_invalid_model_is_rejected():
     model = WheelOdometryFreezeModel()
 
     with pytest.raises(ValueError):
-        validate_model('bias')
+        validate_model('delay')
 
     with pytest.raises(ValueError):
         model.apply(
             make_odometry_message(),
-            model='bias',
+            model='delay',
             enabled=True,
             start_time_sec=5.0,
             end_time_sec=15.0,
         )
+
+
+@pytest.mark.parametrize('invalid_bias', [float('nan'), -1.01, 1.01])
+def test_invalid_linear_bias_bias_is_rejected(invalid_bias):
+    with pytest.raises(ValueError):
+        validate_linear_bias(invalid_bias)
+
+
+def test_bias_fault_status_names_the_single_affected_field():
+    status = make_wheel_fault_status(
+        make_odometry_message(time_sec=6.5),
+        model=BIAS_MODEL,
+        enabled=True,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+        scenario_id='wheel_bias_navigation',
+        scenario_seed=20260908,
+        event_id='wheel_bias_001',
+        source_topic='/wheel/odometry',
+        faulted_topic='/faulted/wheel/odometry',
+        linear_bias_mps=0.12,
+    )
+
+    assert status.model == BIAS_MODEL
+    assert status.severity == pytest.approx(0.12)
+    assert list(status.affected_fields) == ['twist.twist.linear.x']
+    assert 'linear_bias_mps: 0.12' in status.parameters_yaml
 
 
 def test_fault_status_fields_are_correct():

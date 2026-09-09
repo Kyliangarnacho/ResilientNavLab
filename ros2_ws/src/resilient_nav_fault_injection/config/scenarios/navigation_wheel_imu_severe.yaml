@@ -1,0 +1,27 @@
+wheel_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /wheel/odometry
+    output_topic: /faulted/wheel/odometry
+    status_topic: /fault_injection/status
+    enabled: true
+    model: freeze
+    start_time_sec: 18.0
+    end_time_sec: 27.0
+    scenario_id: navigation_wheel_imu_severe
+    scenario_seed: 20260908
+    event_id: navigation_wheel_severe_001
+imu_fault_injector:
+  ros__parameters:
+    use_sim_time: true
+    input_topic: /imu/data
+    output_topic: /faulted/imu/data
+    status_topic: /fault_injection/status
+    enabled: true
+    model: dropout
+    dropout_probability: 1.0
+    start_time_sec: 18.0
+    end_time_sec: 27.0
+    scenario_id: navigation_wheel_imu_severe
+    scenario_seed: 20260908
+    event_id: navigation_imu_severe_001

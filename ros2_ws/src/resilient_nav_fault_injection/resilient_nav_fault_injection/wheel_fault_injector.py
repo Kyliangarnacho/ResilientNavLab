@@ -13,8 +13,10 @@ from resilient_nav_fault_injection.imu_fault_models import (
     validate_time_window,
 )
 from resilient_nav_fault_injection.wheel_fault_models import (
+    BIAS_MODEL,
     FREEZE_MODEL,
     make_wheel_fault_status,
+    validate_linear_bias,
     validate_model,
     WheelOdometryFreezeModel,
 )
@@ -37,6 +39,7 @@ class WheelFaultInjector(Node):
         self.declare_parameter('model', FREEZE_MODEL)
         self.declare_parameter('start_time_sec', 0.0)
         self.declare_parameter('end_time_sec', 10.0)
+        self.declare_parameter('linear_bias_mps', 0.15)
 
         self._input_topic = (
             self.get_parameter('input_topic').get_parameter_value().string_value
@@ -69,6 +72,7 @@ class WheelFaultInjector(Node):
 
         validate_model(self._get_model())
         validate_time_window(self._start_time_sec, self._end_time_sec)
+        validate_linear_bias(self._get_linear_bias_mps())
 
         status_qos = QoSProfile(
             depth=1,
@@ -109,6 +113,7 @@ class WheelFaultInjector(Node):
             event_id=self._event_id,
             source_topic=self._input_topic,
             faulted_topic=self._output_topic,
+            linear_bias_mps=self._get_linear_bias_mps(),
         )
         changed_status_msg = self._status_tracker.first_or_changed(status_msg)
         if changed_status_msg is not None:
@@ -120,6 +125,7 @@ class WheelFaultInjector(Node):
             enabled=enabled,
             start_time_sec=self._start_time_sec,
             end_time_sec=self._end_time_sec,
+            linear_bias_mps=self._get_linear_bias_mps(),
         )
         self._publisher.publish(faulted_msg)
 
@@ -128,6 +134,13 @@ class WheelFaultInjector(Node):
 
     def _get_model(self):
         return self.get_parameter('model').get_parameter_value().string_value
+
+    def _get_linear_bias_mps(self):
+        return (
+            self.get_parameter('linear_bias_mps')
+            .get_parameter_value()
+            .double_value
+        )
 
 
 def main(args=None):
@@ -150,6 +163,7 @@ def main(args=None):
 
 
 __all__ = [
+    'BIAS_MODEL',
     'FREEZE_MODEL',
     'WheelFaultInjector',
     'main',

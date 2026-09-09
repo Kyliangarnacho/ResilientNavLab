@@ -41,6 +41,8 @@ def test_runner_only_commands_navigate_to_pose_and_never_reads_ground_truth():
         assert required in source
     for forbidden in ('ground_truth', '/evaluation/', 'ComputePathToPose', 'FollowPath', 'create_publisher(Twist'):
         assert forbidden not in source
+    assert "'--observe-path-safety-only'" in source
+    assert 'not arguments.observe_path_safety_only' in source
 
 
 def test_gt_recorder_is_read_only_and_has_no_action_or_control_interface():

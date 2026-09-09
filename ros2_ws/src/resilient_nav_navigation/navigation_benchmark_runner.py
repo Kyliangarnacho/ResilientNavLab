@@ -106,7 +106,7 @@ def costmap_readiness(probe: NavigateToPoseProbe) -> dict[str, object]:
 def action_readiness(probe: NavigateToPoseProbe) -> dict[str, object]:
     if not probe.action_client.wait_for_server(timeout_sec=0.1):
         raise ValueError('NavigateToPose action server is unavailable')
-    return {'action': 'navigate_to_pose'}
+    return {'action': probe.action_name}
 
 def load_scenario(path: Path, name: str) -> dict[str, object]:
     loaded = yaml.safe_load(path.read_text(encoding='utf-8'))
@@ -167,6 +167,14 @@ def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument('--scenario', required=True)
     parser.add_argument('--output-path', required=True)
     parser.add_argument('--timeout-sec', type=float, default=120.0)
+    parser.add_argument('--action-name', default='/navigate_to_pose')
+    parser.add_argument(
+        '--observe-path-safety-only', action='store_true',
+        help=(
+            'record full-footprint sweep evidence without canceling the '
+            'navigation action; intended for fault-aware policy trials'
+        ),
+    )
     parser.add_argument(
         '--scenarios-file',
         default=str(Path(get_package_share_directory('resilient_nav_navigation')) / 'config' / 'planner_smoke_scenarios.yaml'),
@@ -188,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         'readiness': {'timeout_wall_sec': arguments.timeout_sec, 'stages': []},
     }
     rclpy.init(args=None)
-    probe = NavigateToPoseProbe()
+    probe = NavigateToPoseProbe(action_name=arguments.action_name)
     try:
         scenario = load_scenario(Path(arguments.scenarios_file), arguments.scenario)
         deadline = time.monotonic() + arguments.timeout_sec
@@ -246,7 +254,10 @@ def main(argv: list[str] | None = None) -> int:
             # pre-event route is historical evidence; the offline contract
             # requires a safe *post-detection* replan and must not reject it
             # for a transient scan/costmap observation before the event.
-            strict_path_safety='task5' not in scenario,
+            strict_path_safety=(
+                'task5' not in scenario
+                and not arguments.observe_path_safety_only
+            ),
             # Preserve Task 4 and Task 5.1 successful-navigation endpoint
             # validation. For Task 5.2's expected safe failure, retain a
             # terminal TF/feedback divergence as evidence: the last feedback
@@ -271,7 +282,11 @@ def main(argv: list[str] | None = None) -> int:
         initial_sweep = observed_sweeps[0].get('sweep')
         if not isinstance(initial_sweep, dict):
             raise ValueError('initial Path safety evidence is malformed')
-        if 'task5' not in scenario and not initial_sweep['safe']:
+        if (
+            'task5' not in scenario
+            and not arguments.observe_path_safety_only
+            and not initial_sweep['safe']
+        ):
             raise ValueError(
                 'initial Nav2 Path fails full-footprint safety sweep: '
                 f"{initial_sweep['first_violation']}"

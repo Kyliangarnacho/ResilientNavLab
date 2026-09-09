@@ -7,6 +7,7 @@ from resilient_nav_fault_injection.imu_fault_models import (
 )
 from resilient_nav_fault_injection.scan_fault_models import (
     apply_scan_fault,
+    DROPOUT_MODEL,
     is_angle_in_sector,
     make_scan_fault_status,
     SECTOR_BLINDNESS_MODEL,
@@ -202,6 +203,51 @@ def test_invalid_model_is_rejected():
             start_time_sec=5.0,
             end_time_sec=15.0,
         )
+
+
+def test_dropout_returns_no_message_only_inside_active_window():
+    active = apply_scan_fault(
+        make_scan_message(time_sec=6.0),
+        model=DROPOUT_MODEL,
+        enabled=True,
+        sector_center_rad=0.0,
+        sector_width_rad=1.0,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+    )
+    before = apply_scan_fault(
+        make_scan_message(time_sec=4.9),
+        model=DROPOUT_MODEL,
+        enabled=True,
+        sector_center_rad=0.0,
+        sector_width_rad=1.0,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+    )
+
+    assert active is None
+    assert before is not None
+
+
+def test_dropout_fault_status_describes_whole_message_loss():
+    status = make_scan_fault_status(
+        make_scan_message(time_sec=6.0),
+        model=DROPOUT_MODEL,
+        enabled=True,
+        sector_center_rad=0.0,
+        sector_width_rad=1.0,
+        start_time_sec=5.0,
+        end_time_sec=15.0,
+        scenario_id='lidar_dropout_navigation',
+        scenario_seed=20260908,
+        event_id='lidar_dropout_001',
+        source_topic='/scan',
+        faulted_topic='/faulted/scan',
+    )
+
+    assert status.model == DROPOUT_MODEL
+    assert status.severity == pytest.approx(1.0)
+    assert list(status.affected_fields) == ['message']
 
 
 def test_full_circle_width_blinds_all_ranges():

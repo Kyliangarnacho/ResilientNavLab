@@ -14,6 +14,9 @@
 
 ## 故障、健康与融合
 
+- LiDAR “完整 dropout”必须在故障窗口内停止发布 `/faulted/scan`，不能用全 NaN scan 代替；后者仍有消息
+  freshness，只是在字段层损坏，考验的 Health/AMCL 路径不同。wheel bias 当前只改
+  `twist.twist.linear.x`，保留 pose 与 yaw-rate，以隔离检验 wheel translation reliability。
 - 故障注入不能覆盖健康 topic；`/faulted/*`、fixed EKF 和 healthy baseline 必须并存，才能公平对照。
 - 后续故障研究分为 sensor fault 与 physical disturbance 两路：前者描述消息/测量失效，后者描述物理世界
   变化引起的运动模型失效。两路允许独立注入与检测，但最终统一进入 Fusion/Adapter 决策，不维护两套
@@ -100,6 +103,39 @@
 
 ## SLAM 与 Nav2
 
+- Fault-aware Nav2 出现 `map` frame 长期不存在时，应先沿 TF 上游检查 Adaptive EKF 的输入生产者。
+  本次实际故障是裸 `colcon build` 把 Fusion Measurement Adapter 的 shebang 重写为系统 Python，
+  该解释器缺少 `joblib/scikit-learn`，Adapter 启动即退出；Adaptive EKF 无量测便不发布
+  `odom -> base_footprint`，AMCL 无法消费 scan，最终也不会发布 `map -> odom`。修复合同是所有
+  `resilient_nav_fusion` 重建均由仓库 `.venv/bin/python -m colcon` 驱动，而不是调整 AMCL/Planner 门限。
+- 导航级 Supervisor 不应把任一连续调权或单个 monitor 的短暂降级直接升级成停车。当前合同把
+  `Fusion DEGRADED`（只要仍有 accepted measurement）、单独 wheel/IMU 异常和单 health topic stale
+  视为可继续运动的 `DEGRADED`；定位明确不可用立即 `HOLD`，Fusion 无有效量测、关键传感器组合失效或
+  Nav2 障碍感知 scan 持续 `FAULT` 则经 0.3 s 确认后 `HOLD`。benchmark 曾临时把 fault-aware Controller
+  的 Costmap timeout 放宽到 `2.0 s`，收口时已恢复基线 `0.3 s`，避免把实验便利参数固化为运行合同。
+  Nav2 BT 保持不变，由上游 action gate 在 `HOLD` 时取消子 goal，并在恢复后重发保存的同一 goal。
+  Adaptive EKF 是正式链路唯一 `odom -> base_footprint` TF owner。
+- 完整 scan dropout 持续足够久后，Health 的有限历史可能从 `FAULT` 变回 `UNKNOWN/no_messages_received`；
+  Supervisor 必须在 `UNKNOWN` 或未收到新消息时保留已确认的 scan fault，防止 dropout 期间提前重发；
+  一旦出现真实 `DEGRADED` 证据即可解除硬锁存并进入可运行恢复态，不强求一步跳到 `HEALTHY`。长时间
+  scan 中断还会让 TF buffer 出现历史缺口，因此 goal gate 不再使用固定 `1.5 s` 墙钟延时，而是在恢复后
+  等待连续两帧 `/faulted/scan` 的消息时间戳都可查询到 `map` TF 后重发。这是数据链 readiness 证据，
+  不是第二层健康恢复确认窗口；该收口修改尚未做 Gazebo 动态回归。
+- 首轮 fault-aware navigation 最终集的健康场景严格 3/3 PASS 且无 HOLD；7 个故障场景的 Nav2 goal 均
+  成功，其中严格 endpoint 合同 5/7 PASS。LiDAR dropout 出现一次约 9.305 s HOLD 后恢复到达，wheel
+  freeze/bias 与 mild/moderate wheel+IMU 在无多余停车下到达。severe wheel+IMU 和综合物理扰动虽到达，
+  但终点定位误差超限；任务完成与定位质量必须继续分开报告。
+- map-frame 定位质量不能把传感器监测器的启动 `UNKNOWN` 直接等同于不可用。当前用显式
+  `LOCALIZATION_PROVISIONAL + localization_usable` 区分“证据仍在到齐”和“已通过 pose/TF 基础检查”；
+  启动时完整健康证据可直接进入 `OK`；从 `LOST` 恢复则先进入可用的 `DEGRADED`，默认连续两次新的
+  `map -> odom` 更新均通过完整检查后进入 `OK`。重复 timer tick 不计数，中途异常会清零，因此保留短确认
+  而不重新引入按秒等待的长 recovery window。
+  `/health/scan` 单独故障先降级；考虑 AMCL 静止时 pose 可能低频，仅 pose stale 且 TF 连续也保持可用降级，
+  只有关键 `map -> odom` TF 失效、严重协方差或明显 pose jump 才声明 `LOST`。
+- 使用仿真时间时，AMCL/TF 回调可能先于对应 `/clock` 回调被 executor 派发；不能据“header stamp 暂时领先
+  node clock”永久判定 localization invalid。结构合法性只检查有限正时间戳，freshness 同时使用本地接收年龄
+  和 header 年龄，仍能在消息停止后 fail closed。fault-aware 策略 benchmark 的 footprint sweep 保留为记录
+  证据，不得在运行中因单个栅格审计结果取消 Supervisor 正在管理的 goal；正式路径安全结论仍应离线报告。
 - persisted-map localization 评价必须使用实验前声明的固定 frame transform，不能从被评价轨迹反向拟合。
 - AMCL crowd robustness 探索中，clean baseline 用同一初始位姿做五圈 `0.6 m` 半径运动后，EKF/GT
   位置 RMSE 与终点误差分别约 `0.002/0.004 m`，而 AMCL/GT 分别约 `0.196/0.408 m`，终点航向

@@ -1,0 +1,7 @@
+resilience_supervisor:
+  ros__parameters:
+    use_sim_time: true
+    publish_rate_hz: 10.0
+    startup_grace_sec: 3.0
+    status_stale_sec: 1.0
+    hard_fault_confirmation_sec: 0.3

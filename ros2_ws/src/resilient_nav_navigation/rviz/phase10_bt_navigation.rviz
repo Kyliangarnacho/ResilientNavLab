@@ -28,6 +28,11 @@ Visualization Manager:
       Line Style: Lines
       Line Width: 0.04
       Color: 0; 170; 255
+    - Class: rviz_default_plugins/Pose
+      Name: Active Navigation Goal
+      Topic: {Value: /resilience/active_goal, Durability Policy: Transient Local, Reliability Policy: Reliable}
+      Shape: Arrow
+      Color: 255; 45; 45
     - Class: rviz_default_plugins/Path
       Name: Controller Path
       Topic: {Value: /received_global_plan, Reliability Policy: Reliable}

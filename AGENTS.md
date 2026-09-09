@@ -41,6 +41,16 @@ Robot Agent 的长期开发合同与 baseline 决策见：
   `.venv/bin/python`；若不是，先按上述方式重建，禁止用系统 Python 或临时 `PYTHONPATH`
   绕过该运行时合同。
 
+## Fusion RF Python 运行时约束
+
+- `resilient_nav_fusion` 的在线 Measurement Adapter 依赖仓库根 `.venv` 中的
+  `joblib` 与 `scikit-learn`。
+- 任何会重建 `resilient_nav_fusion` 的命令都必须从 `ros2_ws/` 使用
+  `../.venv/bin/python -m colcon ...`，不得使用 `/usr/bin/colcon` 或裸 `colcon`。
+- 构建后必须确认
+  `install/resilient_nav_fusion/lib/resilient_nav_fusion/measurement_adapter`
+  首行指向 `.venv/bin/python`。
+
 ## Robot Agent 分层原则
 
 - Robot Agent 是 ResilientNavLab 的上层诊断子系统，不替代既有监测与控制链。

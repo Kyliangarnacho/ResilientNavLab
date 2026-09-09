@@ -34,6 +34,7 @@ def generate_launch_description():
     )
     planner_scan_topic = LaunchConfiguration('planner_scan_topic')
     planner_plan_topic = LaunchConfiguration('planner_plan_topic')
+    start_localization = LaunchConfiguration('start_localization')
     log_level = LaunchConfiguration('log_level')
 
     localization = IncludeLaunchDescription(
@@ -53,6 +54,7 @@ def generate_launch_description():
             'initial_pose_result': initial_pose_result,
             'log_level': log_level,
         }.items(),
+        condition=IfCondition(start_localization),
     )
 
     configured_costmaps = ParameterFile(
@@ -140,6 +142,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument('planner_scan_topic', default_value='/scan'),
         DeclareLaunchArgument('planner_plan_topic', default_value='/plan'),
+        DeclareLaunchArgument('start_localization', default_value='true'),
         DeclareLaunchArgument('log_level', default_value='info'),
         # Scope the child launch's forced-off Phase 4 RViz setting so it
         # cannot overwrite this wrapper's optional planner RViz argument.

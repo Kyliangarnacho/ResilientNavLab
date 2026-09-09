@@ -50,6 +50,7 @@ def generated_world(tmp_path, scenario, **overrides):
         'rough_surface',
         'external_impact',
         'wheel_block',
+        'navigation_gauntlet',
     ],
 )
 def test_every_scene_reuses_all_phase9_models(tmp_path, scenario):
@@ -140,6 +141,49 @@ def test_large_rough_zone_is_filled_across_its_length(tmp_path):
     )
 
 
+def test_navigation_gauntlet_combines_friction_bumps_and_wrench(tmp_path):
+    root, _ = generated_world(
+        tmp_path,
+        'navigation_gauntlet',
+        zone_length_m=4.5,
+        zone_width_m=4.5,
+        low_friction_mu=0.18,
+        roughness_spacing_m=0.55,
+    )
+
+    patch = root.find("world/model[@name='physical_low_friction_zone']")
+    bumps = root.findall("world/model/link/collision[@name='bump_collision']")
+    plugins = root.findall('world/plugin')
+    assert patch is not None
+    assert len(bumps) == 3
+    patch_x = float(patch.findtext('pose').split()[0])
+    patch_length = float(
+        patch.findtext('link/collision/geometry/box/size').split()[0]
+    )
+    patch_min_x = patch_x - 0.5 * patch_length
+    bump_models = [
+        model
+        for model in root.findall('world/model')
+        if model.find("link/collision[@name='bump_collision']") is not None
+    ]
+    bump_x = [float(model.findtext('pose').split()[0]) for model in bump_models]
+    bump_widths = [
+        float(
+            model.findtext(
+                "link/collision[@name='bump_collision']/geometry/cylinder/length"
+            )
+        )
+        for model in bump_models
+    ]
+    assert max(bump_x) + 0.05 < patch_min_x
+    assert max(bump_x) < -1.25
+    assert all(width == pytest.approx(4.5 * 0.65) for width in bump_widths)
+    assert any(
+        plugin.attrib.get('filename') == 'gz-sim-apply-link-wrench-system'
+        for plugin in plugins
+    )
+
+
 @pytest.mark.parametrize('scenario', ['external_impact', 'wheel_block'])
 def test_dynamic_scenes_install_only_the_native_wrench_system(tmp_path, scenario):
     root, _ = generated_world(tmp_path, scenario)
@@ -177,6 +221,7 @@ def test_launch_and_pulse_expose_only_scene_level_controls():
         'rough_surface',
         'external_impact',
         'wheel_block',
+        'navigation_gauntlet',
     ):
         assert scenario in launch_source
     assert 'phase9_slam_world.sdf' in launch_source
@@ -187,6 +232,10 @@ def test_launch_and_pulse_expose_only_scene_level_controls():
     assert 'wheel_block_force_n' in pulse_source
     assert "'pulse_count': 1" in pulse_source
     assert "'pulse_interval_sec': 3.0" in pulse_source
+    assert (
+        "if config.scenario in {'external_impact', 'navigation_gauntlet'}"
+        in launch_source
+    )
     assert 'wrench.torque.y' not in pulse_source
     assert '/health/' not in launch_source
     assert '/fusion/' not in launch_source

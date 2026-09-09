@@ -1,4 +1,5 @@
 from copy import deepcopy
+import math
 
 from resilient_nav_fault_injection.imu_fault_models import (
     get_fault_state,
@@ -11,12 +12,19 @@ from resilient_nav_interfaces.msg import FaultStatus
 
 
 FREEZE_MODEL = 'freeze'
+BIAS_MODEL = 'bias'
 
 
 def validate_model(model):
     """Validate a wheel odometry fault model name."""
-    if model != FREEZE_MODEL:
-        raise ValueError('model must be freeze')
+    if model not in {FREEZE_MODEL, BIAS_MODEL}:
+        raise ValueError('model must be freeze or bias')
+
+
+def validate_linear_bias(linear_bias_mps):
+    """Keep the wheel-speed bias finite and experimentally bounded."""
+    if not math.isfinite(linear_bias_mps) or abs(linear_bias_mps) > 1.0:
+        raise ValueError('linear_bias_mps must be finite and within [-1, 1]')
 
 
 class WheelOdometryFreezeModel:
@@ -33,10 +41,12 @@ class WheelOdometryFreezeModel:
         enabled,
         start_time_sec,
         end_time_sec,
+        linear_bias_mps=0.0,
     ):
-        """Return a copied odometry message with freeze applied when active."""
+        """Return a copied odometry message with the selected wheel fault."""
         validate_model(model)
         validate_time_window(start_time_sec, end_time_sec)
+        validate_linear_bias(linear_bias_mps)
 
         msg_time_sec = stamp_to_seconds(odometry_msg.header.stamp)
         if not is_active_window(
@@ -47,6 +57,12 @@ class WheelOdometryFreezeModel:
         ):
             self._snapshot = None
             return deepcopy(odometry_msg)
+
+        if model == BIAS_MODEL:
+            self._snapshot = None
+            faulted_msg = deepcopy(odometry_msg)
+            faulted_msg.twist.twist.linear.x += linear_bias_mps
+            return faulted_msg
 
         if self._snapshot is None:
             self._snapshot = (
@@ -72,10 +88,12 @@ def make_wheel_fault_status(
     event_id,
     source_topic,
     faulted_topic,
+    linear_bias_mps=0.0,
 ):
     """Build a FaultStatus message for the current wheel odometry stamp."""
     validate_model(model)
     validate_time_window(start_time_sec, end_time_sec)
+    validate_linear_bias(linear_bias_mps)
 
     msg_time_sec = stamp_to_seconds(odometry_msg.header.stamp)
     status = FaultStatus()
@@ -87,7 +105,7 @@ def make_wheel_fault_status(
     status.source_topic = source_topic
     status.faulted_topic = faulted_topic
     status.sensor = 'wheel_odometry'
-    status.model = FREEZE_MODEL
+    status.model = model
     status.start_time = seconds_to_stamp(start_time_sec)
     status.end_time = seconds_to_stamp(end_time_sec)
     status.state = get_fault_state(
@@ -96,10 +114,19 @@ def make_wheel_fault_status(
         start_time_sec,
         end_time_sec,
     )
-    status.severity = 1.0
-    status.affected_fields = ['pose', 'twist']
-    status.parameters_yaml = (
-        f'model: {model}\n'
-        f'enabled: {str(enabled).lower()}\n'
-    )
+    if model == BIAS_MODEL:
+        status.severity = abs(linear_bias_mps)
+        status.affected_fields = ['twist.twist.linear.x']
+        status.parameters_yaml = (
+            f'model: {model}\n'
+            f'linear_bias_mps: {linear_bias_mps}\n'
+            f'enabled: {str(enabled).lower()}\n'
+        )
+    else:
+        status.severity = 1.0
+        status.affected_fields = ['pose', 'twist']
+        status.parameters_yaml = (
+            f'model: {model}\n'
+            f'enabled: {str(enabled).lower()}\n'
+        )
     return status

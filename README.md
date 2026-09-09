@@ -19,12 +19,19 @@ ResilientNavLab 是一个基于 ROS 2 Jazzy 与 Gazebo Harmonic 的移动机器�
 | 9 | 完成 | Slam Toolbox 建图、地图持久化、重定位与 loop closure |
 | 10 | 已收口 | saved-map Nav2、Costmap、Navfn、RPP、BT、动态障碍、Recovery 与 Goal Cancel |
 | BRNE V1 | 已收口 | LiDAR dynamic-agent、统一 interaction/crossing/head-on policy 和 Scene 1/2/3 闭环 |
-| Physical Disturbance V2 | 持续压力验收中 | RF V2 三模型已在线接入统一 Fusion；6 组有效首轮 full-chain 对照中 healthy 不劣于 fixed、external impact 的位置 RMSE 改善 11.8%，low-friction OOD 已触发强降权但未改善 RMSE；已增加大覆盖扰动区和持续压力路线 |
+| Physical Disturbance V2 | 已收口 | RF V2 三模型已在线接入统一 Fusion，并完成 physical disturbance full-chain benchmark 与链路审计 |
+| Fault-aware Navigation | 首轮动态 benchmark 完成 | 已接入 Localization Quality Monitor、容错型 Resilience Supervisor 和 Nav2 goal cancel/replay gate；健康 3/3 严格 PASS，故障 5/7 严格 PASS、7/7 Nav2 goal 成功 |
 | RA-1A | 完成 | 离线只读诊断、Sanitizer、Evidence/Incident、Tools、strict output 与 benchmark |
 
 Phase 10 的工程验收为 8/8 valid navigation PASS，另有一次发 goal 前的 infrastructure-invalid trial；
 不将其伪装为严格自动 9/9。BRNE V1 是人工场景 baseline，不是统计 benchmark。更精确的当前边界见
 [当前状态](docs/CURRENT_STATE.md)。
+
+本阶段完成了从底层几何测量到导航任务恢复的闭环收口：wheel yaw pose 为 EKF 提供绝对航向锚，IMU
+yaw-rate 保留动态响应；标准地图 Costmap 与 BRNE 动态行人职责分离；三路 RF reliability 与 Sensor Health、
+LiDAR ICP quality 统一进入 Fusion Supervisor；Localization Quality 与 Resilience Supervisor 再把融合质量
+转换为 Nav2 的继续、降级或 HOLD/replay 决策。实现范围、证据和未通过边界见
+[本阶段系统收口](docs/CURRENT_STATE.md#本阶段系统收口)。
 
 ## 软件包
 
@@ -107,8 +114,8 @@ ros2 launch resilient_nav_brne rpp_scene1_comparison_demo.launch.py use_rviz:=tr
 
 ## 当前未完成
 
-- fault-aware navigation 与 Health/Fusion 到 Nav2 的正式自适应闭环；
-- Physical Disturbance RF V2 的持续压力场景与 `0.20` fallback 候选门限尚待动态验收，概率也未校准；
+- fault-aware navigation 在 severe wheel+IMU 和综合物理扰动下的严格终点质量仍未通过；首轮结果不构成所有故障下的普遍韧性证明；
+- Physical Disturbance RF V2 概率仍未校准，现有结论只覆盖已归档 benchmark；
 - Live ROS Robot Agent、Planner/Recovery 权限和真实机器人执行；
 - RGB-D/PointCloud2 完整处理与视觉故障模型；
 - BRNE 的人类分类、遮挡续接、统计 benchmark 和完整 footprint 安全证明。

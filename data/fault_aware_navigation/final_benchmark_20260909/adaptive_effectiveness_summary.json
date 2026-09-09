@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-09-09",
+  "purpose": "Combined evidence for Adaptive EKF runtime effectiveness without claiming universal superiority.",
+  "direct_fixed_vs_adaptive_evidence": {
+    "rf_v2_full_chain_source": "data/physical_disturbance_v2/rf_full_chain_benchmark_20260908/benchmark_summary.json",
+    "valid_runs": 6,
+    "evaluator_samples": 5278,
+    "mean_position_rmse_m": {
+      "fixed": 0.0942393875,
+      "adaptive": 0.0924428402,
+      "adaptive_delta_percent": -1.9064
+    },
+    "pooled_position_rmse_m": {
+      "fixed": 0.1491350277,
+      "adaptive": 0.1507822159,
+      "adaptive_delta_percent": 1.1045
+    },
+    "representative_runs": {
+      "healthy": {
+        "fixed_position_rmse_m": 0.0433625435,
+        "adaptive_position_rmse_m": 0.0283908477,
+        "adaptive_delta_percent": -34.5268,
+        "yaw_delta_percent": -0.0793
+      },
+      "external_impact": {
+        "fixed_position_rmse_m": 0.0360532324,
+        "adaptive_position_rmse_m": 0.0318054991,
+        "adaptive_delta_percent": -11.7818
+      },
+      "low_friction_ood": {
+        "fixed_position_rmse_m": 0.3578126756,
+        "adaptive_position_rmse_m": 0.3637411043,
+        "adaptive_delta_percent": 1.6569
+      }
+    },
+    "wheel_freeze_lidar_fallback_source": "data/phase8/wheel_freeze_lidar_fallback_v2_phase9_world_20260907/benchmark.json",
+    "wheel_freeze_lidar_fallback": {
+      "fixed_position_rmse_m": 1.2511693229,
+      "adaptive_position_rmse_m": 0.5809100615,
+      "position_improvement_percent": 53.5706,
+      "fixed_yaw_rmse_rad": 1.3074733930,
+      "adaptive_yaw_rmse_rad": 0.4366111828,
+      "yaw_improvement_percent": 66.6065
+    }
+  },
+  "fault_aware_navigation_evidence": {
+    "source": "data/fault_aware_navigation/final_benchmark_20260909",
+    "healthy_strict_pass": "3/3",
+    "healthy_supervisor_hold_events": 0,
+    "fault_strict_pass": "5/7",
+    "fault_nav2_goal_success": "7/7",
+    "strict_failures": [
+      "06_wheel_imu_severe: Nav2 goal succeeded after hold/replay, but final localization error exceeded the frozen contract",
+      "07_navigation_gauntlet: Nav2 goal succeeded, but final localization error exceeded the frozen contract"
+    ],
+    "lidar_dropout": {
+      "strict_result": "PASS",
+      "supervisor_hold_events": 1,
+      "supervisor_hold_sec": 9.305,
+      "recovered_and_reached_goal": true
+    },
+    "degraded_without_unnecessary_stop": [
+      "01_wheel_freeze",
+      "02_wheel_bias",
+      "04_wheel_imu_mild",
+      "05_wheel_imu_moderate"
+    ],
+    "successful_fault_run_goal_error_range_m": [0.0907, 0.0974]
+  },
+  "conclusion": "Adaptive EKF is demonstrably connected and beneficial in healthy parity, wheel-freeze fallback, and external-impact A/B runs. The navigation chain preserves or resumes all seven faulted Nav2 goals, but strict endpoint quality passes only five of seven. Low-friction OOD and several mild physical disturbances remain parity or small regressions, so the evidence does not support universal superiority over Fixed EKF."
+}

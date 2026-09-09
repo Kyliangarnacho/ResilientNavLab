@@ -31,6 +31,9 @@ def generate_launch_description():
     use_recovery_controller_profile = LaunchConfiguration(
         'use_recovery_controller_profile'
     )
+    start_localization = LaunchConfiguration('start_localization')
+    navigation_scan_topic = LaunchConfiguration('navigation_scan_topic')
+    costmap_update_timeout = LaunchConfiguration('costmap_update_timeout')
     log_level = LaunchConfiguration('log_level')
 
     planner_chain = IncludeLaunchDescription(
@@ -50,6 +53,8 @@ def generate_launch_description():
             'initial_pose_result': initial_pose_result,
             'log_level': log_level,
             'manage_planner': manage_planner,
+            'start_localization': start_localization,
+            'planner_scan_topic': navigation_scan_topic,
         }.items(),
     )
     controller_server = Node(
@@ -62,6 +67,9 @@ def generate_launch_description():
             str(navigation_share / 'config' / 'nav2_controller.yaml'),
             {
                 'use_sim_time': True,
+                'costmap_update_timeout': ParameterValue(
+                    costmap_update_timeout, value_type=float
+                ),
                 # RPP 1.3.12 defaults to half of the 6 m Local Costmap (3 m).
                 # Preserve that frozen Task 3 value unless the Task 5.3-only
                 # Recovery profile opts into the upstream full-path search.
@@ -76,6 +84,7 @@ def generate_launch_description():
             },
         ],
         arguments=['--ros-args', '--log-level', log_level],
+        remappings=[('/scan', navigation_scan_topic)],
     )
     lifecycle_manager = Node(
         package='nav2_lifecycle_manager',
@@ -124,6 +133,9 @@ def generate_launch_description():
         DeclareLaunchArgument(
             'use_recovery_controller_profile', default_value='false'
         ),
+        DeclareLaunchArgument('start_localization', default_value='true'),
+        DeclareLaunchArgument('navigation_scan_topic', default_value='/scan'),
+        DeclareLaunchArgument('costmap_update_timeout', default_value='0.3'),
         DeclareLaunchArgument('log_level', default_value='info'),
         # Keep the planner wrapper's forced-off child RViz argument local.
         GroupAction(actions=[planner_chain], scoped=True, forwarding=True),

@@ -80,6 +80,26 @@ head -1 install/resilient_nav_brne/lib/resilient_nav_brne/brne_shadow_node
 
 禁止用系统 Python、临时 `PYTHONPATH` 或手改 shebang 绕过此合同。
 
+## Fusion RF Python 运行时合同
+
+`resilient_nav_fusion` 的在线 Measurement Adapter 依赖仓库根 `.venv` 中的
+`joblib` 和 `scikit-learn`。因此任何会重建该包的命令同样必须从 `ros2_ws/`
+使用 `.venv` 的 Python 驱动 colcon：
+
+```bash
+../.venv/bin/python -m colcon build --symlink-install \
+  --packages-select resilient_nav_fusion
+```
+
+构建后应确认：
+
+```bash
+head -1 install/resilient_nav_fusion/lib/resilient_nav_fusion/measurement_adapter
+```
+
+首行必须指向仓库根 `.venv/bin/python`。裸 `colcon build` 会把入口重写为
+`/usr/bin/python3`，导致 Measurement Adapter 因缺少 RF 依赖而在启动时退出。
+
 ## 测试约定
 
 - 小改动先运行对应 package 的 targeted pytest。
@@ -105,5 +125,5 @@ ros2 launch resilient_nav_brne brne_scene3_head_on_demo.launch.py arm_brne:=true
 
 - C920 依赖 WSL/USBIP，仍可能出现闪帧、FPS 波动和偏暗。
 - PointCloud2 未桥接。
-- 真实机器人、长期运动性能和 fault-aware autonomous navigation 尚未验收。
+- 真实机器人和长期运动性能尚未验收；fault-aware navigation 仅完成仿真首轮 benchmark。
 - 不得为当前任务擅自安装依赖或修改系统配置。

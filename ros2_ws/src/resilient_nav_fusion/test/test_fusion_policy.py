@@ -217,6 +217,45 @@ def test_rf_probability_continuously_scales_independent_components():
     assert result.state is FusionState.DEGRADED
 
 
+def test_high_rf_reliability_keeps_nominal_state_with_continuous_scaling():
+    """Small non-unit scales are not a navigation-level degradation."""
+    result = FusionPolicy().decide(
+        HealthState.HEALTHY,
+        HealthState.HEALTHY,
+        HealthState.HEALTHY,
+        ReliabilityScores(
+            wheel_translation=0.85,
+            wheel_rotation=0.90,
+            imu_yaw_rate=0.88,
+            lidar_translation=0.90,
+            rf_ready=True,
+        ),
+    )
+
+    assert result.covariance_scales['wheel_velocity'] > 1.0
+    assert result.covariance_scales['wheel_rotation'] > 1.0
+    assert result.covariance_scales['imu_yaw_rate'] > 1.0
+    assert result.state is FusionState.NOMINAL
+
+
+def test_reliability_below_nominal_state_threshold_remains_degraded():
+    """The status tolerance must not hide meaningfully weak evidence."""
+    result = FusionPolicy().decide(
+        HealthState.HEALTHY,
+        HealthState.HEALTHY,
+        HealthState.HEALTHY,
+        ReliabilityScores(
+            wheel_translation=0.79,
+            wheel_rotation=0.95,
+            imu_yaw_rate=0.95,
+            lidar_translation=0.90,
+            rf_ready=True,
+        ),
+    )
+
+    assert result.state is FusionState.DEGRADED
+
+
 def test_extremely_low_rf_score_uses_fallback_without_validation_threshold():
     result = FusionPolicy().decide(
         HealthState.HEALTHY,
